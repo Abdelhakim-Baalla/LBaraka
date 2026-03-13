@@ -44,6 +44,29 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## LBaraka dev quickstart
+
+1) Start only databases with Docker (from workspace root):
+
+```powershell
+Set-Location "C:\Users\Youcode\OneDrive\Desktop\1\Projects js\LBaraka"
+docker-compose up -d postgres mongo
+```
+
+2) Start backend locally (from `backend/`):
+
+```powershell
+Set-Location "C:\Users\Youcode\OneDrive\Desktop\1\Projects js\LBaraka\backend"
+npm install
+npm run start:dev
+```
+
+Notes:
+- `start:dev` runs `db:prepare` automatically (`prisma generate` + `prisma migrate deploy`).
+- PostgreSQL connection is handled by `PrismaService` on app init.
+- MongoDB connection is handled by `MongooseModule` on app init.
+- Current sprint mode is `user-story only` (inscription): chat endpoints are intentionally disabled.
+
 ## Run tests
 
 ```bash

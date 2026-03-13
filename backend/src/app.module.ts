@@ -1,16 +1,19 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { databaseConfig } from './config/database.config';
-import { UsersModule } from './modules/users/users.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { UtilisateurModule } from './utilisateur/utilisateur.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
-    TypeOrmModule.forRoot(databaseConfig()),
-    UsersModule,
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    UtilisateurModule,
+    AuthModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
