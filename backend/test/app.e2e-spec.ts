@@ -87,4 +87,33 @@ describe('AppController (e2e)', () => {
       })
       .expect(409);
   });
+
+  it('/auth/login (POST) connecte un utilisateur avec des identifiants valides', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(basePayload)
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: basePayload.email, motDePasse: basePayload.motDePasse })
+      .expect(201);
+
+    expect(response.body.message).toBe('Connexion réussie');
+    expect(response.body.accessToken).toBeDefined();
+    expect(response.body.utilisateur.email).toBe(basePayload.email);
+    expect(response.body.utilisateur.motDePasseHash).toBeUndefined();
+  });
+
+  it('/auth/login (POST) refuse un mot de passe invalide', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(basePayload)
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: basePayload.email, motDePasse: 'WrongPassword123' })
+      .expect(401);
+  });
 });
