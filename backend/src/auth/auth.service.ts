@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UtilisateurService } from '../utilisateur/utilisateur.service';
@@ -52,6 +52,18 @@ export class AuthService {
         return {
             message: 'Connexion réussie',
             accessToken: token,
+            utilisateur: this.utilisateurService.sanitizeUser(utilisateur),
+        };
+    }
+
+    async getMe(userId: string) {
+        const utilisateur = await this.utilisateurService.findById(userId);
+
+        if (!utilisateur) {
+            throw new NotFoundException('Utilisateur non trouvé');
+        }
+
+        return {
             utilisateur: this.utilisateurService.sanitizeUser(utilisateur),
         };
     }

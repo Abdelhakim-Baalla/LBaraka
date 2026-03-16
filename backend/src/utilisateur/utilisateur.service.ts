@@ -84,6 +84,13 @@ export class UtilisateurService {
         });
     }
 
+    async findById(id: string) {
+        return this.prisma.user.findUnique({
+            where: { id },
+            include: { profil: true },
+        });
+    }
+
     sanitizeUser(utilisateur: {
         motDePasseHash: string;
         [key: string]: unknown;
