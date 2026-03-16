@@ -2,7 +2,9 @@ import {
     BadRequestException,
     Body,
     Controller,
+    Get,
     Post,
+    Query,
     Req,
     UploadedFiles,
     UseGuards,
@@ -11,6 +13,7 @@ import {
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Request } from 'express';
+import { CategorieAnnonce } from '@prisma/client';
 import { AnnonceService } from './annonce.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -18,6 +21,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('annonces')
 export class AnnonceController {
     constructor(private readonly annonceService: AnnonceService) {}
+
+    @Get()
+    @UseGuards(JwtAuthGuard)
+    async findAll(@Query('categorie') categorie?: CategorieAnnonce) {
+        return this.annonceService.findAll(categorie);
+    }
 
     @Post()
     @UseGuards(JwtAuthGuard)
