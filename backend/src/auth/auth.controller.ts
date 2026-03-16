@@ -5,7 +5,6 @@ import {
     Body,
     UseGuards,
     Req,
-    HttpCode,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from '../utilisateur/dto/register.dto';
@@ -29,7 +28,6 @@ export class AuthController {
 
     @UseGuards(JwtAuthGuard)
     @Post('logout')
-    @HttpCode(200)
     async logout() {
         return this.authService.logout();
     }
