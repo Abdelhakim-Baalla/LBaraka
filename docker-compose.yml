@@ -1,31 +1,28 @@
-version: '3.8'
 
 services:
   postgres:
-    image: postgres:15-alpine
-    container_name: lbaraka-postgres
+    image: postgres:15
+    container_name: lbaraka_postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: lbaraka
-      POSTGRES_PASSWORD: lbaraka123
-      POSTGRES_DB: lbaraka_db
     ports:
       - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: lbaraka
+      POSTGRES_DB: lbaraka
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  mongodb:
-    image: mongo:6
-    container_name: lbaraka-mongodb
+  mongo:
+    image: mongo:4.4
+    container_name: lbaraka_mongo
     restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: lbaraka
-      MONGO_INITDB_ROOT_PASSWORD: lbaraka123
     ports:
       - "27017:27017"
     volumes:
-      - mongodb_data:/data/db
+      - mongo_data:/data/db
+
 
 volumes:
   postgres_data:
-  mongodb_data:
+  mongo_data:
