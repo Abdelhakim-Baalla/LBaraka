@@ -56,6 +56,12 @@ export class AuthService {
         };
     }
 
+    async logout() {
+        return {
+            message: 'Déconnexion réussie',
+        };
+    }
+
     async getMe(userId: string) {
         const utilisateur = await this.utilisateurService.findById(userId);
 

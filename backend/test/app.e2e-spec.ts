@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('AppController (e2e)', () => {
@@ -115,5 +115,25 @@ describe('AppController (e2e)', () => {
       .post('/auth/login')
       .send({ email: basePayload.email, motDePasse: 'WrongPassword123' })
       .expect(401);
+  });
+
+  it('/auth/logout (POST) déconnecte un utilisateur authentifié', async () => {
+    const registerResponse = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(basePayload)
+      .expect(201);
+
+    const accessToken = registerResponse.body.accessToken;
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(response.body.message).toBe('Déconnexion réussie');
+  });
+
+  it('/auth/logout (POST) refuse un utilisateur non authentifié', async () => {
+    await request(app.getHttpServer()).post('/auth/logout').expect(401);
   });
 });
