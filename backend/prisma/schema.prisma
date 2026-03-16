@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RoleUtilisateur {
+  CITOYEN
+  PARTENAIRE
+  ADMINISTRATEUR
+}
+
+enum ModeEchange {
+  DON_GRATUIT
+  PRET_TEMPORAIRE
+  LOCATION_SOLIDAIRE
+}
+
+enum NiveauTier {
+  BRONZE
+  ARGENT
+  OR
+  LEGENDE
+}
+
+enum StatutTransaction {
+  EN_ATTENTE_RECEPTION
+  EN_COURS
+  EN_ATTENTE_RETOUR
+  TERMINEE
+  ANNULEE
+  LITIGE_DEGRADATION
+}
+
+enum CategorieAnnonce {
+  POUSSETTE
+  BRICOLAGE
+  MEDICAL
+  EVENEMENTIEL
+  NOURRITURE
+  AUTRE
+}
+
+enum TypeRelais {
+  HANOUT
+  MOSQUEE
+  ASSOCIATION_QUARTIER
+}
+
+enum TypeBadge {
+  BIENVENUE
+  DONATEUR_BARAKA
+  SAUVEUR_ALIMENTAIRE
+  VOISIN_DE_CONFIANCE
+  AMBASSADEUR_LOCAL
+  GARANT_SOLIDAIRE
+  CHAMPION_ECO
+}
+
+enum Langue {
+  ARABE
+  FRANCAIS
+  AMAZIGH
+  BILINGUE
+}
+
+enum StatutAnnonce {
+  DISPONIBLE
+  RESERVEE
+  TERMINEE
+  EXPIREE
+}
+
+enum ConditionAnnonce {
+  NEUF
+  BON_ETAT
+  USE
+}
+
+enum TypeMouvementWallet {
+  DEPOT
+  BLOCAGE
+  DEBLOCAGE
+  RETRAIT
+}
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  motDePasseHash    String            @map("mot_de_passe_hash")
+  telephone         String            @unique
+  role              RoleUtilisateur   @default(CITOYEN)
+  dateInscription   DateTime          @default(now()) @map("date_inscription")
+  emailVerified     Boolean           @default(false) @map("email_verified")
+  telephoneVerified Boolean           @default(false) @map("telephone_verified")
+  profil            Profil?
+  annonces          Annonce[]
+  portefeuille      Portefeuille?
+  mouvementsWallet  MouvementWallet[]
+  transactionsPret  Transaction[]     @relation("TransactionPreteur")
+  transactionsEmpr  Transaction[]     @relation("TransactionEmprunteur")
+
+  @@map("utilisateurs")
+}
+
+model Profil {
+  id               String    @id @default(uuid())
+  nom              String?
+  prenom           String?
+  cin              String?   @unique
+  adresseComplete  String?   @map("adresse_complete")
+  ville            String?
+  lBarakaScore     Int       @default(0) @map("lbaraka_score")
+  palier           NiveauTier @default(BRONZE)
+  badges           TypeBadge[]
+  langueInterface  Langue    @default(FRANCAIS) @map("langue_interface")
+  photoProfil      String?   @map("photo_profil")
+  dateNaissance    DateTime? @map("date_naissance")
+  utilisateurId    String    @unique @map("utilisateur_id")
+  utilisateur      User      @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+
+  @@map("profils")
+}
+
+model Annonce {
+  id              String          @id @default(uuid())
+  titre           String
+  description     String
+  categorie       CategorieAnnonce
+  mode            ModeEchange
+  prixSymbolique  Decimal?        @db.Decimal(12, 2) @map("prix_symbolique")
+  montantCaution  Decimal?        @db.Decimal(12, 2) @map("montant_caution")
+  photos          String[]
+  geolocalisation Float[]
+  estFoodRescue   Boolean         @default(false) @map("est_food_rescue")
+  dateExpiration  DateTime?       @map("date_expiration")
+  dateCreation    DateTime        @default(now()) @map("date_creation")
+  statut          StatutAnnonce   @default(DISPONIBLE)
+  nombreVues      Int             @default(0) @map("nombre_vues")
+  condition       ConditionAnnonce
+  createurId      String          @map("createur_id")
+  createur        User            @relation(fields: [createurId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
+
+  @@map("annonces")
+}
+
+model Portefeuille {
+  id            String           @id @default(uuid())
+  soldeReel     Decimal          @default(0) @db.Decimal(14, 2) @map("solde_reel")
+  soldeBloque   Decimal          @default(0) @db.Decimal(14, 2) @map("solde_bloque")
+  devise        String           @default("MAD")
+  dateMiseAJour DateTime         @updatedAt @map("date_mise_a_jour")
+  utilisateurId String           @unique @map("utilisateur_id")
+  utilisateur   User             @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  historique    MouvementWallet[]
+
+  @@map("portefeuilles")
+}
+
+model MouvementWallet {
+  id             String              @id @default(uuid())
+  montant        Decimal             @db.Decimal(14, 2)
+  type           TypeMouvementWallet
+  date           DateTime            @default(now())
+  utilisateurId  String              @map("utilisateur_id")
+  portefeuilleId String              @map("portefeuille_id")
+  utilisateur    User                @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  portefeuille   Portefeuille        @relation(fields: [portefeuilleId], references: [id], onDelete: Cascade)
+
+  @@map("mouvements_wallet")
+}
+
+model PointRelais {
+  id               String        @id @default(uuid())
+  nom              String
+  type             TypeRelais
+  capaciteStockage Int           @map("capacite_stockage")
+  adresse          String
+  geolocalisation  Float[]
+  horaires         String[]
+  telephone        String
+  photo            String?
+  transactions     Transaction[]
+
+  @@map("points_relais")
+}
+
+model Transaction {
+  id                     String            @id @default(uuid())
+  annonceId              String            @map("annonce_id")
+  emprunteurId           String            @map("emprunteur_id")
+  preteurId              String            @map("preteur_id")
+  qrCodeReception        String?           @map("qr_code_reception")
+  qrCodeRetour           String?           @map("qr_code_retour")
+  statut                 StatutTransaction @default(EN_ATTENTE_RECEPTION)
+  dateDebut              DateTime?         @map("date_debut")
+  dateFinPrevue          DateTime?         @map("date_fin_prevue")
+  dateFinReelle          DateTime?         @map("date_fin_reelle")
+  montantCautionBloquee  Decimal?          @db.Decimal(14, 2) @map("montant_caution_bloquee")
+  pointRelaisId          String?           @map("point_relais_id")
+  scannedReception       Boolean           @default(false) @map("scanned_reception")
+  scannedRetour          Boolean           @default(false) @map("scanned_retour")
+  retard                 Int               @default(0)
+  degats                 Boolean           @default(false)
+  annonce                Annonce           @relation(fields: [annonceId], references: [id], onDelete: Cascade)
+  emprunteur             User              @relation("TransactionEmprunteur", fields: [emprunteurId], references: [id], onDelete: Cascade)
+  preteur                User              @relation("TransactionPreteur", fields: [preteurId], references: [id], onDelete: Cascade)
+  pointRelais            PointRelais?      @relation(fields: [pointRelaisId], references: [id], onDelete: SetNull)
+  contrat                Contrat?
+
+  @@map("transactions")
+}
+
+model Contrat {
+  id              String      @id @default(uuid())
+  numContrat      String      @unique @map("num_contrat")
+  urlPdfBilingue  String      @map("url_pdf_bilingue")
+  hashSignature   String      @map("hash_signature")
+  transactionId   String      @unique @map("transaction_id")
+  dateGeneration  DateTime    @default(now()) @map("date_generation")
+  langue          Langue      @default(BILINGUE)
+  transaction     Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("contrats")
+}
+

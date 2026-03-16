@@ -47,3 +47,4 @@ coverage/
 # Docker
 docker-compose.override.yml
 </arg_value>
+/generated/prisma
