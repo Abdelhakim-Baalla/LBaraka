@@ -1,12 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class AnnonceService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly storageService: StorageService,
+    ) {}
 
-    async create(createurId: string, dto: CreateAnnonceDto, photos: string[]) {
+    async create(createurId: string, dto: CreateAnnonceDto, files: Express.Multer.File[]) {
+        const photos = await this.storageService.uploadAnnoncePhotos(files);
+
         const annonce = await this.prisma.annonce.create({
             data: {
                 titre: dto.titre,
