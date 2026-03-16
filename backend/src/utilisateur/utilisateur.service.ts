@@ -67,7 +67,7 @@ export class UtilisateurService {
                 };
             });
 
-            return this.toSafeUser(utilisateur);
+            return this.sanitizeUser(utilisateur);
         } catch (error) {
             if (this.isUniqueConstraintError(error)) {
                 throw new ConflictException('Email, téléphone ou CIN déjà utilisé');
@@ -84,7 +84,14 @@ export class UtilisateurService {
         });
     }
 
-    private toSafeUser(utilisateur: {
+    async findById(id: string) {
+        return this.prisma.user.findUnique({
+            where: { id },
+            include: { profil: true },
+        });
+    }
+
+    sanitizeUser(utilisateur: {
         motDePasseHash: string;
         [key: string]: unknown;
     }) {
