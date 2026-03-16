@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { CategorieAnnonce } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
 import { StorageService } from '../storage/storage.service';
@@ -27,6 +28,18 @@ export class AnnonceService {
         });
 
         return { annonce };
+    }
+
+    async findAll(categorie?: CategorieAnnonce) {
+        const annonces = await this.prisma.annonce.findMany({
+            where: {
+                statut: 'DISPONIBLE',
+                ...(categorie && { categorie }),
+            },
+            orderBy: { dateCreation: 'desc' },
+        });
+
+        return { annonces };
     }
 }
 
