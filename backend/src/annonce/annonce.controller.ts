@@ -28,6 +28,23 @@ export class AnnonceController {
         return this.annonceService.findAll(categorie);
     }
 
+    @Get('carte')
+    @UseGuards(JwtAuthGuard)
+    async findNearby(
+        @Query('lat') lat: string,
+        @Query('lng') lng: string,
+        @Query('rayon') rayon?: string,
+        @Query('categorie') categorie?: CategorieAnnonce,
+    ) {
+        const latNum = parseFloat(lat);
+        const lngNum = parseFloat(lng);
+        if (isNaN(latNum) || isNaN(lngNum)) {
+            throw new BadRequestException('lat et lng sont requis et doivent être des nombres');
+        }
+        const rayonKm = rayon ? parseFloat(rayon) : 10;
+        return this.annonceService.findNearby(latNum, lngNum, rayonKm, categorie);
+    }
+
     @Post()
     @UseGuards(JwtAuthGuard)
     @UseInterceptors(

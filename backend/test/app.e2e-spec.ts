@@ -166,4 +166,50 @@ describe('AppController (e2e)', () => {
       .expect(400);
   });
 
+  it('/annonces (POST) refuse la position par defaut', async () => {
+    const registerResponse = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(basePayload)
+      .expect(201);
+
+    const token = registerResponse.body.accessToken;
+
+    await request(app.getHttpServer())
+      .post('/annonces')
+      .set('Authorization', `Bearer ${token}`)
+      .field('titre', 'Chaise bebe')
+      .field('description', 'Chaise bebe propre.')
+      .field('categorie', 'AUTRE')
+      .field('mode', 'DON_GRATUIT')
+      .field('condition', 'BON_ETAT')
+      .field('geolocalisation', '[33.5731,-7.5898]')
+      .attach('photos', __filename)
+      .attach('photos', __filename)
+      .attach('photos', __filename)
+      .expect(400);
+  });
+
+  it('/annonces (POST) refuse des coordonnees hors bornes', async () => {
+    const registerResponse = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(basePayload)
+      .expect(201);
+
+    const token = registerResponse.body.accessToken;
+
+    await request(app.getHttpServer())
+      .post('/annonces')
+      .set('Authorization', `Bearer ${token}`)
+      .field('titre', 'Table pliante')
+      .field('description', 'Table en bon etat.')
+      .field('categorie', 'BRICOLAGE')
+      .field('mode', 'PRET_TEMPORAIRE')
+      .field('condition', 'BON_ETAT')
+      .field('geolocalisation', '[123,-8.0081]')
+      .attach('photos', __filename)
+      .attach('photos', __filename)
+      .attach('photos', __filename)
+      .expect(400);
+  });
+
 });

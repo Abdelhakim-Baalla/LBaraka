@@ -1,6 +1,61 @@
 import { CategorieAnnonce, ConditionAnnonce, ModeEchange } from '@prisma/client';
-import { IsArray, IsEnum, IsNotEmpty, IsString, ArrayMinSize } from 'class-validator';
-import { Transform } from 'class-transformer';
+import {
+    IsArray,
+    IsEnum,
+    IsNotEmpty,
+    IsString,
+    IsOptional,
+    IsNumber,
+    IsBoolean,
+    registerDecorator,
+    ValidationArguments,
+    ValidationOptions,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+
+const BLOCKED_DEFAULT_LAT = 33.5731;
+const BLOCKED_DEFAULT_LNG = -7.5898;
+const EPSILON = 0.000001;
+
+function IsValidGeoPoint(validationOptions?: ValidationOptions) {
+    return function (object: object, propertyName: string) {
+        registerDecorator({
+            name: 'isValidGeoPoint',
+            target: object.constructor,
+            propertyName,
+            options: validationOptions,
+            validator: {
+                validate(value: unknown) {
+                    if (!Array.isArray(value) || value.length !== 2) {
+                        return false;
+                    }
+
+                    const [lat, lng] = value;
+                    if (typeof lat !== 'number' || typeof lng !== 'number') {
+                        return false;
+                    }
+
+                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                        return false;
+                    }
+
+                    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                        return false;
+                    }
+
+                    const isBlockedDefault =
+                        Math.abs(lat - BLOCKED_DEFAULT_LAT) < EPSILON &&
+                        Math.abs(lng - BLOCKED_DEFAULT_LNG) < EPSILON;
+
+                    return !isBlockedDefault;
+                },
+                defaultMessage(args: ValidationArguments) {
+                    return `${args.property} doit contenir une vraie position GPS au format [latitude, longitude]`;
+                },
+            },
+        });
+    };
+}
 
 export class CreateAnnonceDto {
     @IsString()
@@ -19,6 +74,24 @@ export class CreateAnnonceDto {
 
     @IsEnum(ConditionAnnonce)
     condition: ConditionAnnonce;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    prixSymbolique?: number;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    montantCaution?: number;
+
+    @IsOptional()
+    @Type(() => Boolean)
+    @IsBoolean()
+    estFoodRescue?: boolean;
+
+    @IsOptional()
+    dateExpiration?: string;
 
     @Transform(({ value }) => {
         if (Array.isArray(value)) {
@@ -41,7 +114,7 @@ export class CreateAnnonceDto {
         return value;
     })
     @IsArray()
-    @ArrayMinSize(2)
+    @IsValidGeoPoint()
     geolocalisation: number[];
 }
 
