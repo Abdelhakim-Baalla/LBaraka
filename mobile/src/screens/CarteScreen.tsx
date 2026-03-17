@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert, RefreshControl,
@@ -11,6 +11,8 @@ type Props = { navigate: (s: string) => void };
 const CATS = ['Toutes', 'POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 const RAYONS = [5, 10, 20, 50, 100, 200];
 export default function CarteScreen({ navigate }: Props) {
+  const mapRef = useRef<MapView | null>(null);
+  const markerRefs = useRef<Record<string, any>>({});
   const { token } = useAuth();
   const [annonces, setAnnonces] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,13 +20,15 @@ export default function CarteScreen({ navigate }: Props) {
   const [rayon, setRayon] = useState(10);
   const [selectedCat, setSelectedCat] = useState('Toutes');
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [center, setCenter] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [myPosition, setMyPosition] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [mapCenter, setMapCenter] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [selectedAnnonceId, setSelectedAnnonceId] = useState<string | null>(null);
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setCenter(null);
+        setMapCenter(null);
         setAnnonces([]);
         setGpsError('Permission localisation refusée. Activez le GPS pour voir les annonces proches.');
         return;
@@ -36,13 +40,16 @@ export default function CarteScreen({ navigate }: Props) {
 
       const lat = loc.coords.latitude;
       const lng = loc.coords.longitude;
-      setCenter({ latitude: lat, longitude: lng });
+      const nextPosition = { latitude: lat, longitude: lng };
+      setMyPosition(nextPosition);
+      setMapCenter(nextPosition);
       setGpsError(null);
       const cat = selectedCat === 'Toutes' ? undefined : selectedCat;
       const res = await getAnnoncesNearby(token!, lat, lng, rayon, cat);
       setAnnonces(res.annonces ?? []);
     } catch (e: any) {
-      setCenter(null);
+      setMyPosition(null);
+      setMapCenter(null);
       setAnnonces([]);
       setGpsError(e?.message ?? 'Impossible de récupérer la position GPS.');
       Alert.alert('Erreur', e.message);
@@ -61,6 +68,42 @@ export default function CarteScreen({ navigate }: Props) {
   const latitudeDelta = Math.max(0.06, rayon / 85);
   const longitudeDelta = Math.max(0.06, rayon / 85);
 
+  const focusAnnonce = (item: any) => {
+    if (!Array.isArray(item.geolocalisation) || item.geolocalisation.length < 2) return;
+    const nextCenter = {
+      latitude: item.geolocalisation[0],
+      longitude: item.geolocalisation[1],
+    };
+
+    setSelectedAnnonceId(item.id);
+    setMapCenter(nextCenter);
+
+    mapRef.current?.animateToRegion({
+      ...nextCenter,
+      latitudeDelta,
+      longitudeDelta,
+    }, 450);
+
+    setTimeout(() => {
+      markerRefs.current[item.id]?.showCallout();
+    }, 220);
+  };
+
+  const focusMyLocation = () => {
+    if (!myPosition) {
+      Alert.alert('Position indisponible', 'Impossible de vous localiser pour le moment.');
+      return;
+    }
+
+    setSelectedAnnonceId(null);
+    setMapCenter(myPosition);
+    mapRef.current?.animateToRegion({
+      ...myPosition,
+      latitudeDelta,
+      longitudeDelta,
+    }, 450);
+  };
+
   return (
     <View style={s.root}>
       <View style={s.header}>
@@ -72,8 +115,8 @@ export default function CarteScreen({ navigate }: Props) {
       </View>
       <View style={s.locBanner}>
         <Text style={s.locT}>
-          {center
-            ? `Position GPS : ${center.latitude.toFixed(6)}, ${center.longitude.toFixed(6)}`
+          {myPosition
+            ? `Position GPS : ${myPosition.latitude.toFixed(6)}, ${myPosition.longitude.toFixed(6)}`
             : gpsError ?? 'Position GPS indisponible'}
         </Text>
       </View>
@@ -107,7 +150,7 @@ export default function CarteScreen({ navigate }: Props) {
       </View>
       {loading ? (
         <ActivityIndicator size="large" color="#16a34a" style={{ marginTop: 60 }} />
-      ) : !center ? (
+      ) : !mapCenter ? (
         <View style={s.empty}>
           <Text style={s.emptyT}>Position GPS requise</Text>
           <Text style={s.emptySub}>Activez la localisation pour voir les annonces proches.</Text>
@@ -117,38 +160,49 @@ export default function CarteScreen({ navigate }: Props) {
         </View>
       ) : (
         <>
-          <MapView
-            style={s.map}
-            initialRegion={{
-              latitude: center.latitude,
-              longitude: center.longitude,
-              latitudeDelta,
-              longitudeDelta,
-            }}
-            region={{
-              latitude: center.latitude,
-              longitude: center.longitude,
-              latitudeDelta,
-              longitudeDelta,
-            }}
-          >
-            <Marker
-              coordinate={{ latitude: center.latitude, longitude: center.longitude }}
-              title="Votre position"
-              pinColor="blue"
-            />
-            {markers.map((item) => (
-              <Marker
-                key={item.id}
-                coordinate={{
-                  latitude: item.geolocalisation[0],
-                  longitude: item.geolocalisation[1],
-                }}
-                title={item.titre}
-                description={`${item.categorie} - ${item.distance} km`}
-              />
-            ))}
-          </MapView>
+          <View style={s.mapWrap}>
+            <MapView
+              ref={mapRef}
+              style={s.map}
+              initialRegion={{
+                latitude: mapCenter.latitude,
+                longitude: mapCenter.longitude,
+                latitudeDelta,
+                longitudeDelta,
+              }}
+              region={{
+                latitude: mapCenter.latitude,
+                longitude: mapCenter.longitude,
+                latitudeDelta,
+                longitudeDelta,
+              }}
+            >
+              {myPosition && (
+                <Marker
+                  coordinate={{ latitude: myPosition.latitude, longitude: myPosition.longitude }}
+                  title="Votre position"
+                  pinColor="blue"
+                />
+              )}
+              {markers.map((item) => (
+                <Marker
+                  key={item.id}
+                  ref={(ref) => { markerRefs.current[item.id] = ref; }}
+                  coordinate={{
+                    latitude: item.geolocalisation[0],
+                    longitude: item.geolocalisation[1],
+                  }}
+                  title={item.titre}
+                  description={`${item.categorie} - ${item.distance} km`}
+                  onPress={() => setSelectedAnnonceId(item.id)}
+                />
+              ))}
+            </MapView>
+
+            <TouchableOpacity style={s.locateBtn} onPress={focusMyLocation}>
+              <Text style={s.locateBtnText}>Me localiser</Text>
+            </TouchableOpacity>
+          </View>
 
           <FlatList
             data={annonces}
@@ -173,7 +227,11 @@ export default function CarteScreen({ navigate }: Props) {
               </View>
             }
             renderItem={({ item }) => (
-              <View style={s.card}>
+              <TouchableOpacity
+                style={[s.card, selectedAnnonceId === item.id && s.cardSelected]}
+                onPress={() => focusAnnonce(item)}
+                activeOpacity={0.85}
+              >
                 <View style={s.cardHeader}>
                   <Text style={s.cardTitle} numberOfLines={1}>{item.titre}</Text>
                   <View style={s.distBadge}>
@@ -187,7 +245,7 @@ export default function CarteScreen({ navigate }: Props) {
                 {item.createur?.email && (
                   <Text style={s.createur}>Par : {item.createur.email}</Text>
                 )}
-              </View>
+              </TouchableOpacity>
             )}
           />
         </>
@@ -214,9 +272,21 @@ const s = StyleSheet.create({
   rayonChipOn: { backgroundColor: '#16a34a' },
   rayonT: { color: '#6b7280', fontSize: 12, fontWeight: '500' },
   rayonTOn: { color: '#fff', fontWeight: 'bold' },
+  mapWrap: { position: 'relative' },
   map: { width: '100%', height: 300 },
+  locateBtn: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+    backgroundColor: '#16a34a',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  locateBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
   countT: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8, textAlign: 'center' },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, elevation: 2 },
+  cardSelected: { borderWidth: 1, borderColor: '#16a34a' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   cardTitle: { fontSize: 15, fontWeight: 'bold', color: '#111', flex: 1, marginRight: 8 },
   distBadge: { backgroundColor: '#dcfce7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
