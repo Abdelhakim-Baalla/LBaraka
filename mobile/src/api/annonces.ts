@@ -19,6 +19,10 @@ export const createAnnonce = async (
     mode: string;
     condition: string;
     geolocalisation: number[];
+    prixSymbolique?: number;
+    montantCaution?: number;
+    estFoodRescue?: boolean;
+    dateExpiration?: string;
   },
   photos: Array<{ uri: string; name: string; type: string }>,
 ) => {
@@ -29,9 +33,12 @@ export const createAnnonce = async (
   form.append('mode', data.mode);
   form.append('condition', data.condition);
   form.append('geolocalisation', JSON.stringify(data.geolocalisation));
+  if (data.prixSymbolique) form.append('prixSymbolique', data.prixSymbolique.toString());
+  if (data.montantCaution) form.append('montantCaution', data.montantCaution.toString());
+  if (data.estFoodRescue) form.append('estFoodRescue', 'true');
+  if (data.dateExpiration) form.append('dateExpiration', data.dateExpiration);
   
-  // Fix: ajouter les photos correctement
-  photos.forEach((p, idx) => {
+  photos.forEach((p) => {
     const file = {
       uri: p.uri,
       type: p.type,

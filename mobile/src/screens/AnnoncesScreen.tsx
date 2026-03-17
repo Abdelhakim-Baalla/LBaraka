@@ -54,13 +54,16 @@ export default function AnnoncesScreen({ navigate }: Props) {
     <View style={s.root}>
       {/* Header */}
       <View style={s.header}>
-        <Text style={s.headerT}>🌿 LBaraka</Text>
+        <Text style={s.headerT}>LBaraka</Text>
         <View style={s.headerActions}>
           <TouchableOpacity style={s.btnSmall} onPress={() => navigate('Carte')}>
-            <Text style={s.btnSmallT}>📍 Carte</Text>
+            <Text style={s.btnSmallT}>Carte</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.btnSmall} onPress={() => navigate('Profile')}>
+            <Text style={s.btnSmallT}>Profil</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.btnSmall} onPress={logout}>
-            <Text style={s.btnSmallT}>🚪</Text>
+            <Text style={s.btnSmallT}>Sortie</Text>
           </TouchableOpacity>
         </View>
       </View>

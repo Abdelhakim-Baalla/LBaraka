@@ -38,6 +38,10 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
   const [cat, setCat] = useState(CATS[0]);
   const [mode, setMode] = useState(MODES[0]);
   const [cond, setCond] = useState(CONDS[0]);
+  const [prix, setPrix] = useState('');
+  const [caution, setCaution] = useState('');
+  const [estFood, setEstFood] = useState(false);
+  const [dateExp, setDateExp] = useState('');
   const [photos, setPhotos] = useState<Array<{ uri: string; name: string; type: string }>>([]);
   const [loading, setLoading] = useState(false);
 
@@ -67,7 +71,18 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
     try {
       await createAnnonce(
         token!,
-        { titre: titre.trim(), description: desc.trim(), categorie: cat, mode, condition: cond, geolocalisation: [33.5731, -7.5898] },
+        {
+          titre: titre.trim(),
+          description: desc.trim(),
+          categorie: cat,
+          mode,
+          condition: cond,
+          geolocalisation: [33.5731, -7.5898],
+          ...(prix ? { prixSymbolique: parseFloat(prix) } : {}),
+          ...(caution ? { montantCaution: parseFloat(caution) } : {}),
+          estFoodRescue: estFood,
+          ...(dateExp ? { dateExpiration: dateExp } : {}),
+        },
         photos,
       );
       setTitre('');
@@ -75,8 +90,12 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
       setCat(CATS[0]);
       setMode(MODES[0]);
       setCond(CONDS[0]);
+      setPrix('');
+      setCaution('');
+      setEstFood(false);
+      setDateExp('');
       setPhotos([]);
-      Alert.alert('Publié ! 🎉', 'Votre annonce est en ligne.', [
+      Alert.alert('Succes', 'Votre annonce est en ligne.', [
         { text: 'Voir les annonces', onPress: () => navigate('Annonces') },
       ]);
     } catch (err: any) {
@@ -111,6 +130,22 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
 
       <Text style={s.label}>Condition</Text>
       <Chips items={CONDS} value={cond} onChange={setCond} />
+
+      <Text style={s.label}>Prix</Text>
+      <TextInput style={s.input} placeholder="Ex: 10€" value={prix} onChangeText={setPrix} keyboardType="numeric" />
+
+      <Text style={s.label}>Caution</Text>
+      <TextInput style={s.input} placeholder="Ex: 50€" value={caution} onChangeText={setCaution} keyboardType="numeric" />
+
+      <Text style={s.label}>Food Rescue</Text>
+      <TouchableOpacity style={[s.chip, estFood && s.chipOn]} onPress={() => setEstFood((prev) => !prev)}>
+        <Text style={[s.chipT, estFood && s.chipTOn]}>
+          {estFood ? 'Oui' : 'Non'}
+        </Text>
+      </TouchableOpacity>
+
+      <Text style={s.label}>Date d'expiration</Text>
+      <TextInput style={s.input} placeholder="JJ/MM/AAAA" value={dateExp} onChangeText={setDateExp} />
 
       <Text style={s.label}>Photos ({photos.length}/3 — 3 obligatoires)</Text>
       <View style={s.row}>

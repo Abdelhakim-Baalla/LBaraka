@@ -1,5 +1,8 @@
 import { apiFetch } from './client';
 
+export const getProfile = (token: string) =>
+  apiFetch('/auth/me', {}, token);
+
 export const login = (email: string, motDePasse: string) =>
   apiFetch('/auth/login', {
     method: 'POST',

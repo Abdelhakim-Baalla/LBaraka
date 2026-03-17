@@ -57,12 +57,13 @@ export default function CarteScreen({ navigate }: Props) {
       <View style={s.cardHeader}>
         <View>
           <Text style={s.cardTitle} numberOfLines={1}>{item.titre}</Text>
-          <Text style={s.cardDist}>📍 {item.distance} km</Text>
+          <Text style={s.cardDist}>{item.distance} km</Text>
         </View>
-        <Text style={s.modeBadge}>{MODES[item.mode]}</Text>
+        <Text style={s.modeBadge}>{item.mode.substring(0, 3)}</Text>
       </View>
-      <Text style={s.cardMeta}>{item.categorie} · {item.condition}</Text>
+      <Text style={s.cardMeta}>{item.categorie} - {item.condition}</Text>
       <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
+      {item.createur && <Text style={s.createur}>{item.createur.email}</Text>}
     </View>
   );
 
@@ -165,6 +166,7 @@ const s = StyleSheet.create({
   modeBadge: { fontSize: 18 },
   cardMeta: { fontSize: 12, color: '#6b7280', marginBottom: 4 },
   cardDesc: { fontSize: 13, color: '#374151' },
+  createur: { fontSize: 11, color: '#16a34a', fontWeight: '500', marginTop: 4 },
   empty: { alignItems: 'center', marginTop: 60 },
   emptyIcon: { fontSize: 48 },
   emptyT: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginTop: 12 },

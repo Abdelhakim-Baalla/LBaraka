@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CategorieAnnonce } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
 import { StorageService } from '../storage/storage.service';
@@ -34,6 +35,10 @@ export class AnnonceService {
                 mode: dto.mode,
                 condition: dto.condition,
                 geolocalisation: dto.geolocalisation,
+                prixSymbolique: dto.prixSymbolique ? new Decimal(dto.prixSymbolique) : null,
+                montantCaution: dto.montantCaution ? new Decimal(dto.montantCaution) : null,
+                estFoodRescue: dto.estFoodRescue ?? false,
+                dateExpiration: dto.dateExpiration ? new Date(dto.dateExpiration) : null,
                 photos,
                 createurId,
             },
@@ -70,7 +75,9 @@ export class AnnonceService {
                 photos: true,
                 geolocalisation: true,
                 prixSymbolique: true,
+                montantCaution: true,
                 dateCreation: true,
+                createur: { select: { id: true, email: true } },
             },
         });
 

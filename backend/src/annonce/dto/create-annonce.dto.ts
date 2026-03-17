@@ -1,6 +1,6 @@
 import { CategorieAnnonce, ConditionAnnonce, ModeEchange } from '@prisma/client';
-import { IsArray, IsEnum, IsNotEmpty, IsString, ArrayMinSize } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsArray, IsEnum, IsNotEmpty, IsString, ArrayMinSize, IsOptional, IsNumber, IsBoolean } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class CreateAnnonceDto {
     @IsString()
@@ -19,6 +19,24 @@ export class CreateAnnonceDto {
 
     @IsEnum(ConditionAnnonce)
     condition: ConditionAnnonce;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    prixSymbolique?: number;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    montantCaution?: number;
+
+    @IsOptional()
+    @Type(() => Boolean)
+    @IsBoolean()
+    estFoodRescue?: boolean;
+
+    @IsOptional()
+    dateExpiration?: string;
 
     @Transform(({ value }) => {
         if (Array.isArray(value)) {
