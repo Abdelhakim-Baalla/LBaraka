@@ -1,7 +1,14 @@
 import { BASE_URL, apiFetch } from './client';
 
-export const getAnnonces = (token: string) =>
-  apiFetch('/annonces', {}, token);
+export const getAnnonces = (token: string, categorie?: string) =>
+  apiFetch(`/annonces${categorie ? `?categorie=${categorie}` : ''}`, {}, token);
+
+export const getAnnoncesNearby = (token: string, lat: number, lng: number, rayon?: number, categorie?: string) => {
+  const params = new URLSearchParams({ lat: lat.toString(), lng: lng.toString() });
+  if (rayon) params.append('rayon', rayon.toString());
+  if (categorie) params.append('categorie', categorie);
+  return apiFetch(`/annonces/carte?${params.toString()}`, {}, token);
+};
 
 export const createAnnonce = async (
   token: string,
@@ -22,7 +29,16 @@ export const createAnnonce = async (
   form.append('mode', data.mode);
   form.append('condition', data.condition);
   form.append('geolocalisation', JSON.stringify(data.geolocalisation));
-  photos.forEach((p) => form.append('photos', p as any));
+  
+  // Fix: ajouter les photos correctement
+  photos.forEach((p, idx) => {
+    const file = {
+      uri: p.uri,
+      type: p.type,
+      name: p.name,
+    };
+    form.append('photos', file as any);
+  });
 
   const res = await fetch(`${BASE_URL}/annonces`, {
     method: 'POST',

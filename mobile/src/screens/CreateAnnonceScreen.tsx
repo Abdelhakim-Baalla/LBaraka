@@ -70,11 +70,17 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
         { titre: titre.trim(), description: desc.trim(), categorie: cat, mode, condition: cond, geolocalisation: [33.5731, -7.5898] },
         photos,
       );
+      setTitre('');
+      setDesc('');
+      setCat(CATS[0]);
+      setMode(MODES[0]);
+      setCond(CONDS[0]);
+      setPhotos([]);
       Alert.alert('Publié ! 🎉', 'Votre annonce est en ligne.', [
         { text: 'Voir les annonces', onPress: () => navigate('Annonces') },
       ]);
     } catch (err: any) {
-      Alert.alert('Erreur', err.message);
+      Alert.alert('Erreur annonce', err.message);
     } finally {
       setLoading(false);
     }
