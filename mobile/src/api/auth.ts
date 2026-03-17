@@ -1,4 +1,3 @@
-// api/auth.ts
 import { apiFetch } from './client';
 
 export const getProfile = (token: string) =>

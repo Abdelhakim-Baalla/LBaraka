@@ -1,10 +1,11 @@
 ﻿// CarteScreen.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import * as Location from 'expo-location';
+import MapView, { Marker } from 'react-native-maps';
 import { getAnnoncesNearby } from '../api/annonces';
 import { useAuth } from '../context/AuthContext';
 type Props = { navigate: (s: string) => void };
@@ -23,6 +24,7 @@ export default function CarteScreen({ navigate }: Props) {
   const [rayon, setRayon] = useState(10);
   const [selectedCat, setSelectedCat] = useState('Toutes');
   const [coordSource, setCoordSource] = useState<'device' | 'default'>('default');
+  const [center, setCenter] = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -41,6 +43,7 @@ export default function CarteScreen({ navigate }: Props) {
         }
       }
       setCoordSource(source);
+      setCenter({ latitude: lat, longitude: lng });
       const cat = selectedCat === 'Toutes' ? undefined : selectedCat;
       const res = await getAnnoncesNearby(token!, lat, lng, rayon, cat);
       setAnnonces(res.annonces ?? []);
@@ -52,6 +55,15 @@ export default function CarteScreen({ navigate }: Props) {
     }
   };
   useEffect(() => { load(); }, [selectedCat, rayon]);
+
+  const markers = useMemo(
+    () => annonces.filter((a) => Array.isArray(a.geolocalisation) && a.geolocalisation.length >= 2),
+    [annonces],
+  );
+
+  const latitudeDelta = Math.max(0.06, rayon / 85);
+  const longitudeDelta = Math.max(0.06, rayon / 85);
+
   return (
     <View style={s.root}>
       <View style={s.header}>
@@ -97,46 +109,81 @@ export default function CarteScreen({ navigate }: Props) {
       {loading ? (
         <ActivityIndicator size="large" color="#16a34a" style={{ marginTop: 60 }} />
       ) : (
-        <FlatList
-          data={annonces}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 12 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); load(true); }}
-              colors={['#16a34a']}
+        <>
+          <MapView
+            style={s.map}
+            initialRegion={{
+              latitude: center.latitude,
+              longitude: center.longitude,
+              latitudeDelta,
+              longitudeDelta,
+            }}
+            region={{
+              latitude: center.latitude,
+              longitude: center.longitude,
+              latitudeDelta,
+              longitudeDelta,
+            }}
+          >
+            <Marker
+              coordinate={{ latitude: center.latitude, longitude: center.longitude }}
+              title="Votre position"
+              pinColor="blue"
             />
-          }
-          ListHeaderComponent={
-            <Text style={s.countT}>
-              {annonces.length} annonce{annonces.length !== 1 ? 's' : ''} dans {rayon} km
-            </Text>
-          }
-          ListEmptyComponent={
-            <View style={s.empty}>
-              <Text style={s.emptyT}>Aucune annonce proche</Text>
-              <Text style={s.emptySub}>Essayez un rayon plus grand</Text>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <View style={s.card}>
-              <View style={s.cardHeader}>
-                <Text style={s.cardTitle} numberOfLines={1}>{item.titre}</Text>
-                <View style={s.distBadge}>
-                  <Text style={s.distT}>{item.distance} km</Text>
-                </View>
-              </View>
-              <Text style={s.cardMeta}>
-                {item.mode.replace(/_/g, ' ')} - {item.categorie} - {item.condition}
+            {markers.map((item) => (
+              <Marker
+                key={item.id}
+                coordinate={{
+                  latitude: item.geolocalisation[0],
+                  longitude: item.geolocalisation[1],
+                }}
+                title={item.titre}
+                description={`${item.categorie} - ${item.distance} km`}
+              />
+            ))}
+          </MapView>
+
+          <FlatList
+            data={annonces}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ padding: 12 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => { setRefreshing(true); load(true); }}
+                colors={['#16a34a']}
+              />
+            }
+            ListHeaderComponent={
+              <Text style={s.countT}>
+                {annonces.length} annonce{annonces.length !== 1 ? 's' : ''} dans {rayon} km
               </Text>
-              <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
-              {item.createur?.email && (
-                <Text style={s.createur}>Par : {item.createur.email}</Text>
-              )}
-            </View>
-          )}
-        />
+            }
+            ListEmptyComponent={
+              <View style={s.empty}>
+                <Text style={s.emptyT}>Aucune annonce proche</Text>
+                <Text style={s.emptySub}>Essayez un rayon plus grand</Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <View style={s.card}>
+                <View style={s.cardHeader}>
+                  <Text style={s.cardTitle} numberOfLines={1}>{item.titre}</Text>
+                  <View style={s.distBadge}>
+                    <Text style={s.distT}>{item.distance} km</Text>
+                  </View>
+                </View>
+                <Text style={s.cardMeta}>
+                  {item.mode.replace(/_/g, ' ')} - {item.categorie} - {item.condition}
+                </Text>
+                <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
+                {item.createur?.email && (
+                  <Text style={s.createur}>Par : {item.createur.email}</Text>
+                )}
+              </View>
+            )}
+          />
+        </>
       )}
     </View>
   );
@@ -160,6 +207,7 @@ const s = StyleSheet.create({
   rayonChipOn: { backgroundColor: '#16a34a' },
   rayonT: { color: '#6b7280', fontSize: 12, fontWeight: '500' },
   rayonTOn: { color: '#fff', fontWeight: 'bold' },
+  map: { width: '100%', height: 300 },
   countT: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8, textAlign: 'center' },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, elevation: 2 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
