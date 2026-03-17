@@ -1,5 +1,4 @@
-﻿// CarteScreen.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert, RefreshControl,
@@ -10,12 +9,7 @@ import { getAnnoncesNearby } from '../api/annonces';
 import { useAuth } from '../context/AuthContext';
 type Props = { navigate: (s: string) => void };
 const CATS = ['Toutes', 'POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
-const RAYONS = [5, 10, 20, 50];
-function isInMorocco(lat: number, lng: number): boolean {
-  return lat >= 27 && lat <= 36 && lng >= -17 && lng <= -1;
-}
-const DEFAULT_LAT = 33.5731;
-const DEFAULT_LNG = -7.5898;
+const RAYONS = [5, 10, 20, 50, 100, 200];
 export default function CarteScreen({ navigate }: Props) {
   const { token } = useAuth();
   const [annonces, setAnnonces] = useState<any[]>([]);
@@ -23,31 +17,34 @@ export default function CarteScreen({ navigate }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [rayon, setRayon] = useState(10);
   const [selectedCat, setSelectedCat] = useState('Toutes');
-  const [coordSource, setCoordSource] = useState<'device' | 'default'>('default');
-  const [center, setCenter] = useState({ latitude: DEFAULT_LAT, longitude: DEFAULT_LNG });
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [center, setCenter] = useState<{ latitude: number; longitude: number } | null>(null);
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      let lat = DEFAULT_LAT;
-      let lng = DEFAULT_LNG;
-      let source: 'device' | 'default' = 'default';
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const loc = await Location.getCurrentPositionAsync({});
-        const dLat = loc.coords.latitude;
-        const dLng = loc.coords.longitude;
-        if (isInMorocco(dLat, dLng)) {
-          lat = dLat;
-          lng = dLng;
-          source = 'device';
-        }
+      if (status !== 'granted') {
+        setCenter(null);
+        setAnnonces([]);
+        setGpsError('Permission localisation refusée. Activez le GPS pour voir les annonces proches.');
+        return;
       }
-      setCoordSource(source);
+
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const lat = loc.coords.latitude;
+      const lng = loc.coords.longitude;
       setCenter({ latitude: lat, longitude: lng });
+      setGpsError(null);
       const cat = selectedCat === 'Toutes' ? undefined : selectedCat;
       const res = await getAnnoncesNearby(token!, lat, lng, rayon, cat);
       setAnnonces(res.annonces ?? []);
     } catch (e: any) {
+      setCenter(null);
+      setAnnonces([]);
+      setGpsError(e?.message ?? 'Impossible de récupérer la position GPS.');
       Alert.alert('Erreur', e.message);
     } finally {
       setLoading(false);
@@ -75,7 +72,9 @@ export default function CarteScreen({ navigate }: Props) {
       </View>
       <View style={s.locBanner}>
         <Text style={s.locT}>
-          {coordSource === 'device' ? 'Position : appareil GPS' : 'Position : Casablanca (defaut)'}
+          {center
+            ? `Position GPS : ${center.latitude.toFixed(6)}, ${center.longitude.toFixed(6)}`
+            : gpsError ?? 'Position GPS indisponible'}
         </Text>
       </View>
       <FlatList
@@ -108,6 +107,14 @@ export default function CarteScreen({ navigate }: Props) {
       </View>
       {loading ? (
         <ActivityIndicator size="large" color="#16a34a" style={{ marginTop: 60 }} />
+      ) : !center ? (
+        <View style={s.empty}>
+          <Text style={s.emptyT}>Position GPS requise</Text>
+          <Text style={s.emptySub}>Activez la localisation pour voir les annonces proches.</Text>
+          <TouchableOpacity style={s.retryBtn} onPress={() => load()}>
+            <Text style={s.retryT}>Reessayer</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <>
           <MapView
@@ -220,4 +227,6 @@ const s = StyleSheet.create({
   empty: { alignItems: 'center', marginTop: 60 },
   emptyT: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginTop: 12 },
   emptySub: { fontSize: 13, color: '#9ca3af', marginTop: 4 },
+  retryBtn: { marginTop: 12, backgroundColor: '#16a34a', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  retryT: { color: '#fff', fontWeight: '600' },
 });

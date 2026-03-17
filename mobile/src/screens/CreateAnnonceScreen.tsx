@@ -4,6 +4,7 @@ import {
   StyleSheet, Alert, ActivityIndicator, Image, ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { createAnnonce } from '../api/annonces';
 import { useAuth } from '../context/AuthContext';
 
@@ -43,6 +44,8 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
   const [estFood, setEstFood] = useState(false);
   const [dateExp, setDateExp] = useState('');
   const [photos, setPhotos] = useState<Array<{ uri: string; name: string; type: string }>>([]);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [loadingLocation, setLoadingLocation] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const pickPhoto = async () => {
@@ -62,9 +65,35 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
     }
   };
 
+  const requestCurrentLocation = async () => {
+    setLoadingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', 'Activez la localisation pour publier une annonce.');
+        return;
+      }
+
+      const current = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      setLocation({
+        lat: current.coords.latitude,
+        lng: current.coords.longitude,
+      });
+    } catch (error: any) {
+      Alert.alert('Erreur GPS', error?.message ?? 'Impossible de récupérer votre position.');
+    } finally {
+      setLoadingLocation(false);
+    }
+  };
+
   const submit = async () => {
     if (!titre.trim() || !desc.trim())
       return Alert.alert('Erreur', 'Titre et description sont obligatoires');
+    if (!location)
+      return Alert.alert('Erreur', 'Veuillez activer la localisation et récupérer votre position réelle.');
     if (photos.length !== 3)
       return Alert.alert('Erreur', `3 photos obligatoires (${photos.length}/3 sélectionnées)`);
     setLoading(true);
@@ -77,7 +106,7 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
           categorie: cat,
           mode,
           condition: cond,
-          geolocalisation: [33.5731, -7.5898],
+          geolocalisation: [location.lat, location.lng],
           ...(prix ? { prixSymbolique: parseFloat(prix) } : {}),
           ...(caution ? { montantCaution: parseFloat(caution) } : {}),
           estFoodRescue: estFood,
@@ -95,6 +124,7 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
       setEstFood(false);
       setDateExp('');
       setPhotos([]);
+      setLocation(null);
       Alert.alert('Succes', 'Votre annonce est en ligne.', [
         { text: 'Voir les annonces', onPress: () => navigate('Annonces') },
       ]);
@@ -147,6 +177,26 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
       <Text style={s.label}>Date d'expiration</Text>
       <TextInput style={s.input} placeholder="JJ/MM/AAAA" value={dateExp} onChangeText={setDateExp} />
 
+      <Text style={s.label}>Localisation réelle *</Text>
+      <TouchableOpacity
+        style={[s.locationBtn, loadingLocation && { opacity: 0.7 }]}
+        onPress={requestCurrentLocation}
+        disabled={loadingLocation}
+      >
+        {loadingLocation ? (
+          <ActivityIndicator color="#16a34a" />
+        ) : (
+          <Text style={s.locationBtnText}>
+            {location ? 'Mettre à jour ma position GPS' : 'Utiliser ma position GPS'}
+          </Text>
+        )}
+      </TouchableOpacity>
+      <Text style={s.locationValue}>
+        {location
+          ? `Latitude: ${location.lat.toFixed(6)} | Longitude: ${location.lng.toFixed(6)}`
+          : 'Aucune position GPS récupérée.'}
+      </Text>
+
       <Text style={s.label}>Photos ({photos.length}/3 — 3 obligatoires)</Text>
       <View style={s.row}>
         {photos.map((p, i) => (
@@ -190,6 +240,9 @@ const s = StyleSheet.create({
   removeBtn: { position: 'absolute', top: -6, right: -6, backgroundColor: '#ef4444', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   removeT: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
   addPhoto: { width: 82, height: 82, borderRadius: 8, borderWidth: 2, borderColor: '#16a34a', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+  locationBtn: { marginHorizontal: 16, borderWidth: 1, borderColor: '#16a34a', borderRadius: 8, paddingVertical: 12, alignItems: 'center', backgroundColor: '#ecfdf5' },
+  locationBtnText: { color: '#15803d', fontWeight: '600' },
+  locationValue: { marginHorizontal: 16, marginTop: 8, color: '#4b5563', fontSize: 12 },
   submitBtn: { backgroundColor: '#16a34a', margin: 16, marginTop: 28, padding: 15, borderRadius: 10, alignItems: 'center' },
   submitT: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });

@@ -1,6 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { CategorieAnnonce } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { CategorieAnnonce, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
 import { StorageService } from '../storage/storage.service';
@@ -17,6 +16,10 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+const BLOCKED_DEFAULT_LAT = 33.5731;
+const BLOCKED_DEFAULT_LNG = -7.5898;
+const EPSILON = 0.000001;
+
 @Injectable()
 export class AnnonceService {
     constructor(
@@ -25,6 +28,7 @@ export class AnnonceService {
     ) {}
 
     async create(createurId: string, dto: CreateAnnonceDto, files: Express.Multer.File[]) {
+        this.assertValidGeoLocation(dto.geolocalisation);
         const photos = await this.storageService.uploadAnnoncePhotos(files);
 
         const annonce = await this.prisma.annonce.create({
@@ -35,8 +39,8 @@ export class AnnonceService {
                 mode: dto.mode,
                 condition: dto.condition,
                 geolocalisation: dto.geolocalisation,
-                prixSymbolique: dto.prixSymbolique ? new Decimal(dto.prixSymbolique) : null,
-                montantCaution: dto.montantCaution ? new Decimal(dto.montantCaution) : null,
+                prixSymbolique: dto.prixSymbolique ? new Prisma.Decimal(dto.prixSymbolique) : null,
+                montantCaution: dto.montantCaution ? new Prisma.Decimal(dto.montantCaution) : null,
                 estFoodRescue: dto.estFoodRescue ?? false,
                 dateExpiration: dto.dateExpiration ? new Date(dto.dateExpiration) : null,
                 photos,
@@ -45,6 +49,22 @@ export class AnnonceService {
         });
 
         return { annonce };
+    }
+
+    private assertValidGeoLocation(geolocalisation: number[]) {
+        const [lat, lng] = geolocalisation ?? [];
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            throw new BadRequestException('La geolocalisation doit contenir des coordonnees GPS valides');
+        }
+
+        const isBlockedDefault =
+            Math.abs(lat - BLOCKED_DEFAULT_LAT) < EPSILON &&
+            Math.abs(lng - BLOCKED_DEFAULT_LNG) < EPSILON;
+
+        if (isBlockedDefault) {
+            throw new BadRequestException('La position par defaut est interdite, utilisez votre position reelle');
+        }
     }
 
     async findAll(categorie?: CategorieAnnonce) {
