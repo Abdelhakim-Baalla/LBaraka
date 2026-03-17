@@ -1,3 +1,4 @@
+// api/annonces.ts
 import { BASE_URL, apiFetch } from './client';
 
 export const getAnnonces = (token: string, categorie?: string) =>

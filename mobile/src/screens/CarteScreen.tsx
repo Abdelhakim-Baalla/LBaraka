@@ -1,3 +1,4 @@
+﻿// CarteScreen.tsx
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
@@ -6,18 +7,14 @@ import {
 import * as Location from 'expo-location';
 import { getAnnoncesNearby } from '../api/annonces';
 import { useAuth } from '../context/AuthContext';
-
 type Props = { navigate: (s: string) => void };
-
 const CATS = ['Toutes', 'POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 const RAYONS = [5, 10, 20, 50];
-
-const MODES: Record<string, string> = {
-  DON_GRATUIT: '🎁',
-  PRET_TEMPORAIRE: '🔄',
-  LOCATION_SOLIDAIRE: '💶',
-};
-
+function isInMorocco(lat: number, lng: number): boolean {
+  return lat >= 27 && lat <= 36 && lng >= -17 && lng <= -1;
+}
+const DEFAULT_LAT = 33.5731;
+const DEFAULT_LNG = -7.5898;
 export default function CarteScreen({ navigate }: Props) {
   const { token } = useAuth();
   const [annonces, setAnnonces] = useState<any[]>([]);
@@ -25,20 +22,25 @@ export default function CarteScreen({ navigate }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [rayon, setRayon] = useState(10);
   const [selectedCat, setSelectedCat] = useState('Toutes');
-
+  const [coordSource, setCoordSource] = useState<'device' | 'default'>('default');
   const load = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      let lat = 33.5731, lng = -7.5898; // Casablanca par défaut
-
-      // Demander la localisation
+      let lat = DEFAULT_LAT;
+      let lng = DEFAULT_LNG;
+      let source: 'device' | 'default' = 'default';
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
         const loc = await Location.getCurrentPositionAsync({});
-        lat = loc.coords.latitude;
-        lng = loc.coords.longitude;
+        const dLat = loc.coords.latitude;
+        const dLng = loc.coords.longitude;
+        if (isInMorocco(dLat, dLng)) {
+          lat = dLat;
+          lng = dLng;
+          source = 'device';
+        }
       }
-
+      setCoordSource(source);
       const cat = selectedCat === 'Toutes' ? undefined : selectedCat;
       const res = await getAnnoncesNearby(token!, lat, lng, rayon, cat);
       setAnnonces(res.annonces ?? []);
@@ -49,36 +51,21 @@ export default function CarteScreen({ navigate }: Props) {
       setRefreshing(false);
     }
   };
-
   useEffect(() => { load(); }, [selectedCat, rayon]);
-
-  const AnnonceCard = ({ item }: any) => (
-    <View style={s.card}>
-      <View style={s.cardHeader}>
-        <View>
-          <Text style={s.cardTitle} numberOfLines={1}>{item.titre}</Text>
-          <Text style={s.cardDist}>{item.distance} km</Text>
-        </View>
-        <Text style={s.modeBadge}>{item.mode.substring(0, 3)}</Text>
-      </View>
-      <Text style={s.cardMeta}>{item.categorie} - {item.condition}</Text>
-      <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
-      {item.createur && <Text style={s.createur}>{item.createur.email}</Text>}
-    </View>
-  );
-
   return (
     <View style={s.root}>
-      {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigate('Annonces')}>
-          <Text style={s.back}>← Listes</Text>
+          <Text style={s.back}>Retour</Text>
         </TouchableOpacity>
-        <Text style={s.headerT}>Carte Proximité</Text>
-        <View style={{ width: 50 }} />
+        <Text style={s.headerT}>Proximite</Text>
+        <View style={{ width: 60 }} />
       </View>
-
-      {/* Filtres catégorie */}
+      <View style={s.locBanner}>
+        <Text style={s.locT}>
+          {coordSource === 'device' ? 'Position : appareil GPS' : 'Position : Casablanca (defaut)'}
+        </Text>
+      </View>
       <FlatList
         horizontal
         data={CATS}
@@ -95,9 +82,8 @@ export default function CarteScreen({ navigate }: Props) {
           </TouchableOpacity>
         )}
       />
-
-      {/* Filtres rayon */}
       <View style={s.rayonBar}>
+        <Text style={s.rayonLabel}>Rayon :</Text>
         {RAYONS.map((r) => (
           <TouchableOpacity
             key={r}
@@ -108,8 +94,6 @@ export default function CarteScreen({ navigate }: Props) {
           </TouchableOpacity>
         ))}
       </View>
-
-      {/* Liste */}
       {loading ? (
         <ActivityIndicator size="large" color="#16a34a" style={{ marginTop: 60 }} />
       ) : (
@@ -126,48 +110,66 @@ export default function CarteScreen({ navigate }: Props) {
           }
           ListHeaderComponent={
             <Text style={s.countT}>
-              {annonces.length} annonce{annonces.length !== 1 ? 's' : ''} dans un rayon de {rayon} km
+              {annonces.length} annonce{annonces.length !== 1 ? 's' : ''} dans {rayon} km
             </Text>
           }
           ListEmptyComponent={
             <View style={s.empty}>
-              <Text style={s.emptyIcon}>📭</Text>
               <Text style={s.emptyT}>Aucune annonce proche</Text>
+              <Text style={s.emptySub}>Essayez un rayon plus grand</Text>
             </View>
           }
-          renderItem={({ item }) => <AnnonceCard item={item} />}
+          renderItem={({ item }) => (
+            <View style={s.card}>
+              <View style={s.cardHeader}>
+                <Text style={s.cardTitle} numberOfLines={1}>{item.titre}</Text>
+                <View style={s.distBadge}>
+                  <Text style={s.distT}>{item.distance} km</Text>
+                </View>
+              </View>
+              <Text style={s.cardMeta}>
+                {item.mode.replace(/_/g, ' ')} - {item.categorie} - {item.condition}
+              </Text>
+              <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
+              {item.createur?.email && (
+                <Text style={s.createur}>Par : {item.createur.email}</Text>
+              )}
+            </View>
+          )}
         />
       )}
     </View>
   );
 }
-
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f0fdf4' },
   header: { backgroundColor: '#16a34a', paddingTop: 50, paddingBottom: 12, paddingHorizontal: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   back: { color: '#fff', fontSize: 14 },
   headerT: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
+  locBanner: { backgroundColor: '#dcfce7', paddingHorizontal: 16, paddingVertical: 6 },
+  locT: { fontSize: 12, color: '#15803d', fontWeight: '500' },
   filterBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 8 },
   filterContent: { paddingHorizontal: 12 },
   filterChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, backgroundColor: '#e5e7eb', marginRight: 6 },
   filterChipOn: { backgroundColor: '#16a34a' },
   filterT: { color: '#6b7280', fontSize: 12 },
   filterTOn: { color: '#fff', fontWeight: 'bold' },
-  rayonBar: { backgroundColor: '#fff', flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  rayonChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, backgroundColor: '#f3f4f6' },
+  rayonBar: { backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 8 },
+  rayonLabel: { fontSize: 12, color: '#6b7280', marginRight: 4 },
+  rayonChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: '#f3f4f6' },
   rayonChipOn: { backgroundColor: '#16a34a' },
-  rayonT: { color: '#6b7280', fontSize: 11, fontWeight: '500' },
+  rayonT: { color: '#6b7280', fontSize: 12, fontWeight: '500' },
   rayonTOn: { color: '#fff', fontWeight: 'bold' },
   countT: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8, textAlign: 'center' },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, elevation: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
-  cardTitle: { fontSize: 15, fontWeight: 'bold', color: '#111', flex: 1 },
-  cardDist: { fontSize: 12, color: '#16a34a', fontWeight: '600', marginTop: 2 },
-  modeBadge: { fontSize: 18 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  cardTitle: { fontSize: 15, fontWeight: 'bold', color: '#111', flex: 1, marginRight: 8 },
+  distBadge: { backgroundColor: '#dcfce7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  distT: { fontSize: 12, color: '#15803d', fontWeight: 'bold' },
   cardMeta: { fontSize: 12, color: '#6b7280', marginBottom: 4 },
   cardDesc: { fontSize: 13, color: '#374151' },
-  createur: { fontSize: 11, color: '#16a34a', fontWeight: '500', marginTop: 4 },
+  createur: { fontSize: 11, color: '#9ca3af', marginTop: 6 },
   empty: { alignItems: 'center', marginTop: 60 },
-  emptyIcon: { fontSize: 48 },
   emptyT: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginTop: 12 },
+  emptySub: { fontSize: 13, color: '#9ca3af', marginTop: 4 },
 });
