@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UtilisateurModule } from './utilisateur/utilisateur.module';
 import { AnnonceModule } from './annonce/annonce.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AnnonceModule } from './annonce/annonce.module';
     UtilisateurModule,
     AuthModule,
     AnnonceModule,
+    WalletModule,
   ],
   controllers: [AppController],
   providers: [AppService],
