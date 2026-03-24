@@ -131,6 +131,10 @@ export default function ProfileScreen({ navigate }: Props) {
         <Text style={s.walletT}>💳 Mon Wallet</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity style={s.transactionsBtn} onPress={() => navigate('Transactions')}>
+        <Text style={s.transactionsT}>📦 Mes Transactions (Contrats)</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
         <Text style={s.logoutT}>Deconnexion</Text>
       </TouchableOpacity>
@@ -162,6 +166,8 @@ const s = StyleSheet.create({
   logoutT: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   walletBtn: { margin: 12, backgroundColor: '#16a34a', padding: 14, borderRadius: 10, alignItems: 'center' },
   walletT: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  transactionsBtn: { margin: 12, backgroundColor: '#3b82f6', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 0 },
+  transactionsT: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   error: { fontSize: 16, color: '#ef4444', marginBottom: 16 },
   btn: { backgroundColor: '#16a34a', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
   btnT: { color: '#fff', fontWeight: 'bold' },
