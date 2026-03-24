@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 // @ts-ignore
 import * as html_to_pdf from 'html-pdf-node';
+import axios from 'axios';
 
 @Injectable()
 export class ContratService {
@@ -13,6 +14,18 @@ export class ContratService {
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
   ) {}
+
+  private async getBase64Image(url: string): Promise<string> {
+    try {
+      const response = await axios.get(url, { responseType: 'arraybuffer' });
+      const b64 = Buffer.from(response.data, 'binary').toString('base64');
+      const mime = response.headers['content-type'] || 'image/jpeg';
+      return `data:${mime};base64,${b64}`;
+    } catch (e: any) {
+      console.error(`Erreur conversion Base64 pour ${url}:`, e.message);
+      return '';
+    }
+  }
 
   async generateContrat(transactionId: string): Promise<any> {
     try {
@@ -25,9 +38,12 @@ export class ContratService {
         },
       });
 
-      if (!transaction) {
-        throw new NotFoundException('Transaction introuvable');
-      }
+      if (!transaction) throw new NotFoundException('Transaction introuvable');
+
+      // Conversion des photos en Base64 pour affichage PDF garanti
+      const photosBase64 = await Promise.all(
+        (transaction.annonce.photos || []).map(url => this.getBase64Image(url))
+      );
 
       // 1. Lire le template
       const templatePath = path.join(process.cwd(), 'src', 'contrat', 'templates', 'contrat-bilingue.hbs');
@@ -42,7 +58,7 @@ export class ContratService {
         emprunteur: transaction.emprunteur,
         preteur: transaction.preteur,
         montantCaution: Number(transaction.montantCautionBloquee || 0),
-        photos: transaction.annonce.photos,
+        photos: photosBase64.filter(p => p !== ''),
       };
 
       // 3. Générer le HTML
