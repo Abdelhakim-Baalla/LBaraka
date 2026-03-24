@@ -8,8 +8,9 @@ import CarteScreen from './src/screens/CarteScreen';
 import CreateAnnonceScreen from './src/screens/CreateAnnonceScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import WalletScreen from './src/screens/WalletScreen';
+import TransactionsScreen from './src/screens/TransactionsScreen';
 
-type Screen = 'Login' | 'Register' | 'Annonces' | 'Carte' | 'CreateAnnonce' | 'Profile' | 'Wallet';
+type Screen = 'Login' | 'Register' | 'Annonces' | 'Carte' | 'CreateAnnonce' | 'Profile' | 'Wallet' | 'Transactions';
 
 function AppNav() {
   const { token } = useAuth();
@@ -26,6 +27,7 @@ function AppNav() {
   if (screen === 'CreateAnnonce') return <CreateAnnonceScreen navigate={navigate} />;
   if (screen === 'Profile') return <ProfileScreen navigate={navigate} />;
   if (screen === 'Wallet') return <WalletScreen navigate={navigate} />;
+  if (screen === 'Transactions') return <TransactionsScreen navigate={navigate} />;
   return <AnnoncesScreen navigate={navigate} />;
 }
 
