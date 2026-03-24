@@ -9,6 +9,8 @@ import { AnnonceModule } from './annonce/annonce.module';
 import { WalletModule } from './wallet/wallet.module';
 import { TransactionModule } from './transaction/transaction.module';
 import { ContratModule } from './contrat/contrat.module';
+import { MongoModule } from './mongo/mongo.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { ContratModule } from './contrat/contrat.module';
     WalletModule,
     TransactionModule,
     ContratModule,
+    MongoModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,7 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
 import { ContratService } from '../contrat/contrat.service';
+import * as crypto from 'crypto';
+import * as QRCode from 'qrcode';
 
 @Injectable()
 export class TransactionService {
@@ -55,6 +57,56 @@ export class TransactionService {
         throw error;
       }
       throw new InternalServerErrorException('Erreur lors de la réservation de l\'annonce');
+    }
+  }
+
+  async generateReceptionQR(userId: string, transactionId: string): Promise<string> {
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id: transactionId },
+    });
+
+    if (!transaction) throw new NotFoundException('Transaction introuvable');
+    if (transaction.emprunteurId !== userId) throw new UnauthorizedException('Seul l\'emprunteur peut générer son QR Code de réception');
+
+    // Générer un secret unique
+    const secret = crypto.randomBytes(16).toString('hex');
+    
+    await this.prisma.transaction.update({
+      where: { id: transactionId },
+      data: { qrCodeReception: secret },
+    });
+
+    // L'emprunteur génère le QR qu'il montrera au prêteur
+    return QRCode.toDataURL(JSON.stringify({ transactionId, secret }));
+  }
+
+  async validateReceptionQR(userId: string, transactionId: string, secret: string) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const transaction = await tx.transaction.findUnique({
+          where: { id: transactionId },
+        });
+
+        if (!transaction) throw new NotFoundException('Transaction introuvable');
+        if (transaction.preteurId !== userId) throw new UnauthorizedException('Seul le prêteur peut scanner ce code pour valider la remise');
+        if (transaction.qrCodeReception !== secret) throw new BadRequestException('Code QR invalide ou l\'emprunteur n\'est pas celui attendu');
+        if (transaction.statut !== 'EN_ATTENTE_RECEPTION') throw new BadRequestException('Transaction déjà en cours ou terminée');
+
+        // Valider la remise physique
+        const updated = await tx.transaction.update({
+          where: { id: transactionId },
+          data: {
+            statut: 'EN_COURS',
+            scannedReception: true,
+            dateDebut: new Date(),
+          },
+        });
+
+        return updated;
+      });
+    } catch (error) {
+      if (error instanceof BadRequestException || error instanceof NotFoundException || error instanceof UnauthorizedException) throw error;
+      throw new InternalServerErrorException('Erreur lors de la validation du QR Code');
     }
   }
 
