@@ -14,6 +14,12 @@ export class TransactionController {
     return this.transactionService.reserve(user.userId, annonceId);
   }
 
+  @Post(':id/valider-retour')
+  async validerRetour(@Req() req: Request, @Param('id') transactionId: string) {
+    const user = req.user as { userId: string };
+    return this.transactionService.validerRetour(user.userId, transactionId);
+  }
+
   @Get('me')
   async getMyTransactions(@Req() req: Request) {
     const user = req.user as { userId: string };

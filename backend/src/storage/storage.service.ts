@@ -76,9 +76,25 @@ export class StorageService implements OnModuleInit {
         return uploadedUrls;
     }
 
+    async uploadBuffer(buffer: Buffer, originalName: string, contentType: string): Promise<string> {
+        const objectName = this.buildObjectName(originalName);
+
+        await this.minioClient.putObject(
+            this.bucketName,
+            objectName,
+            buffer,
+            buffer.length,
+            { 'Content-Type': contentType },
+        );
+
+        return `${this.publicBaseUrl}/${this.bucketName}/${objectName}`;
+    }
+
     private buildObjectName(originalName: string): string {
         const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '-');
-        return `annonces/${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+        const extension = originalName.split('.').pop() || 'dat';
+        const base = safeName.substring(0, safeName.lastIndexOf('.')) || safeName;
+        return `documents/${Date.now()}-${Math.round(Math.random() * 1e9)}-${base}.${extension}`;
     }
 }
 
