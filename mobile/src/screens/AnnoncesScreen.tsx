@@ -4,6 +4,7 @@ import {
   StyleSheet, ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
 import { getAnnonces } from '../api/annonces';
+import { reserveAnnonce } from '../api/transactions';
 import { useAuth } from '../context/AuthContext';
 
 type Props = { navigate: (s: string) => void };
@@ -39,6 +40,32 @@ export default function AnnoncesScreen({ navigate }: Props) {
 
   useEffect(() => { load(); }, [selectedCat]);
 
+
+  const handleReserve = async (annonceId: string) => {
+    Alert.alert(
+      'Réservation',
+      'Voulez-vous réserver cet objet ? La caution (si applicable) sera bloquée depuis votre Wallet.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { 
+          text: 'Confirmer', 
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await reserveAnnonce(token!, annonceId);
+              Alert.alert('Succès', 'Annonce réservée avec succès ! Consultez votre Wallet pour le reçu.');
+              load(); // Recharger les annonces
+            } catch (err: any) {
+              Alert.alert('Erreur', err.message);
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const AnnonceCard = ({ item }: any) => (
     <View style={s.card}>
       <View style={s.cardHeader}>
@@ -47,6 +74,14 @@ export default function AnnoncesScreen({ navigate }: Props) {
       </View>
       <Text style={s.cardMeta}>{item.categorie} · {item.condition}</Text>
       <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
+      
+      {item.montantCaution && Number(item.montantCaution) > 0 && (
+        <Text style={s.cautionBadge}>Caution: {item.montantCaution} MAD</Text>
+      )}
+
+      <TouchableOpacity style={s.reserveBtn} onPress={() => handleReserve(item.id)}>
+        <Text style={s.reserveBtnT}>Réserver</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -145,4 +180,7 @@ const s = StyleSheet.create({
   emptyIcon: { fontSize: 48 },
   emptyT: { fontSize: 16, fontWeight: 'bold', color: '#374151', marginTop: 12 },
   emptySub: { fontSize: 13, color: '#9ca3af', marginTop: 4 },
+  cautionBadge: { marginTop: 6, backgroundColor: '#fef3c7', color: '#b45309', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, fontSize: 12, fontWeight: 'bold', alignSelf: 'flex-start' },
+  reserveBtn: { marginTop: 12, backgroundColor: '#16a34a', paddingVertical: 8, borderRadius: 6, alignItems: 'center' },
+  reserveBtnT: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
 });

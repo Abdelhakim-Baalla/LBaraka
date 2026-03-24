@@ -117,6 +117,61 @@ describe('AppController (e2e)', () => {
       .expect(401);
   });
 
+  it('/wallet/me (GET) retourne un wallet initialise a 0', async () => {
+    const registerResponse = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(basePayload)
+      .expect(201);
+
+    const token = registerResponse.body.accessToken;
+
+    const response = await request(app.getHttpServer())
+      .get('/wallet/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(response.body.wallet).toBeDefined();
+    expect(response.body.wallet.soldeReel).toBe(0);
+    expect(response.body.wallet.soldeBloque).toBe(0);
+    expect(response.body.wallet.devise).toBe('MAD');
+  });
+
+  it('/wallet (POST) applique depot + blocage + deblocage', async () => {
+    const registerResponse = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send(basePayload)
+      .expect(201);
+
+    const token = registerResponse.body.accessToken;
+
+    const depot = await request(app.getHttpServer())
+      .post('/wallet/depot')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ montant: 100 })
+      .expect(201);
+
+    expect(depot.body.wallet.soldeReel).toBe(100);
+    expect(depot.body.wallet.soldeBloque).toBe(0);
+
+    const blocage = await request(app.getHttpServer())
+      .post('/wallet/blocage')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ montant: 30 })
+      .expect(201);
+
+    expect(blocage.body.wallet.soldeReel).toBe(70);
+    expect(blocage.body.wallet.soldeBloque).toBe(30);
+
+    const deblocage = await request(app.getHttpServer())
+      .post('/wallet/deblocage')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ montant: 10 })
+      .expect(201);
+
+    expect(deblocage.body.wallet.soldeReel).toBe(80);
+    expect(deblocage.body.wallet.soldeBloque).toBe(20);
+  });
+
   it('/annonces (POST) publie une annonce avec exactement 3 photos', async () => {
     const registerResponse = await request(app.getHttpServer())
       .post('/auth/register')

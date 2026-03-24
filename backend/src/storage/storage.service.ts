@@ -35,6 +35,27 @@ export class StorageService implements OnModuleInit {
         }
     }
 
+    async uploadAnnoncePhotosBase64(photos: Array<{ name: string; type: string; base64: string }>): Promise<string[]> {
+        const uploadedUrls: string[] = [];
+
+        for (const photo of photos) {
+            const buffer = Buffer.from(photo.base64, 'base64');
+            const objectName = this.buildObjectName(photo.name);
+
+            await this.minioClient.putObject(
+                this.bucketName,
+                objectName,
+                buffer,
+                buffer.length,
+                { 'Content-Type': photo.type || 'image/jpeg' },
+            );
+
+            uploadedUrls.push(`${this.publicBaseUrl}/${this.bucketName}/${objectName}`);
+        }
+
+        return uploadedUrls;
+    }
+
     async uploadAnnoncePhotos(files: Express.Multer.File[]): Promise<string[]> {
         const uploadedUrls: string[] = [];
 
@@ -55,9 +76,25 @@ export class StorageService implements OnModuleInit {
         return uploadedUrls;
     }
 
+    async uploadBuffer(buffer: Buffer, originalName: string, contentType: string): Promise<string> {
+        const objectName = this.buildObjectName(originalName);
+
+        await this.minioClient.putObject(
+            this.bucketName,
+            objectName,
+            buffer,
+            buffer.length,
+            { 'Content-Type': contentType },
+        );
+
+        return `${this.publicBaseUrl}/${this.bucketName}/${objectName}`;
+    }
+
     private buildObjectName(originalName: string): string {
         const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '-');
-        return `annonces/${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+        const extension = originalName.split('.').pop() || 'dat';
+        const base = safeName.substring(0, safeName.lastIndexOf('.')) || safeName;
+        return `documents/${Date.now()}-${Math.round(Math.random() * 1e9)}-${base}.${extension}`;
     }
 }
 

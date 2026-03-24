@@ -61,6 +61,15 @@ export class UtilisateurService {
                     },
                 });
 
+                await tx.portefeuille.create({
+                    data: {
+                        utilisateurId: createdUser.id,
+                        soldeReel: 0,
+                        soldeBloque: 0,
+                        devise: 'MAD',
+                    },
+                });
+
                 return {
                     ...createdUser,
                     profil,

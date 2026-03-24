@@ -6,6 +6,8 @@
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+agent/
+.github/copilot-instructions.md
 
 # OS
 .DS_Store
@@ -46,5 +48,4 @@ coverage/
 
 # Docker
 docker-compose.override.yml
-</arg_value>
 /generated/prisma
