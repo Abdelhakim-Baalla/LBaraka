@@ -36,4 +36,10 @@ export class ChatController {
     const userId = req.user.userId;
     return this.chatService.findConversation(userId, otherId, annonceId);
   }
+
+  @Get('me')
+  async getMyChats(@Request() req: any) {
+    const userId = req.user.userId;
+    return this.chatService.getMyConversations(userId);
+  }
 }
