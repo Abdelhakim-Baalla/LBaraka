@@ -66,9 +66,9 @@ export class TransactionService {
     });
 
     if (!transaction) throw new NotFoundException('Transaction introuvable');
-    if (transaction.preteurId !== userId) throw new UnauthorizedException('Seul le prêteur peut générer le QR Code');
+    if (transaction.emprunteurId !== userId) throw new UnauthorizedException('Seul l\'emprunteur peut générer son QR Code de réception');
 
-    // Générer un secret unique pour cette remise physique
+    // Générer un secret unique
     const secret = crypto.randomBytes(16).toString('hex');
     
     await this.prisma.transaction.update({
@@ -76,7 +76,7 @@ export class TransactionService {
       data: { qrCodeReception: secret },
     });
 
-    // Retourner l'image QR Code en Base64
+    // L'emprunteur génère le QR qu'il montrera au prêteur
     return QRCode.toDataURL(JSON.stringify({ transactionId, secret }));
   }
 
@@ -88,11 +88,11 @@ export class TransactionService {
         });
 
         if (!transaction) throw new NotFoundException('Transaction introuvable');
-        if (transaction.emprunteurId !== userId) throw new UnauthorizedException('Seul l\'emprunteur peut scanner ce code');
-        if (transaction.qrCodeReception !== secret) throw new BadRequestException('Code QR invalide ou expiré');
+        if (transaction.preteurId !== userId) throw new UnauthorizedException('Seul le prêteur peut scanner ce code pour valider la remise');
+        if (transaction.qrCodeReception !== secret) throw new BadRequestException('Code QR invalide ou l\'emprunteur n\'est pas celui attendu');
         if (transaction.statut !== 'EN_ATTENTE_RECEPTION') throw new BadRequestException('Transaction déjà en cours ou terminée');
 
-        // Valider la remise
+        // Valider la remise physique
         const updated = await tx.transaction.update({
           where: { id: transactionId },
           data: {
