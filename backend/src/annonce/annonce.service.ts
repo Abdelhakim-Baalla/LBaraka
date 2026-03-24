@@ -16,6 +16,12 @@ export class AnnonceService {
         try {
             const photos = await this.storageService.uploadAnnoncePhotosBase64(dto.photosBase64 || []);
             
+            // Logique Food Rescue : Expiration automatique dans 4 heures par défaut
+            let finalExpiration = dto.expirationDate ? new Date(dto.expirationDate) : null;
+            if (dto.isFoodRescue && !finalExpiration) {
+                finalExpiration = new Date(Date.now() + 4 * 60 * 60 * 1000);
+            }
+
             const annonce = await this.prisma.annonce.create({
                 data: {
                     titre: dto.titre,
@@ -26,15 +32,16 @@ export class AnnonceService {
                     geolocalisation: dto.geolocalisation,
                     prixSymbolique: dto.prixSymbolique ? new Prisma.Decimal(dto.prixSymbolique) : null,
                     montantCaution: dto.montantCaution ? new Prisma.Decimal(dto.montantCaution) : null,
-                    estFoodRescue: dto.estFoodRescue ?? false,
-                    dateExpiration: dto.dateExpiration ? new Date(dto.dateExpiration) : null,
+                    estFoodRescue: dto.isFoodRescue ?? false,
+                    dateExpiration: finalExpiration,
                     photos,
                     createurId,
                 },
             });
 
             return { annonce };
-        } catch (error) {
+        } catch (error: any) {
+            console.error('ERREUR CREATION ANNONCE:', error.message);
             throw new InternalServerErrorException('Erreur lors de la création de l\'annonce');
         }
     }
@@ -45,6 +52,11 @@ export class AnnonceService {
                 where: {
                     statut: 'DISPONIBLE',
                     ...(categorie && { categorie }),
+                    // Ne pas afficher les annonces expirées
+                    OR: [
+                        { dateExpiration: null },
+                        { dateExpiration: { gt: new Date() } }
+                    ]
                 },
                 orderBy: { dateCreation: 'desc' },
             });
@@ -61,6 +73,11 @@ export class AnnonceService {
                 where: {
                     statut: 'DISPONIBLE',
                     ...(categorie && { categorie }),
+                    // Ne pas afficher les annonces expirées
+                    OR: [
+                        { dateExpiration: null },
+                        { dateExpiration: { gt: new Date() } }
+                    ]
                 },
                 select: {
                     id: true,
