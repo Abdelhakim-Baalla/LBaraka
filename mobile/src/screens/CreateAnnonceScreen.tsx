@@ -54,13 +54,14 @@ export default function CreateAnnonceScreen({ navigate }: Props) {
     if (status !== 'granted') return Alert.alert('Permission refusée', 'Accès galerie requis');
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
+      quality: 0.5, // Reduced quality to keep base64 smaller
+      base64: true, // IMPORTANT: Request base64 directly
     });
     if (!result.canceled && result.assets[0]) {
       const a = result.assets[0];
       setPhotos((prev) => [
         ...prev,
-        { uri: a.uri, name: `photo_${Date.now()}.jpg`, type: 'image/jpeg' },
+        { uri: a.uri, name: `photo_${Date.now()}.jpg`, type: 'image/jpeg', base64: a.base64! },
       ]);
     }
   };

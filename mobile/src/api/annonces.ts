@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { BASE_URL, apiFetch } from './client';
 
 export const getAnnonces = (token: string, categorie?: string) =>
@@ -24,35 +25,21 @@ export const createAnnonce = async (
     estFoodRescue?: boolean;
     dateExpiration?: string;
   },
-  photos: Array<{ uri: string; name: string; type: string }>,
+  photos: Array<{ uri: string; name: string; type: string; base64?: string }>,
 ) => {
-  const form = new FormData();
-  form.append('titre', data.titre);
-  form.append('description', data.description);
-  form.append('categorie', data.categorie);
-  form.append('mode', data.mode);
-  form.append('condition', data.condition);
-  form.append('geolocalisation', JSON.stringify(data.geolocalisation));
-  if (data.prixSymbolique) form.append('prixSymbolique', data.prixSymbolique.toString());
-  if (data.montantCaution) form.append('montantCaution', data.montantCaution.toString());
-  if (data.estFoodRescue) form.append('estFoodRescue', 'true');
-  if (data.dateExpiration) form.append('dateExpiration', data.dateExpiration);
-  
-  photos.forEach((p) => {
-    const file = {
-      uri: p.uri,
-      type: p.type,
+  const payload = {
+    ...data,
+    photosBase64: photos.map(p => ({
       name: p.name,
-    };
-    form.append('photos', file as any);
-  });
+      type: p.type,
+      base64: p.base64,
+    })),
+  };
 
-  const res = await fetch(`${BASE_URL}/annonces`, {
+  const res = await apiFetch('/annonces', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: form,
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.message ?? 'Erreur serveur');
-  return json;
+    body: JSON.stringify(payload),
+  }, token);
+
+  return res;
 };

@@ -18,6 +18,8 @@
     },
     "android": {
       "package": "com.lbaraka.app",
+      "usesCleartextTraffic": true,
+      "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#16a34a"

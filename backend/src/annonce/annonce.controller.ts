@@ -6,12 +6,8 @@ import {
     Post,
     Query,
     Req,
-    UploadedFiles,
     UseGuards,
-    UseInterceptors,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import { Request } from 'express';
 import { CategorieAnnonce } from '@prisma/client';
 import { AnnonceService } from './annonce.service';
@@ -47,22 +43,12 @@ export class AnnonceController {
 
     @Post()
     @UseGuards(JwtAuthGuard)
-    @UseInterceptors(
-        FilesInterceptor('photos', 3, {
-            storage: memoryStorage(),
-        }),
-    )
     async create(
         @Req() req: Request,
         @Body() dto: CreateAnnonceDto,
-        @UploadedFiles() files: Express.Multer.File[],
     ) {
-        if (!files || files.length !== 3) {
-            throw new BadRequestException('Vous devez telecharger exactement 3 photos');
-        }
-
         const user = req.user as { userId: string };
-        return this.annonceService.create(user.userId, dto, files);
+        return this.annonceService.create(user.userId, dto);
     }
 }
 

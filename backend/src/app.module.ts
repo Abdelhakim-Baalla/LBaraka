@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UtilisateurModule } from './utilisateur/utilisateur.module';
 import { AnnonceModule } from './annonce/annonce.module';
 import { WalletModule } from './wallet/wallet.module';
+import { TransactionModule } from './transaction/transaction.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { WalletModule } from './wallet/wallet.module';
     AuthModule,
     AnnonceModule,
     WalletModule,
+    TransactionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
