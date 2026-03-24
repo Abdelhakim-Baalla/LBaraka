@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 // @ts-ignore
 import * as html_to_pdf from 'html-pdf-node';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class ContratService {
@@ -13,6 +14,10 @@ export class ContratService {
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
   ) {}
+
+  private generateHash(data: any): string {
+    return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex').toUpperCase();
+  }
 
   private async getBase64Image(url: string): Promise<string> {
     try {
@@ -57,7 +62,13 @@ export class ContratService {
       const templateSource = fs.readFileSync(templatePath, 'utf8');
       const template = handlebars.compile(templateSource);
 
-      // 2. Préparer les données
+      // 2. Préparer les données (avec Hash pour force probante Loi 53-05)
+      const dataHash = this.generateHash({
+        id: transaction.id,
+        date: new Date(),
+        caution: transaction.montantCautionBloquee,
+      });
+
       const data = {
         numContrat: `LB-${Date.now()}-${transaction.id.substring(0, 8)}`,
         transaction,
@@ -66,6 +77,8 @@ export class ContratService {
         preteur: transaction.preteur,
         montantCaution: Number(transaction.montantCautionBloquee || 0),
         photos: photosBase64,
+        hashSignature: dataHash,
+        timestamp: new Date().toLocaleString('fr-FR', { timeZone: 'Africa/Casablanca' }),
       };
 
       // 3. Générer le HTML
@@ -100,11 +113,12 @@ export class ContratService {
           numContrat: data.numContrat,
           urlPdfBilingue: urlPdf,
           dateGeneration: new Date(),
+          hashSignature: dataHash,
         },
         create: {
           numContrat: data.numContrat,
           urlPdfBilingue: urlPdf,
-          hashSignature: `SIG-${Date.now()}`,
+          hashSignature: dataHash,
           transactionId: transaction.id,
           langue: 'BILINGUE',
         },
