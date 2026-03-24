@@ -26,26 +26,33 @@ export class WalletService {
     };
   }
 
-  async depot(userId: string, montant: number) {
-    return this.applyMovement(userId, montant, 'DEPOT');
+  async depot(userId: string, montant: number, tx?: Prisma.TransactionClient) {
+    return this.applyMovement(userId, montant, 'DEPOT', tx);
   }
 
-  async blocage(userId: string, montant: number) {
-    return this.applyMovement(userId, montant, 'BLOCAGE');
+  async retrait(userId: string, montant: number, tx?: Prisma.TransactionClient) {
+    return this.applyMovement(userId, montant, 'RETRAIT', tx);
   }
 
-  async deblocage(userId: string, montant: number) {
-    return this.applyMovement(userId, montant, 'DEBLOCAGE');
+  async blocage(userId: string, montant: number, tx?: Prisma.TransactionClient) {
+    return this.applyMovement(userId, montant, 'BLOCAGE', tx);
+  }
+
+  async deblocage(userId: string, montant: number, tx?: Prisma.TransactionClient) {
+    return this.applyMovement(userId, montant, 'DEBLOCAGE', tx);
   }
 
   private async applyMovement(
     userId: string,
     montant: number,
     type: TypeMouvementWallet,
+    outerTx?: Prisma.TransactionClient,
   ) {
     const decimalAmount = new Prisma.Decimal(montant);
 
-    const wallet = await this.prisma.$transaction(async (tx) => {
+    const executor = outerTx ? (fn: (tx: Prisma.TransactionClient) => Promise<any>) => fn(outerTx) : this.prisma.$transaction.bind(this.prisma);
+
+    const wallet = await executor(async (tx) => {
       const current = await this.getOrCreateWallet(userId, tx);
 
       if (type === 'BLOCAGE' && current.soldeReel.lessThan(decimalAmount)) {
@@ -56,18 +63,20 @@ export class WalletService {
         throw new BadRequestException('Solde bloque insuffisant pour ce deblocage');
       }
 
-      const nextData =
-        type === 'DEPOT'
-          ? { soldeReel: { increment: decimalAmount } }
-          : type === 'BLOCAGE'
-            ? {
-                soldeReel: { decrement: decimalAmount },
-                soldeBloque: { increment: decimalAmount },
-              }
-            : {
-                soldeReel: { increment: decimalAmount },
-                soldeBloque: { decrement: decimalAmount },
-              };
+      if (type === 'RETRAIT' && current.soldeReel.lessThan(decimalAmount)) {
+        throw new BadRequestException('Solde reel insuffisant pour ce retrait');
+      }
+
+      let nextData = {};
+      if (type === 'DEPOT') {
+        nextData = { soldeReel: { increment: decimalAmount } };
+      } else if (type === 'RETRAIT') {
+        nextData = { soldeReel: { decrement: decimalAmount } };
+      } else if (type === 'BLOCAGE') {
+        nextData = { soldeReel: { decrement: decimalAmount }, soldeBloque: { increment: decimalAmount } };
+      } else if (type === 'DEBLOCAGE') {
+        nextData = { soldeReel: { increment: decimalAmount }, soldeBloque: { decrement: decimalAmount } };
+      }
 
       const updated = await tx.portefeuille.update({
         where: { utilisateurId: userId },

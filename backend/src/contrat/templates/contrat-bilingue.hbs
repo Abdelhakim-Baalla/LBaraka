@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; }
+        .header { text-align: center; border-bottom: 2px solid #0D9488; padding-bottom: 20px; margin-bottom: 30px; }
+        .title { font-size: 24px; font-weight: bold; color: #0D9488; }
+        .section { margin-bottom: 25px; border: 1px solid #eee; padding: 15px; border-radius: 8px; }
+        .section-title { font-weight: bold; border-bottom: 1px solid #ddd; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .label { font-weight: 500; color: #666; }
+        .value { font-weight: 600; }
+        .arabic { font-family: 'Arial', sans-serif; text-align: right; direction: rtl; }
+        .footer { margin-top: 50px; font-size: 12px; text-align: center; color: #999; border-top: 1px solid #eee; padding-top: 20px; }
+        .photo-grid { display: flex; gap: 10px; margin-top: 10px; }
+        .photo { width: 100px; height: 100px; object-fit: cover; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">CONTRAT DE SOLIDARITÉ LBARAKA - عقد تضامن البركة</div>
+        <div>N° Contrat : {{numContrat}}</div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <span>OBJET DU CONTRAT</span>
+            <span class="arabic">موضوع العقد</span>
+        </div>
+        <div class="row">
+            <span class="label">Article :</span>
+            <span class="value">{{annonce.titre}}</span>
+            <span class="arabic">القطعة : {{annonce.titre}}</span>
+        </div>
+        <div class="row">
+            <span class="label">Mode d'échange :</span>
+            <span class="value">{{annonce.mode}}</span>
+            <span class="arabic">نوع التبادل : {{annonce.mode}}</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <span>LES PARTIES</span>
+            <span class="arabic">الأطراف</span>
+        </div>
+        <div class="row">
+            <span class="label">Prêteur :</span>
+            <span class="value">{{preteur.email}}</span>
+            <span class="arabic">المعير : {{preteur.email}}</span>
+        </div>
+        <div class="row">
+            <span class="label">Emprunteur :</span>
+            <span class="value">{{emprunteur.email}}</span>
+            <span class="arabic">المستفيد : {{emprunteur.email}}</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <span>FINANCES ET SÉCURITÉ</span>
+            <span class="arabic">الجانب المالي والأمان</span>
+        </div>
+        <div class="row">
+            <span class="label">Montant Caution (Bloqué) :</span>
+            <span class="value">{{montantCaution}} MAD</span>
+            <span class="arabic">مبلع الضمان (محجوز) : {{montantCaution}} درهم</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <span>PHOTOS DE L'ÉTAT INITIAL</span>
+            <span class="arabic">صور الحالة الأصلية</span>
+        </div>
+        <div class="photo-grid">
+            {{#each photos}}
+                <img src="{{this}}" class="photo" />
+            {{/each}}
+        </div>
+    </div>
+
+    <div class="footer">
+        Ceci est un contrat numérique généré automatiquement par la plateforme LBaraka.<br>
+        هذا عقد رقمي تم إنشاؤه تلقائيًا بواسطة منصة البركة.
+    </div>
+</body>
+</html>
