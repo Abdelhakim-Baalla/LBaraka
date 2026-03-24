@@ -11,6 +11,7 @@ import { TransactionModule } from './transaction/transaction.module';
 import { ContratModule } from './contrat/contrat.module';
 import { MongoModule } from './mongo/mongo.module';
 import { ChatModule } from './chat/chat.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ChatModule } from './chat/chat.module';
     ContratModule,
     MongoModule,
     ChatModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,12 +4,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
 import { StorageService } from '../storage/storage.service';
 import { haversineKm } from '../common/utils/geo.util';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class AnnonceService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly storageService: StorageService,
+        private readonly notificationService: NotificationService,
     ) { }
 
     async create(createurId: string, dto: CreateAnnonceDto) {
@@ -38,6 +40,12 @@ export class AnnonceService {
                     createurId,
                 },
             });
+
+            // --- NOUVEAUTÉ : NOTIFICATION PRIORITAIRE ---
+            if (annonce.estFoodRescue) {
+                // On notifie en priorité les profils OR et LEGENDE
+                this.notificationService.notifyFoodRescuePriority(annonce.id, annonce.titre);
+            }
 
             return { annonce };
         } catch (error: any) {
