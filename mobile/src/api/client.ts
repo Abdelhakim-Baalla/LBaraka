@@ -1,10 +1,12 @@
-// IP de ta machine sur le réseau local
-export const BASE_URL = 'http://172.16.8.157:3000';
+import { Platform } from 'react-native';
+
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 
+  (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
 
 export async function apiFetch(
-  path: string,
-  options: RequestInit = {},
-  token?: string | null,
+    path: string,
+    options: RequestInit = {},
+    token?: string | null,
 ) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

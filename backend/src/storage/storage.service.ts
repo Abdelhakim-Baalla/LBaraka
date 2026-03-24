@@ -35,6 +35,27 @@ export class StorageService implements OnModuleInit {
         }
     }
 
+    async uploadAnnoncePhotosBase64(photos: Array<{ name: string; type: string; base64: string }>): Promise<string[]> {
+        const uploadedUrls: string[] = [];
+
+        for (const photo of photos) {
+            const buffer = Buffer.from(photo.base64, 'base64');
+            const objectName = this.buildObjectName(photo.name);
+
+            await this.minioClient.putObject(
+                this.bucketName,
+                objectName,
+                buffer,
+                buffer.length,
+                { 'Content-Type': photo.type || 'image/jpeg' },
+            );
+
+            uploadedUrls.push(`${this.publicBaseUrl}/${this.bucketName}/${objectName}`);
+        }
+
+        return uploadedUrls;
+    }
+
     async uploadAnnoncePhotos(files: Express.Multer.File[]): Promise<string[]> {
         const uploadedUrls: string[] = [];
 

@@ -7,6 +7,8 @@ import {
     IsOptional,
     IsNumber,
     IsBoolean,
+    ArrayMinSize,
+    ArrayMaxSize,
     registerDecorator,
     ValidationArguments,
     ValidationOptions,
@@ -116,5 +118,10 @@ export class CreateAnnonceDto {
     @IsArray()
     @IsValidGeoPoint()
     geolocalisation: number[];
+
+    @IsArray()
+    @ArrayMinSize(3, { message: 'Vous devez inclure exactement 3 photos' })
+    @ArrayMaxSize(3, { message: 'Vous devez inclure exactement 3 photos' })
+    photosBase64: Array<{ name: string; type: string; base64: string }>;
 }
 
