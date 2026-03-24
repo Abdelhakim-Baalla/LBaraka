@@ -76,6 +76,25 @@ export class StorageService implements OnModuleInit {
         return uploadedUrls;
     }
 
+    async getFileBuffer(objectPath: string): Promise<Buffer> {
+        // Extraire le nom de l'objet de l'URL
+        const parts = objectPath.split(`${this.bucketName}/`);
+        let objectName = parts[parts.length - 1];
+        
+        // Supprimer les paramètres de requête (?X-Amz-...)
+        if (objectName.includes('?')) {
+            objectName = objectName.split('?')[0];
+        }
+
+        const stream = await this.minioClient.getObject(this.bucketName, objectName);
+        return new Promise((resolve, reject) => {
+            const chunks: any[] = [];
+            stream.on('data', (chunk) => chunks.push(chunk));
+            stream.on('error', (err) => reject(err));
+            stream.on('end', () => resolve(Buffer.concat(chunks)));
+        });
+    }
+
     async uploadBuffer(buffer: Buffer, originalName: string, contentType: string): Promise<string> {
         const objectName = this.buildObjectName(originalName);
 
