@@ -101,6 +101,7 @@ model User {
   mouvementsWallet  MouvementWallet[]
   transactionsPret  Transaction[]     @relation("TransactionPreteur")
   transactionsEmpr  Transaction[]     @relation("TransactionEmprunteur")
+  notifications     Notification[]
 
   @@map("utilisateurs")
 }
@@ -225,5 +226,17 @@ model Contrat {
   transaction     Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@map("contrats")
+}
+
+model Notification {
+  id              String      @id @default(uuid())
+  titre           String
+  message         String
+  lu              Boolean     @default(false)
+  dateCreation    DateTime    @default(now()) @map("date_creation")
+  utilisateurId   String      @map("utilisateur_id")
+  utilisateur     User        @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }
 

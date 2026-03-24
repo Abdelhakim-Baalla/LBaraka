@@ -16,20 +16,26 @@ export class NotificationService {
           in: [NiveauTier.OR, NiveauTier.LEGENDE],
         },
       },
-      include: {
-        utilisateur: {
-          select: { email: true }
-        }
+      select: {
+          utilisateurId: true,
+          palier: true,
+          utilisateur: { select: { email: true } }
       }
     });
 
-    this.logger.log(`🚨 FOOD RESCUE ALERTE : Annonce [${titre}]`);
-    this.logger.log(`📢 Diffusion prioritaire à ${priorityUsers.length} comptes de rang OR et LEGENDE.`);
+    if (priorityUsers.length > 0) {
+        // --- NOUVEAUTÉ : PERSISTANCE EN BASE ---
+        await this.prisma.notification.createMany({
+            data: priorityUsers.map(p => ({
+                utilisateurId: p.utilisateurId,
+                titre: '🚀 Surplus Alimentaire Prioritaire !',
+                message: `L'annonce "${titre}" vient d'être publiée. En tant que membre ${p.palier}, vous êtes prioritaire !`,
+            }))
+        });
 
-    // Simulation de l'envoi (Push/Email)
-    priorityUsers.forEach(profil => {
-      this.logger.debug(`[NOTIFICATION] Envoyée à ${profil.utilisateur.email} (Rang: ${profil.palier})`);
-    });
+        this.logger.log(`🚨 FOOD RESCUE ALERTE : Annonce [${titre}]`);
+        this.logger.log(`📢 Diffusion et ENREGISTREMENT pour ${priorityUsers.length} comptes VIP.`);
+    }
 
     return priorityUsers.length;
   }
