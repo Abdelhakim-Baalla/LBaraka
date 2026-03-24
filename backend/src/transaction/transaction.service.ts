@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
+import { ContratService } from '../contrat/contrat.service';
 
 @Injectable()
 export class TransactionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly walletService: WalletService,
+    private readonly contratService: ContratService,
   ) {}
 
   async reserve(userId: string, annonceId: string) {
@@ -43,6 +45,9 @@ export class TransactionService {
 
         return newTx;
       });
+
+      // Generation automatique du contrat (Wow Factor!)
+      await this.contratService.generateContrat(transaction.id);
 
       return { transaction };
     } catch (error) {
