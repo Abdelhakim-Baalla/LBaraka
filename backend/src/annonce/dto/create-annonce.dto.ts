@@ -90,10 +90,10 @@ export class CreateAnnonceDto {
     @IsOptional()
     @Type(() => Boolean)
     @IsBoolean()
-    estFoodRescue?: boolean;
+    isFoodRescue?: boolean;
 
     @IsOptional()
-    dateExpiration?: string;
+    expirationDate?: string;
 
     @Transform(({ value }) => {
         if (Array.isArray(value)) {

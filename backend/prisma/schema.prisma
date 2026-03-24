@@ -128,16 +128,16 @@ model Annonce {
   id              String          @id @default(uuid())
   titre           String
   description     String
+  statut          StatutAnnonce   @default(DISPONIBLE)
   categorie       CategorieAnnonce
   mode            ModeEchange
-  prixSymbolique  Decimal?        @db.Decimal(12, 2) @map("prix_symbolique")
+  estFoodRescue   Boolean         @default(false) @map("est_food_rescue")
+  dateExpiration  DateTime?       @map("date_expiration")
+  prixSymbolique  Decimal?        @db.Decimal(10, 2) @map("prix_symbolique")
   montantCaution  Decimal?        @db.Decimal(12, 2) @map("montant_caution")
   photos          String[]
   geolocalisation Float[]
-  estFoodRescue   Boolean         @default(false) @map("est_food_rescue")
-  dateExpiration  DateTime?       @map("date_expiration")
   dateCreation    DateTime        @default(now()) @map("date_creation")
-  statut          StatutAnnonce   @default(DISPONIBLE)
   nombreVues      Int             @default(0) @map("nombre_vues")
   condition       ConditionAnnonce
   createurId      String          @map("createur_id")
