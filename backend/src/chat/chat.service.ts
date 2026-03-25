@@ -14,6 +14,9 @@ export class ChatService {
 
   async create(senderId: string, createMessageDto: CreateMessageDto) {
     try {
+      console.log('SENDER ID reçu par Service:', senderId);
+      console.log('DTO reçu par Service:', JSON.stringify(createMessageDto));
+      
       const newMessage = new this.messageModel({
         ...createMessageDto,
         senderId,
