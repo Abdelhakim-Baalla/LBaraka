@@ -7,7 +7,7 @@ import { WalletService } from './wallet.service';
 @Controller('wallet')
 @UseGuards(JwtAuthGuard)
 export class WalletController {
-  constructor(private readonly walletService: WalletService) {}
+  constructor(private readonly walletService: WalletService) { }
 
   @Get('me')
   async me(@Req() req: Request) {
@@ -19,6 +19,12 @@ export class WalletController {
   async depot(@Req() req: Request, @Body() dto: WalletAmountDto) {
     const user = req.user as { userId: string };
     return this.walletService.depot(user.userId, dto.montant);
+  }
+
+  @Post('retrait')
+  async retrait(@Req() req: Request, @Body() dto: WalletAmountDto) {
+    const user = req.user as { userId: string };
+    return this.walletService.retrait(user.userId, dto.montant);
   }
 
   @Post('blocage')

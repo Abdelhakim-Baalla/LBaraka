@@ -11,6 +11,8 @@ import { TransactionModule } from './transaction/transaction.module';
 import { ContratModule } from './contrat/contrat.module';
 import { MongoModule } from './mongo/mongo.module';
 import { ChatModule } from './chat/chat.module';
+import { NotificationModule } from './notification/notification.module';
+import { PointRelaisModule } from './point-relais/point-relais.module';
 
 @Module({
   imports: [
@@ -24,8 +26,10 @@ import { ChatModule } from './chat/chat.module';
     ContratModule,
     MongoModule,
     ChatModule,
+    NotificationModule,
+    PointRelaisModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

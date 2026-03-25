@@ -7,7 +7,10 @@
 !.vscode/launch.json
 !.vscode/extensions.json
 agent/
+.agents/
 .github/copilot-instructions.md
+.agents/rules/copilot.md
+.github/rules/
 
 # OS
 .DS_Store

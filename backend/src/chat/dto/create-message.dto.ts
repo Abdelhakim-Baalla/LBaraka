@@ -7,7 +7,7 @@ export class CreateMessageDto {
   @IsNotEmpty()
   annonceId: string;
 
-  @IsEnum(['TEXT', 'VOICE'])
+  @IsEnum(['TEXT', 'VOICE', 'IMAGE'])
   type: string = 'TEXT';
 
   @IsNotEmpty()

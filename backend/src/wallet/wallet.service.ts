@@ -4,7 +4,20 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class WalletService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
+
+  /**
+   * Récupérer les informations du wallet (solde) sans l'historique.
+   * Utilisé pour vérifier les fonds avant une réservation.
+   */
+  async getWalletInfo(userId: string) {
+    const wallet = await this.getOrCreateWallet(userId);
+    return {
+      soldeReel: Number(wallet.soldeReel),
+      soldeBloque: Number(wallet.soldeBloque),
+      devise: wallet.devise,
+    };
+  }
 
   async getMyWallet(userId: string) {
     const wallet = await this.getOrCreateWallet(userId);
