@@ -53,10 +53,17 @@ export class AnnonceService {
                 },
             });
 
-            // --- NOUVEAUTÉ : NOTIFICATION PRIORITAIRE ---
+            // --- NOUVEAUTÉ : NOTIFICATION PRIORITAIRE ET LOCALE ---
             if (annonce.estFoodRescue) {
-                // On notifie en priorité les profils OR et LEGENDE + utilisateurs proches
-                this.notificationService.notifyFoodRescuePriority(annonce.id, annonce.titre);
+                // On cherche la ville du créateur pour cibler les voisins
+                const creatorProfile = await this.prisma.profil.findUnique({
+                    where: { utilisateurId: createurId },
+                    select: { ville: true }
+                });
+                const creatorVille = creatorProfile?.ville || undefined;
+
+                // On notifie en priorité les profils OR et LEGENDE de la mème ville
+                this.notificationService.notifyFoodRescuePriority(annonce.id, annonce.titre, creatorVille);
             }
 
             return { annonce };
@@ -111,8 +118,16 @@ export class AnnonceService {
                 },
             });
 
-            // Notification des utilisateurs proches ET VIP
-            this.notificationService.notifyFoodRescuePriority(annonce.id, annonce.titre);
+            // --- NOUVEAUTÉ : NOTIFICATION PRIORITAIRE ET LOCALE ---
+            // On cherche la ville du créateur pour cibler les voisins
+            const creatorProfile = await this.prisma.profil.findUnique({
+                where: { utilisateurId: createurId },
+                select: { ville: true }
+            });
+            const creatorVille = creatorProfile?.ville || undefined;
+
+            // On notifie en priorité les profils OR et LEGENDE de la mème ville
+            this.notificationService.notifyFoodRescuePriority(annonce.id, annonce.titre, creatorVille);
 
             return { annonce, message: 'Annonce Food Rescue publiée avec succès. Les utilisateurs proches ont été notifiés.' };
         } catch (error: any) {

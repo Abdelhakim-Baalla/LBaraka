@@ -31,17 +31,17 @@ export class TransactionService {
       const prixSymbolique = Number(annonce.prixSymbolique || 0);
       const montantTotal = montantCaution + prixSymbolique;
 
-      // PROTECTION CRITIQUE : Vérifier le solde AVANT de créer la transaction
+      // PROTECTION CRITIQUE : Vérifier le solde disponible AVANT de créer la transaction
       if (montantTotal > 0) {
         const walletInfo = await this.walletService.getWalletInfo(userId);
-        const soldeTotal = walletInfo.soldeReel + walletInfo.soldeBloque;
+        const soldeDisponible = walletInfo.soldeReel;
 
-        if (soldeTotal < montantTotal) {
+        if (soldeDisponible < montantTotal) {
           throw new BadRequestException(
             `Solde insuffisant pour effectuer cette réservation. ` +
             `Montant nécessaire : ${montantTotal} MAD ` +
             `(Caution : ${montantCaution} + Prix : ${prixSymbolique}). ` +
-            `Votre solde disponible : ${soldeTotal} MAD. ` +
+            `Votre solde disponible : ${soldeDisponible} MAD. ` +
             `Veuillez déposer des fonds dans votre wallet.`
           );
         }
