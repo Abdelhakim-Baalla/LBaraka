@@ -105,6 +105,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         @ConnectedSocket() client: Socket,
         @MessageBody() payload: SendMessagePayload,
     ) {
+        this.logger.debug(`Payload type: ${typeof payload}`);
+        this.logger.debug(`Fields: trans=${payload.transactionId}, sender=${payload.senderId}, receiver=${payload.receiverId}`);
+        
         const { transactionId, senderId, receiverId, content, type = 'TEXT' } = payload;
         const roomName = `transaction_${transactionId}`;
 

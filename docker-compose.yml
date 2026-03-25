@@ -22,6 +22,19 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  mongo-express:
+    image: mongo-express
+    container_name: lbaraka_mongo_express
+    restart: unless-stopped
+    ports:
+      - "8981:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_OPTIONS_EDITORTHEME: "ambiance"
+    depends_on:
+      - mongo
+
   minio:
     image: minio/minio:latest
     container_name: lbaraka_minio
