@@ -14,7 +14,7 @@ export class Message {
   @Prop({ required: true })
   annonceId: string; // Pour lier le chat à un objet spécifique
 
-  @Prop({ required: true, enum: ['TEXT', 'VOICE'] })
+  @Prop({ required: true, enum: ['TEXT', 'VOICE', 'IMAGE'] })
   type: string;
 
   @Prop()
