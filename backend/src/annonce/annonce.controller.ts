@@ -9,14 +9,16 @@ import {
     UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { CategorieAnnonce } from '@prisma/client';
+import { CategorieAnnonce, RoleUtilisateur } from '@prisma/client';
 import { AnnonceService } from './annonce.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('annonces')
 export class AnnonceController {
-    constructor(private readonly annonceService: AnnonceService) {}
+    constructor(private readonly annonceService: AnnonceService) { }
 
     @Get()
     @UseGuards(JwtAuthGuard)
@@ -41,14 +43,36 @@ export class AnnonceController {
         return this.annonceService.findNearby(latNum, lngNum, rayonKm, categorie);
     }
 
+    @Get('food-rescue')
+    @UseGuards(JwtAuthGuard)
+    async findFoodRescue() {
+        return this.annonceService.findFoodRescue();
+    }
+
+    /**
+     * Route pour créer une annonce Food Rescue.
+     * SEULS les PARTENAIRES peuvent créer ce type d'annonce (hygiène/sécurité alimentaire).
+     * Un CITOYEN lambda ne peut pas publier de Food Rescue.
+     */
+    @Post('food-rescue')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('PARTENAIRE')
+    async createFoodRescue(
+        @Req() req: Request,
+        @Body() dto: CreateAnnonceDto,
+    ) {
+        const user = req.user as { userId: string; role: RoleUtilisateur };
+        return this.annonceService.createFoodRescue(user.userId, user.role, dto);
+    }
+
     @Post()
     @UseGuards(JwtAuthGuard)
     async create(
         @Req() req: Request,
         @Body() dto: CreateAnnonceDto,
     ) {
-        const user = req.user as { userId: string };
-        return this.annonceService.create(user.userId, dto);
+        const user = req.user as { userId: string; role: RoleUtilisateur };
+        return this.annonceService.create(user.userId, user.role, dto);
     }
 }
 

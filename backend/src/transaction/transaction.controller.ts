@@ -6,7 +6,7 @@ import { Request } from 'express';
 @Controller('transactions')
 @UseGuards(JwtAuthGuard)
 export class TransactionController {
-  constructor(private readonly transactionService: TransactionService) {}
+  constructor(private readonly transactionService: TransactionService) { }
 
   @Post('reserve/:annonceId')
   async reserve(@Req() req: Request, @Param('annonceId') annonceId: string) {
@@ -24,6 +24,19 @@ export class TransactionController {
   async validateReception(@Req() req: Request, @Param('id') transactionId: string, @Body('secret') secret: string) {
     const user = req.user as { userId: string };
     return this.transactionService.validateReceptionQR(user.userId, transactionId, secret);
+  }
+
+  // QR Code de RETOUR
+  @Get(':id/qr-retour')
+  async getRetourQR(@Req() req: Request, @Param('id') transactionId: string) {
+    const user = req.user as { userId: string };
+    return this.transactionService.generateRetourQR(user.userId, transactionId);
+  }
+
+  @Post(':id/validate-retour')
+  async validateRetour(@Req() req: Request, @Param('id') transactionId: string, @Body('secret') secret: string) {
+    const user = req.user as { userId: string };
+    return this.transactionService.validateRetourQR(user.userId, transactionId, secret);
   }
 
   @Post(':id/valider-retour')

@@ -6,6 +6,8 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UtilisateurModule } from '../utilisateur/utilisateur.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
     imports: [
@@ -23,7 +25,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
             }),
         }),
     ],
-    providers: [AuthService, JwtStrategy],
+    providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],
     controllers: [AuthController],
+    exports: [JwtAuthGuard, RolesGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

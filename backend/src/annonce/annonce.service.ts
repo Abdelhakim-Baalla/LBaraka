@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
-import { CategorieAnnonce, Prisma } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { CategorieAnnonce, Prisma, RoleUtilisateur } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
 import { StorageService } from '../storage/storage.service';
@@ -14,10 +14,22 @@ export class AnnonceService {
         private readonly notificationService: NotificationService,
     ) { }
 
-    async create(createurId: string, dto: CreateAnnonceDto) {
+    /**
+     * Créer une annonce standard (Don, Prêt, Location).
+     * Les citoyens ne peuvent PAS créer d'annonce Food Rescue via cette méthode.
+     */
+    async create(createurId: string, role: RoleUtilisateur, dto: CreateAnnonceDto) {
         try {
+            // SÉCURITÉ : Empêcher les citoyens de créer des Food Rescue
+            // (La route est aussi protégée par @Roles('PARTENAIRE') mais double vérification)
+            if (dto.isFoodRescue && role !== 'PARTENAIRE') {
+                throw new ForbiddenException(
+                    'Seuls les PARTENAIRES peuvent publier des annonces Food Rescue pour des raisons d\'hygiène et de sécurité alimentaire.'
+                );
+            }
+
             const photos = await this.storageService.uploadAnnoncePhotosBase64(dto.photosBase64 || []);
-            
+
             // Logique Food Rescue : Expiration automatique dans 4 heures par défaut
             let finalExpiration = dto.expirationDate ? new Date(dto.expirationDate) : null;
             if (dto.isFoodRescue && !finalExpiration) {
@@ -43,14 +55,107 @@ export class AnnonceService {
 
             // --- NOUVEAUTÉ : NOTIFICATION PRIORITAIRE ---
             if (annonce.estFoodRescue) {
-                // On notifie en priorité les profils OR et LEGENDE
+                // On notifie en priorité les profils OR et LEGENDE + utilisateurs proches
                 this.notificationService.notifyFoodRescuePriority(annonce.id, annonce.titre);
             }
 
             return { annonce };
         } catch (error: any) {
+            if (error instanceof ForbiddenException || error instanceof BadRequestException) {
+                throw error;
+            }
             console.error('ERREUR CREATION ANNONCE:', error.message);
             throw new InternalServerErrorException('Erreur lors de la création de l\'annonce');
+        }
+    }
+
+    /**
+     * Créer une annonce Food Rescue (SURPLUS ALIMENTAIRE).
+     * EXCLUSIVEMENT pour les PARTENAIRES (restaurants, traiteurs, associations).
+     * Sécurité alimentaire : on ne laisse pas les citoyens lambda publier de la nourriture.
+     */
+    async createFoodRescue(createurId: string, role: RoleUtilisateur, dto: CreateAnnonceDto) {
+        try {
+            // Vérification supplémentaire : doit être PARTENAIRE
+            if (role !== 'PARTENAIRE') {
+                throw new ForbiddenException(
+                    'Seuls les PARTENAIRES peuvent publier des surplus alimentaires.'
+                );
+            }
+
+            // Forcer le flag Food Rescue
+            dto.isFoodRescue = true;
+
+            const photos = await this.storageService.uploadAnnoncePhotosBase64(dto.photosBase64 || []);
+
+            // Expiration par défaut : 4 heures pour les aliments périssables
+            let finalExpiration = dto.expirationDate ? new Date(dto.expirationDate) : null;
+            if (!finalExpiration) {
+                finalExpiration = new Date(Date.now() + 4 * 60 * 60 * 1000);
+            }
+
+            const annonce = await this.prisma.annonce.create({
+                data: {
+                    titre: dto.titre,
+                    description: dto.description,
+                    categorie: 'NOURRITURE', // Forcé pour Food Rescue
+                    mode: 'DON_GRATUIT',      // Food Rescue = toujours don gratuit
+                    condition: dto.condition || 'BON_ETAT',
+                    geolocalisation: dto.geolocalisation,
+                    prixSymbolique: null,     // Food Rescue = gratuit
+                    montantCaution: null,      // Pas de caution pour Food Rescue
+                    estFoodRescue: true,
+                    dateExpiration: finalExpiration,
+                    photos,
+                    createurId,
+                },
+            });
+
+            // Notification des utilisateurs proches ET VIP
+            this.notificationService.notifyFoodRescuePriority(annonce.id, annonce.titre);
+
+            return { annonce, message: 'Annonce Food Rescue publiée avec succès. Les utilisateurs proches ont été notifiés.' };
+        } catch (error: any) {
+            if (error instanceof ForbiddenException) {
+                throw error;
+            }
+            console.error('ERREUR CREATION FOOD RESCUE:', error.message);
+            throw new InternalServerErrorException('Erreur lors de la publication du Food Rescue');
+        }
+    }
+
+    /**
+     * Récupérer uniquement les Food Rescue actifs (non expirés).
+     */
+    async findFoodRescue() {
+        try {
+            const now = new Date();
+            const annonces = await this.prisma.annonce.findMany({
+                where: {
+                    estFoodRescue: true,
+                    statut: 'DISPONIBLE',
+                    dateExpiration: {
+                        gt: now, // Non expirés
+                    },
+                },
+                orderBy: { dateExpiration: 'asc' }, // Plus urgent en premier
+                include: {
+                    createur: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profil: { select: { nom: true, prenom: true } }
+                        }
+                    },
+                },
+            });
+
+            return {
+                count: annonces.length,
+                annonces
+            };
+        } catch (error) {
+            throw new InternalServerErrorException('Erreur lors de la récupération des Food Rescue');
         }
     }
 
