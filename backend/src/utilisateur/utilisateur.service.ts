@@ -1,7 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfilDto } from './dto/update-profil.dto';
 import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
@@ -288,5 +289,85 @@ export class UtilisateurService {
             );
 
         }
+    }
+
+    /**
+     * Récupérer le profil complet de l'utilisateur connecté.
+     */
+    async getProfilComplet(userId: string) {
+        const utilisateur = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                profil: true,
+                portefeuille: true,
+            },
+        });
+
+        if (!utilisateur) {
+            throw new NotFoundException('Utilisateur non trouvé');
+        }
+
+        return {
+            utilisateur: this.sanitizeUser(utilisateur),
+        };
+    }
+
+    /**
+     * Modifier le profil de l'utilisateur connecté.
+     */
+    async updateProfil(userId: string, dto: UpdateProfilDto) {
+        const profil = await this.prisma.profil.findUnique({
+            where: { utilisateurId: userId },
+        });
+
+        if (!profil) {
+            throw new NotFoundException('Profil non trouvé');
+        }
+
+        const updatedProfil = await this.prisma.profil.update({
+            where: { utilisateurId: userId },
+            data: {
+                nom: dto.nom !== undefined ? dto.nom : profil.nom,
+                prenom: dto.prenom !== undefined ? dto.prenom : profil.prenom,
+                adresseComplete: dto.adresseComplete !== undefined ? dto.adresseComplete : profil.adresseComplete,
+                ville: dto.ville !== undefined ? dto.ville : profil.ville,
+                photoProfil: dto.photoProfil !== undefined ? dto.photoProfil : profil.photoProfil,
+                dateNaissance: dto.dateNaissance ? new Date(dto.dateNaissance) : profil.dateNaissance,
+                langueInterface: dto.langueInterface ? dto.langueInterface as any : profil.langueInterface,
+            },
+        });
+
+        return { profil: updatedProfil };
+    }
+
+    /**
+     * Voir le profil public d'un autre utilisateur (sans données sensibles).
+     */
+    async getProfilPublic(userId: string) {
+        const utilisateur = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                dateInscription: true,
+                profil: {
+                    select: {
+                        nom: true,
+                        prenom: true,
+                        ville: true,
+                        lBarakaScore: true,
+                        palier: true,
+                        badges: true,
+                        photoProfil: true,
+                    },
+                },
+            },
+        });
+
+        if (!utilisateur) {
+            throw new NotFoundException('Utilisateur non trouvé');
+        }
+
+        return { utilisateur };
     }
 }
