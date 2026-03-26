@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { NotificationService } from '../notification/notification.service';
 
 interface JoinRoomPayload {
     transactionId: string;
@@ -37,7 +38,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     private readonly logger = new Logger(ChatGateway.name);
 
-    constructor(private readonly chatService: ChatService) { }
+    constructor(
+        private readonly chatService: ChatService,
+        private readonly notificationService: NotificationService,
+    ) { }
 
     handleConnection(client: Socket) {
         this.logger.log(`Client connecté: ${client.id}`);
@@ -137,6 +141,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 transactionId,
                 preview: content.substring(0, 50),
             });
+
+            // --- NOUVEAUTÉ : PERSISTANCE NOTIFICATION CHAT ---
+            await this.notificationService.create(
+                receiverId,
+                '💬 Nouveau message',
+                `Vous avez un nouveau message concernant l'échange #${transactionId.substring(0, 8)}`
+            );
 
             return {
                 event: 'messageSent',

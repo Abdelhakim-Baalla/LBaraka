@@ -5,6 +5,7 @@ import { CreateAnnonceDto } from './dto/create-annonce.dto';
 import { StorageService } from '../storage/storage.service';
 import { haversineKm } from '../common/utils/geo.util';
 import { NotificationService } from '../notification/notification.service';
+import { UtilisateurService } from '../utilisateur/utilisateur.service';
 
 @Injectable()
 export class AnnonceService {
@@ -12,6 +13,7 @@ export class AnnonceService {
         private readonly prisma: PrismaService,
         private readonly storageService: StorageService,
         private readonly notificationService: NotificationService,
+        private readonly utilisateurService: UtilisateurService,
     ) { }
 
     /**
@@ -128,6 +130,10 @@ export class AnnonceService {
 
             // On notifie en priorité les profils OR et LEGENDE de la mème ville
             this.notificationService.notifyFoodRescuePriority(annonce.id, annonce.titre, creatorVille);
+
+            // NOUVEAUTÉ GAMIFICATION (LBAR-20)
+            // Bonus immédiat pour la publication solidaire Food Rescue
+            await this.utilisateurService.updateScore(createurId, 50);
 
             return { annonce, message: 'Annonce Food Rescue publiée avec succès. Les utilisateurs proches ont été notifiés.' };
         } catch (error: any) {

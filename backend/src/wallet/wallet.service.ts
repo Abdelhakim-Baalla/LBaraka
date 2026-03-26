@@ -2,9 +2,14 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, TypeMouvementWallet } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
+import { UtilisateurService } from '../utilisateur/utilisateur.service';
+
 @Injectable()
 export class WalletService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly utilisateurService: UtilisateurService,
+  ) { }
 
   /**
    * Récupérer les informations du wallet (solde) sans l'historique.
@@ -104,6 +109,12 @@ export class WalletService {
           montant: decimalAmount,
         },
       });
+
+      // NOUVEAUTÉ GAMIFICATION (LBAR-20)
+      // On récompense l'utilisateur selon le montant déposé (1 MAD = 1 point selon CDD)
+      if (type === 'DEPOT') {
+        await this.utilisateurService.updateScore(userId, montant, tx);
+      }
 
       return updated;
     });
