@@ -270,6 +270,9 @@ export class TransactionService {
           await this.utilisateurService.updateScore(currentTx.preteurId, 20, tx);
         }
 
+        // 3. Vérifier les badges pour l'emprunteur aussi (même si score inchangé, le compteur de transactions a bougé)
+        await this.utilisateurService.checkAndAwardBadges(currentTx.emprunteurId, tx);
+
         return updatedTx;
       });
 
