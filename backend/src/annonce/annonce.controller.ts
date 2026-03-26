@@ -2,8 +2,11 @@ import {
     BadRequestException,
     Body,
     Controller,
+    Delete,
     Get,
+    Param,
     Post,
+    Put,
     Query,
     Req,
     UseGuards,
@@ -12,6 +15,7 @@ import { Request } from 'express';
 import { CategorieAnnonce, RoleUtilisateur } from '@prisma/client';
 import { AnnonceService } from './annonce.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
+import { UpdateAnnonceDto } from './dto/update-annonce.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -50,9 +54,27 @@ export class AnnonceController {
     }
 
     /**
+     * GET /annonces/mes-annonces — Mes annonces
+     */
+    @Get('mes-annonces')
+    @UseGuards(JwtAuthGuard)
+    async findMyAnnonces(@Req() req: Request) {
+        const user = req.user as { userId: string };
+        return this.annonceService.findMyAnnonces(user.userId);
+    }
+
+    /**
+     * GET /annonces/:id — Détail d'une annonce
+     */
+    @Get(':id')
+    @UseGuards(JwtAuthGuard)
+    async findOne(@Param('id') id: string) {
+        return this.annonceService.findById(id);
+    }
+
+    /**
      * Route pour créer une annonce Food Rescue.
-     * SEULS les PARTENAIRES peuvent créer ce type d'annonce (hygiène/sécurité alimentaire).
-     * Un CITOYEN lambda ne peut pas publier de Food Rescue.
+     * SEULS les PARTENAIRES peuvent créer ce type d'annonce.
      */
     @Post('food-rescue')
     @UseGuards(JwtAuthGuard, RolesGuard)
@@ -74,5 +96,31 @@ export class AnnonceController {
         const user = req.user as { userId: string; role: RoleUtilisateur };
         return this.annonceService.create(user.userId, user.role, dto);
     }
-}
 
+    /**
+     * PUT /annonces/:id — Modifier une annonce
+     */
+    @Put(':id')
+    @UseGuards(JwtAuthGuard)
+    async update(
+        @Req() req: Request,
+        @Param('id') id: string,
+        @Body() dto: UpdateAnnonceDto,
+    ) {
+        const user = req.user as { userId: string };
+        return this.annonceService.update(user.userId, id, dto);
+    }
+
+    /**
+     * DELETE /annonces/:id — Supprimer une annonce
+     */
+    @Delete(':id')
+    @UseGuards(JwtAuthGuard)
+    async remove(
+        @Req() req: Request,
+        @Param('id') id: string,
+    ) {
+        const user = req.user as { userId: string };
+        return this.annonceService.remove(user.userId, id);
+    }
+}

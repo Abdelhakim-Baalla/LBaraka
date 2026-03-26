@@ -1,7 +1,8 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CategorieAnnonce, Prisma, RoleUtilisateur } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
+import { UpdateAnnonceDto } from './dto/update-annonce.dto';
 import { StorageService } from '../storage/storage.service';
 import { haversineKm } from '../common/utils/geo.util';
 import { NotificationService } from '../notification/notification.service';
@@ -243,5 +244,133 @@ export class AnnonceService {
             throw new InternalServerErrorException('Erreur lors de la récupération des annonces à proximité');
         }
     }
-}
 
+    /**
+     * Récupérer une annonce par son ID.
+     */
+    async findById(annonceId: string) {
+        try {
+            const annonce = await this.prisma.annonce.findUnique({
+                where: { id: annonceId },
+                include: {
+                    createur: {
+                        select: {
+                            id: true,
+                            email: true,
+                            profil: { select: { nom: true, prenom: true, ville: true, photoProfil: true, lBarakaScore: true, palier: true } },
+                        },
+                    },
+                },
+            });
+
+            if (!annonce) {
+                throw new NotFoundException('Annonce introuvable');
+            }
+
+            // Incrémenter le nombre de vues
+            await this.prisma.annonce.update({
+                where: { id: annonceId },
+                data: { nombreVues: { increment: 1 } },
+            });
+
+            return { annonce };
+        } catch (error) {
+            if (error instanceof NotFoundException) throw error;
+            throw new InternalServerErrorException('Erreur lors de la récupération de l\'annonce');
+        }
+    }
+
+    /**
+     * Récupérer les annonces de l'utilisateur connecté.
+     */
+    async findMyAnnonces(userId: string) {
+        try {
+            const annonces = await this.prisma.annonce.findMany({
+                where: { createurId: userId },
+                orderBy: { dateCreation: 'desc' },
+            });
+
+            return { annonces };
+        } catch (error) {
+            throw new InternalServerErrorException('Erreur lors de la récupération de vos annonces');
+        }
+    }
+
+    /**
+     * Modifier une annonce (seulement par le créateur).
+     */
+    async update(userId: string, annonceId: string, dto: UpdateAnnonceDto) {
+        try {
+            const annonce = await this.prisma.annonce.findUnique({
+                where: { id: annonceId },
+            });
+
+            if (!annonce) {
+                throw new NotFoundException('Annonce introuvable');
+            }
+
+            if (annonce.createurId !== userId) {
+                throw new ForbiddenException('Vous ne pouvez modifier que vos propres annonces');
+            }
+
+            if (annonce.statut !== 'DISPONIBLE') {
+                throw new BadRequestException('Impossible de modifier une annonce qui n\'est pas disponible');
+            }
+
+            const updatedAnnonce = await this.prisma.annonce.update({
+                where: { id: annonceId },
+                data: {
+                    titre: dto.titre !== undefined ? dto.titre : annonce.titre,
+                    description: dto.description !== undefined ? dto.description : annonce.description,
+                    categorie: dto.categorie ? dto.categorie as any : annonce.categorie,
+                    mode: dto.mode ? dto.mode as any : annonce.mode,
+                    condition: dto.condition ? dto.condition as any : annonce.condition,
+                    prixSymbolique: dto.prixSymbolique !== undefined ? new Prisma.Decimal(dto.prixSymbolique) : annonce.prixSymbolique,
+                    montantCaution: dto.montantCaution !== undefined ? new Prisma.Decimal(dto.montantCaution) : annonce.montantCaution,
+                    geolocalisation: dto.geolocalisation !== undefined ? dto.geolocalisation : annonce.geolocalisation,
+                },
+            });
+
+            return { annonce: updatedAnnonce };
+        } catch (error) {
+            if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof BadRequestException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Erreur lors de la modification de l\'annonce');
+        }
+    }
+
+    /**
+     * Supprimer une annonce (seulement par le créateur).
+     */
+    async remove(userId: string, annonceId: string) {
+        try {
+            const annonce = await this.prisma.annonce.findUnique({
+                where: { id: annonceId },
+            });
+
+            if (!annonce) {
+                throw new NotFoundException('Annonce introuvable');
+            }
+
+            if (annonce.createurId !== userId) {
+                throw new ForbiddenException('Vous ne pouvez supprimer que vos propres annonces');
+            }
+
+            if (annonce.statut === 'RESERVEE') {
+                throw new BadRequestException('Impossible de supprimer une annonce réservée');
+            }
+
+            await this.prisma.annonce.delete({
+                where: { id: annonceId },
+            });
+
+            return { message: 'Annonce supprimée avec succès' };
+        } catch (error) {
+            if (error instanceof NotFoundException || error instanceof ForbiddenException || error instanceof BadRequestException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Erreur lors de la suppression de l\'annonce');
+        }
+    }
+}
