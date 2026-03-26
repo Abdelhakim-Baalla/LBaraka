@@ -13,6 +13,7 @@ import { MongoModule } from './mongo/mongo.module';
 import { ChatModule } from './chat/chat.module';
 import { NotificationModule } from './notification/notification.module';
 import { PointRelaisModule } from './point-relais/point-relais.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PointRelaisModule } from './point-relais/point-relais.module';
     ChatModule,
     NotificationModule,
     PointRelaisModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
