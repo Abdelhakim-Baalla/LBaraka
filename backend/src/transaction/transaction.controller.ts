@@ -50,4 +50,10 @@ export class TransactionController {
     const user = req.user as { userId: string };
     return this.transactionService.getMyTransactions(user.userId);
   }
+
+  @Post(':id/signaler-degradation')
+  async signalerDegradation(@Req() req: Request, @Param('id') transactionId: string) {
+    const user = req.user as { userId: string };
+    return this.transactionService.signalerDegradation(user.userId, transactionId);
+  }
 }
