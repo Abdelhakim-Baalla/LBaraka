@@ -258,6 +258,20 @@ export class UtilisateurService {
             nextBadges.add('VOISIN_DE_CONFIANCE');
         }
 
+        // Vérification Location Solidaire
+        const locationCount = await prisma.transaction.count({
+            where: {
+                preteurId: userId,
+                statut: 'TERMINEE',
+                annonce: { mode: 'LOCATION_SOLIDAIRE' }
+            }
+        });
+
+        // --- RÈGLE 6 : GARANT_SOLIDAIRE ---
+        if (locationCount >= 1) {
+            nextBadges.add('GARANT_SOLIDAIRE');
+        }
+
         // Si de nouveaux badges ont été ajoutés, on met à jour le profil
         if (nextBadges.size > currentBadges.size) {
             await prisma.profil.update({
