@@ -54,7 +54,7 @@ export class UtilisateurService {
                     data: {
                         utilisateurId: createdUser.id,
                         cin,
-                        lBarakaScore: 0,
+                        lBarakaScore: 50, // Bonus de bienvenue ! ✨🎉
                         palier: 'BRONZE',
                         langueInterface: 'FRANCAIS',
                         badges: [],
@@ -129,5 +129,46 @@ export class UtilisateurService {
             'code' in error &&
             error.code === 'P2002'
         );
+    }
+
+    /**
+     * Met à jour le score lBaraka et ajuste automatiquement le palier (Tier).
+     * Logique : Bronze (0+), Argent (500+), Or (1000+), Legende (2000+)
+     */
+    async updateScore(userId: string, points: number, tx?: any) {
+        const prisma = tx || this.prisma;
+        
+        // 1. Mise à jour atomique du score
+        const updatedProfil = await prisma.profil.update({
+            where: { utilisateurId: userId },
+            data: {
+                lBarakaScore: { increment: points }
+            }
+        });
+
+        // 2. LOGIQUE IMPORTANTE : Sécurité anti-négatif
+        // Si le score est descendu en dessous de 0, on le remet à 0 proprement
+        let finalScore = updatedProfil.lBarakaScore;
+        if (finalScore < 0) {
+            finalScore = 0;
+            await prisma.profil.update({
+                where: { utilisateurId: userId },
+                data: { lBarakaScore: 0 }
+            });
+        }
+        
+        // 3. SYNCHRONISATION DU PALIER (Tier)
+        let nouveauPalier: 'BRONZE' | 'ARGENT' | 'OR' | 'LEGENDE' = 'BRONZE';
+        if (finalScore >= 2000) nouveauPalier = 'LEGENDE';
+        else if (finalScore >= 1000) nouveauPalier = 'OR';
+        else if (finalScore >= 500) nouveauPalier = 'ARGENT';
+
+        // 4. Mettre à jour le palier si nécessaire
+        if (updatedProfil.palier !== nouveauPalier) {
+            await prisma.profil.update({
+                where: { utilisateurId: userId },
+                data: { palier: nouveauPalier }
+            });
+        }
     }
 }

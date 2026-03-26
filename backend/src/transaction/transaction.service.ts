@@ -5,12 +5,15 @@ import { ContratService } from '../contrat/contrat.service';
 import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 
+import { UtilisateurService } from '../utilisateur/utilisateur.service';
+
 @Injectable()
 export class TransactionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly walletService: WalletService,
     private readonly contratService: ContratService,
+    private readonly utilisateurService: UtilisateurService,
   ) { }
 
   /**
@@ -248,6 +251,16 @@ export class TransactionService {
           data: { statut: 'DISPONIBLE' },
         });
 
+        // NOUVEAUTÉ GAMIFICATION (LBAR-20)
+        // 1. Si c'est un DON, on récompense le donneur (+100)
+        if (currentTx.annonce.mode === 'DON_GRATUIT') {
+          await this.utilisateurService.updateScore(currentTx.preteurId, 100, tx);
+        } 
+        // 2. Si c'est un PRÊT ou une LOCATION, on récompense aussi le service rendu (+20)
+        else {
+          await this.utilisateurService.updateScore(currentTx.preteurId, 20, tx);
+        }
+
         return updatedTx;
       });
 
@@ -280,6 +293,41 @@ export class TransactionService {
       return { transactions };
     } catch (error) {
       throw new InternalServerErrorException('Erreur lors de la récupération des transactions');
+    }
+  }
+
+  /**
+   * SIGNALER UNE DÉGRADATION (LBAR-20)
+   * Le prêteur signale un problème : l'emprunteur perd 200 points.
+   */
+  async signalerDegradation(userId: string, transactionId: string) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const transaction = await tx.transaction.findUnique({
+          where: { id: transactionId },
+        });
+
+        if (!transaction) throw new NotFoundException('Transaction introuvable');
+        if (transaction.preteurId !== userId) throw new UnauthorizedException('Seul le prêteur peut signaler une dégradation');
+        if (transaction.statut !== 'TERMINEE') throw new BadRequestException('Vous ne pouvez signaler une dégradation que sur une transaction terminée');
+
+        // On passe la transaction en LITIGE_DEGRADATION
+        const updated = await tx.transaction.update({
+          where: { id: transactionId },
+          data: { 
+            statut: 'LITIGE_DEGRADATION',
+            degats: true
+          },
+        });
+
+        // SANCTION GAMIFICATION (-200 points)
+        await this.utilisateurService.updateScore(transaction.emprunteurId, -200, tx);
+
+        return updated;
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException || error instanceof UnauthorizedException) throw error;
+      throw new InternalServerErrorException('Erreur lors du signalement de la dégradation');
     }
   }
 }
