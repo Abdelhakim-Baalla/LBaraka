@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 
 import { UtilisateurService } from '../utilisateur/utilisateur.service';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class TransactionService {
@@ -14,6 +15,7 @@ export class TransactionService {
     private readonly walletService: WalletService,
     private readonly contratService: ContratService,
     private readonly utilisateurService: UtilisateurService,
+    private readonly notificationService: NotificationService,
   ) { }
 
   /**
@@ -78,6 +80,13 @@ export class TransactionService {
       });
 
       await this.contratService.generateContrat(transaction.id);
+
+      // --- NOUVEAUTÉ : NOTIFICATION RÉSERVATION ---
+      await this.notificationService.create(
+        annonce.createurId,
+        '📅 Objet réservé !',
+        `Votre objet "${annonce.titre}" a été réservé. Attendez le scan du QR code pour la remise.`
+      );
 
       return {
         transaction,

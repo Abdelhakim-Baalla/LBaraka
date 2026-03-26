@@ -42,4 +42,22 @@ export class NotificationService {
 
     return priorityUsers.length;
   }
+
+  /**
+   * Créer une notification simple en base de données.
+   * Utilisation : notify('user_id', 'Titre', 'Message')
+   */
+  async create(utilisateurId: string, titre: string, message: string) {
+    try {
+      return await this.prisma.notification.create({
+        data: {
+          utilisateurId,
+          titre,
+          message,
+        },
+      });
+    } catch (error: any) {
+      this.logger.error(`Erreur lors de la création de la notification: ${error.message}`);
+    }
+  }
 }
