@@ -7,7 +7,8 @@ import { getAnnonces } from '../api/annonces';
 import { reserveAnnonce } from '../api/transactions';
 import { useAuth } from '../context/AuthContext';
 
-type Props = { navigate: (s: string) => void };
+type Screen = 'Annonces' | 'Carte' | 'CreateAnnonce' | 'Profile' | 'Wallet' | 'Transactions' | 'Partenaires';
+type Props = { navigate: (s: Screen) => void };
 
 const CATS = ['Toutes', 'POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 
@@ -93,6 +94,9 @@ export default function AnnoncesScreen({ navigate }: Props) {
         <View style={s.headerActions}>
           <TouchableOpacity style={s.btnSmall} onPress={() => navigate('Carte')}>
             <Text style={s.btnSmallT}>Carte</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.btnSmall} onPress={() => navigate('Partenaires')}>
+            <Text style={s.btnSmallT}>Partenaires</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.btnSmall} onPress={() => navigate('Profile')}>
             <Text style={s.btnSmallT}>Profil</Text>

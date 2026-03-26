@@ -9,13 +9,14 @@ import CreateAnnonceScreen from './src/screens/CreateAnnonceScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import WalletScreen from './src/screens/WalletScreen';
 import TransactionsScreen from './src/screens/TransactionsScreen';
+import PartenairesScreen from './src/screens/PartenairesScreen';
 
-type Screen = 'Login' | 'Register' | 'Annonces' | 'Carte' | 'CreateAnnonce' | 'Profile' | 'Wallet' | 'Transactions';
+type Screen = 'Login' | 'Register' | 'Annonces' | 'Carte' | 'CreateAnnonce' | 'Profile' | 'Wallet' | 'Transactions' | 'Partenaires';
 
 function AppNav() {
   const { token } = useAuth();
   const [screen, setScreen] = useState<Screen>('Login');
-  const navigate = (s: Screen) => setScreen(s);
+  const navigate = (s: Screen) => setScreen(s as any);
 
   if (!token) {
     return screen === 'Register'
@@ -28,6 +29,7 @@ function AppNav() {
   if (screen === 'Profile') return <ProfileScreen navigate={navigate} />;
   if (screen === 'Wallet') return <WalletScreen navigate={navigate} />;
   if (screen === 'Transactions') return <TransactionsScreen navigate={navigate} />;
+  if (screen === 'Partenaires') return <PartenairesScreen navigate={navigate} />;
   return <AnnoncesScreen navigate={navigate} />;
 }
 
