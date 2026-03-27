@@ -9,6 +9,7 @@ import { haversineKm } from '../common/utils/geo.util';
 import { NotificationService } from '../notification/notification.service';
 import { UtilisateurService } from '../utilisateur/utilisateur.service';
 
+// Service pour gérer les annonces
 @Injectable()
 export class AnnonceService {
     private readonly logger = new Logger(AnnonceService.name);
@@ -20,13 +21,11 @@ export class AnnonceService {
         private readonly utilisateurService: UtilisateurService,
     ) { }
 
-    /**
-     * Tâche planifiée : Expire les annonces toutes les 15 minutes (ex: Food Rescue).
-     */
+    // Tâche qui expire automatiquement les anciennes annonces
     @Cron('0 */15 * * * *')
     async handleCron() {
         this.logger.debug('Vérification des annonces expirées...');
-        
+
         try {
             const now = new Date();
             const result = await this.prisma.annonce.updateMany({
@@ -46,27 +45,24 @@ export class AnnonceService {
                 this.logger.log(`${result.count} annonces marquées comme expirées.`);
             }
         } catch (error) {
-            this.logger.error('Erreur lors de l’expiration automatique des annonces', error);
+            this.logger.error('Erreur lors de l\'expiration automatique des annonces', error);
         }
     }
 
-    /**
-     * Créer une annonce standard (Don, Prêt, Location).
-     * Les citoyens ne peuvent PAS créer d'annonce Food Rescue via cette méthode.
-     */
+    // Créer une nouvelle annonce
     async create(createurId: string, role: RoleUtilisateur, dto: CreateAnnonceDto) {
         try {
-            // SÉCURITÉ : Empêcher les citoyens de créer des Food Rescue
-            // (La route est aussi protégée par @Roles('PARTENAIRE') mais double vérification)
+            // Les partenaires peuvent créer des Food Rescue, pas les autres
             if (dto.isFoodRescue && role !== 'PARTENAIRE') {
                 throw new ForbiddenException(
-                    'Seuls les PARTENAIRES peuvent publier des annonces Food Rescue pour des raisons d\'hygiène et de sécurité alimentaire.'
+                    'Seuls les PARTENAIRES peuvent publier des annonces Food Rescue.'
                 );
             }
 
+            // Upload les photos
             const photos = await this.storageService.uploadAnnoncePhotosBase64(dto.photosBase64 || []);
 
-            // Logique Food Rescue : Expiration automatique dans 4 heures par défaut
+            // Calcul de la date d'expiration pour Food Rescue
             let finalExpiration = dto.expirationDate ? new Date(dto.expirationDate) : null;
             if (dto.isFoodRescue && !finalExpiration) {
                 finalExpiration = new Date(Date.now() + 4 * 60 * 60 * 1000);
@@ -89,16 +85,14 @@ export class AnnonceService {
                 },
             });
 
-            // --- NOUVEAUTÉ : NOTIFICATION PRIORITAIRE ET LOCALE ---
+            // Notification pour Food Rescue
             if (annonce.estFoodRescue) {
-                // On cherche la ville du créateur pour cibler les voisins
                 const creatorProfile = await this.prisma.profil.findUnique({
                     where: { utilisateurId: createurId },
                     select: { ville: true }
                 });
                 const creatorVille = creatorProfile?.ville || undefined;
 
-                // On notifie en priorité les profils OR et LEGENDE de la mème ville
                 this.notificationService.notifyFoodRescuePriority(annonce.id, annonce.titre, creatorVille);
             }
 
@@ -112,26 +106,21 @@ export class AnnonceService {
         }
     }
 
-    /**
-     * Créer une annonce Food Rescue (SURPLUS ALIMENTAIRE).
-     * EXCLUSIVEMENT pour les PARTENAIRES (restaurants, traiteurs, associations).
-     * Sécurité alimentaire : on ne laisse pas les citoyens lambda publier de la nourriture.
-     */
+    // Créer une annonce Food Rescue (nourriture)
     async createFoodRescue(createurId: string, role: RoleUtilisateur, dto: CreateAnnonceDto) {
         try {
-            // Vérification supplémentaire : doit être PARTENAIRE
+            // Vérification du rôle partenaire
             if (role !== 'PARTENAIRE') {
                 throw new ForbiddenException(
                     'Seuls les PARTENAIRES peuvent publier des surplus alimentaires.'
                 );
             }
 
-            // Forcer le flag Food Rescue
             dto.isFoodRescue = true;
 
             const photos = await this.storageService.uploadAnnoncePhotosBase64(dto.photosBase64 || []);
 
-            // Expiration par défaut : 4 heures pour les aliments périssables
+            // Expiration 4h par défaut pour la nourriture
             let finalExpiration = dto.expirationDate ? new Date(dto.expirationDate) : null;
             if (!finalExpiration) {
                 finalExpiration = new Date(Date.now() + 4 * 60 * 60 * 1000);
@@ -141,12 +130,12 @@ export class AnnonceService {
                 data: {
                     titre: dto.titre,
                     description: dto.description,
-                    categorie: 'NOURRITURE', // Forcé pour Food Rescue
-                    mode: 'DON_GRATUIT',      // Food Rescue = toujours don gratuit
+                    categorie: 'NOURRITURE',
+                    mode: 'DON_GRATUIT',
                     condition: dto.condition || 'BON_ETAT',
                     geolocalisation: dto.geolocalisation,
-                    prixSymbolique: null,     // Food Rescue = gratuit
-                    montantCaution: null,      // Pas de caution pour Food Rescue
+                    prixSymbolique: null,
+                    montantCaution: null,
                     estFoodRescue: true,
                     dateExpiration: finalExpiration,
                     photos,
@@ -154,22 +143,19 @@ export class AnnonceService {
                 },
             });
 
-            // --- NOUVEAUTÉ : NOTIFICATION PRIORITAIRE ET LOCALE ---
-            // On cherche la ville du créateur pour cibler les voisins
+            // Notification pour les utilisateurs proches
             const creatorProfile = await this.prisma.profil.findUnique({
                 where: { utilisateurId: createurId },
                 select: { ville: true }
             });
             const creatorVille = creatorProfile?.ville || undefined;
 
-            // On notifie en priorité les profils OR et LEGENDE de la mème ville
             this.notificationService.notifyFoodRescuePriority(annonce.id, annonce.titre, creatorVille);
 
-            // NOUVEAUTÉ GAMIFICATION (LBAR-20)
-            // Bonus immédiat pour la publication solidaire Food Rescue
+            // Ajout de points pour le créateur
             await this.utilisateurService.updateScore(createurId, 50);
 
-            return { annonce, message: 'Annonce Food Rescue publiée avec succès. Les utilisateurs proches ont été notifiés.' };
+            return { annonce, message: 'Annonce Food Rescue publiée avec succès.' };
         } catch (error: any) {
             if (error instanceof ForbiddenException) {
                 throw error;
@@ -179,9 +165,7 @@ export class AnnonceService {
         }
     }
 
-    /**
-     * Récupérer uniquement les Food Rescue actifs (non expirés).
-     */
+    // Récupérer les Food Rescue actifs
     async findFoodRescue() {
         try {
             const now = new Date();
@@ -190,10 +174,10 @@ export class AnnonceService {
                     estFoodRescue: true,
                     statut: 'DISPONIBLE',
                     dateExpiration: {
-                        gt: now, // Non expirés
+                        gt: now,
                     },
                 },
-                orderBy: { dateExpiration: 'asc' }, // Plus urgent en premier
+                orderBy: { dateExpiration: 'asc' },
                 include: {
                     createur: {
                         select: {
@@ -214,13 +198,13 @@ export class AnnonceService {
         }
     }
 
+    // Récupérer toutes les annonces
     async findAll(categorie?: CategorieAnnonce) {
         try {
             const annonces = await this.prisma.annonce.findMany({
                 where: {
                     statut: 'DISPONIBLE',
                     ...(categorie && { categorie }),
-                    // Ne pas afficher les annonces expirées
                     OR: [
                         { dateExpiration: null },
                         { dateExpiration: { gt: new Date() } }
@@ -235,13 +219,13 @@ export class AnnonceService {
         }
     }
 
+    // Récupérer les annonces proches d'un point
     async findNearby(lat: number, lng: number, rayonKm: number, categorie?: CategorieAnnonce) {
         try {
             const annonces = await this.prisma.annonce.findMany({
                 where: {
                     statut: 'DISPONIBLE',
                     ...(categorie && { categorie }),
-                    // Ne pas afficher les annonces expirées
                     OR: [
                         { dateExpiration: null },
                         { dateExpiration: { gt: new Date() } }
@@ -263,6 +247,7 @@ export class AnnonceService {
                 },
             });
 
+            // Calcul des distances et tri
             const result = annonces
                 .filter((a) => a.geolocalisation && a.geolocalisation.length >= 2)
                 .map((a) => ({
@@ -278,9 +263,7 @@ export class AnnonceService {
         }
     }
 
-    /**
-     * Récupérer une annonce par son ID.
-     */
+    // Récupérer une annonce par son ID
     async findById(annonceId: string) {
         try {
             const annonce = await this.prisma.annonce.findUnique({
@@ -300,7 +283,7 @@ export class AnnonceService {
                 throw new NotFoundException('Annonce introuvable');
             }
 
-            // Incrémenter le nombre de vues
+            // On compte une vue
             await this.prisma.annonce.update({
                 where: { id: annonceId },
                 data: { nombreVues: { increment: 1 } },
@@ -313,9 +296,7 @@ export class AnnonceService {
         }
     }
 
-    /**
-     * Récupérer les annonces de l'utilisateur connecté.
-     */
+    // Récupérer les annonces de l'utilisateur connecté
     async findMyAnnonces(userId: string) {
         try {
             const annonces = await this.prisma.annonce.findMany({
@@ -329,9 +310,7 @@ export class AnnonceService {
         }
     }
 
-    /**
-     * Modifier une annonce (seulement par le créateur).
-     */
+    // Modifier une annonce
     async update(userId: string, annonceId: string, dto: UpdateAnnonceDto) {
         try {
             const annonce = await this.prisma.annonce.findUnique({
@@ -342,6 +321,7 @@ export class AnnonceService {
                 throw new NotFoundException('Annonce introuvable');
             }
 
+            // Vérification que c'est bien le créateur
             if (annonce.createurId !== userId) {
                 throw new ForbiddenException('Vous ne pouvez modifier que vos propres annonces');
             }
@@ -373,9 +353,7 @@ export class AnnonceService {
         }
     }
 
-    /**
-     * Supprimer une annonce (seulement par le créateur).
-     */
+    // Supprimer une annonce
     async remove(userId: string, annonceId: string) {
         try {
             const annonce = await this.prisma.annonce.findUnique({
@@ -386,6 +364,7 @@ export class AnnonceService {
                 throw new NotFoundException('Annonce introuvable');
             }
 
+            // Vérification que c'est bien le créateur
             if (annonce.createurId !== userId) {
                 throw new ForbiddenException('Vous ne pouvez supprimer que vos propres annonces');
             }

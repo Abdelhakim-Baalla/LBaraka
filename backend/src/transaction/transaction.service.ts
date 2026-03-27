@@ -8,6 +8,7 @@ import * as QRCode from 'qrcode';
 import { UtilisateurService } from '../utilisateur/utilisateur.service';
 import { NotificationService } from '../notification/notification.service';
 
+// Service pour gérer les transactions
 @Injectable()
 export class TransactionService {
   constructor(
@@ -18,10 +19,7 @@ export class TransactionService {
     private readonly notificationService: NotificationService,
   ) { }
 
-  /**
-   * Réserver une annonce avec vérification complète du wallet.
-   * PROTECTION : Vérifie que l'utilisateur a assez de fonds avant de bloquer.
-   */
+  // Réserver une annonce
   async reserve(userId: string, annonceId: string) {
     try {
       const annonce = await this.prisma.annonce.findUnique({
@@ -32,11 +30,12 @@ export class TransactionService {
       if (annonce.statut !== 'DISPONIBLE') throw new BadRequestException('Cette annonce n\'est plus disponible');
       if (annonce.createurId === userId) throw new BadRequestException('Vous ne pouvez pas reserver votre propre annonce');
 
+      // Calculer le montant total à payer
       const montantCaution = Number(annonce.montantCaution || 0);
       const prixSymbolique = Number(annonce.prixSymbolique || 0);
       const montantTotal = montantCaution + prixSymbolique;
 
-      // PROTECTION CRITIQUE : Vérifier le solde disponible AVANT de créer la transaction
+      // Vérifier si l'utilisateur a assez de solde
       if (montantTotal > 0) {
         const walletInfo = await this.walletService.getWalletInfo(userId);
         const soldeDisponible = walletInfo.soldeReel;
@@ -52,6 +51,7 @@ export class TransactionService {
         }
       }
 
+      // Créer la transaction et bloquer la caution
       const transaction = await this.prisma.$transaction(async (tx) => {
         if (montantCaution > 0) {
           await this.walletService.blocage(userId, montantCaution, tx);
@@ -79,9 +79,10 @@ export class TransactionService {
         return newTx;
       });
 
+      // Générer le contrat
       await this.contratService.generateContrat(transaction.id);
 
-      // --- NOUVEAUTÉ : NOTIFICATION RÉSERVATION ---
+      // Envoyer une notification au propriétaire
       await this.notificationService.create(
         annonce.createurId,
         '📅 Objet réservé !',
@@ -100,6 +101,7 @@ export class TransactionService {
     }
   }
 
+  // Générer un QR code pour la réception
   async generateReceptionQR(userId: string, transactionId: string): Promise<string> {
     const transaction = await this.prisma.transaction.findUnique({
       where: { id: transactionId },
@@ -118,6 +120,7 @@ export class TransactionService {
     return QRCode.toDataURL(JSON.stringify({ transactionId, secret }));
   }
 
+  // Valider le QR code de réception
   async validateReceptionQR(userId: string, transactionId: string, secret: string) {
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -147,10 +150,7 @@ export class TransactionService {
     }
   }
 
-  /**
-   * Générer un QR Code pour le RETOUR de l'objet.
-   * C'est le prêteur qui génère ce QR pour que l'emprunteur le scanne au moment du retour.
-   */
+  // Générer un QR code pour le retour
   async generateRetourQR(userId: string, transactionId: string): Promise<string> {
     const transaction = await this.prisma.transaction.findUnique({
       where: { id: transactionId },
@@ -170,10 +170,7 @@ export class TransactionService {
     return QRCode.toDataURL(JSON.stringify({ transactionId, type: 'RETOUR', secret }));
   }
 
-  /**
-   * Valider le QR Code de retour.
-   * L'emprunteur scanne ce code pour confirmer qu'il rend l'objet.
-   */
+  // Valider le QR code de retour
   async validateRetourQR(userId: string, transactionId: string, secret: string) {
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -203,6 +200,7 @@ export class TransactionService {
     }
   }
 
+  // Valider le retour et libérer la caution
   async validerRetour(userId: string, transactionId: string) {
     try {
       const resultTx = await this.prisma.$transaction(async (tx) => {
@@ -215,6 +213,7 @@ export class TransactionService {
         if (currentTx.preteurId !== userId) throw new BadRequestException('Seul le prêteur peut valider le retour');
         if (currentTx.statut === 'TERMINEE') throw new BadRequestException('Cette transaction est déjà terminée');
 
+        // Calculer le retard éventuel
         let joursRetard = 0;
         if (currentTx.dateFinPrevue) {
           const now = new Date();
@@ -225,9 +224,11 @@ export class TransactionService {
           }
         }
 
+        // Gérer la caution avec les pénalités si retard
         const montantCautionBloquee = Number(currentTx.montantCautionBloquee || 0);
         if (montantCautionBloquee > 0) {
           if (joursRetard > 0) {
+            // Appliquer les pénalités pour retard
             const penalite = joursRetard * 30;
             const montantApresPenalite = Math.max(0, montantCautionBloquee - penalite);
 
@@ -240,37 +241,38 @@ export class TransactionService {
               data: { retard: joursRetard },
             });
           } else {
+            // Pas de retard, débloquer tout
             await this.walletService.deblocage(currentTx.emprunteurId, montantCautionBloquee, tx);
           }
         }
 
+        // Payer le prix symbolique au propriétaire
         const prixSymbolique = Number(currentTx.annonce.prixSymbolique || 0);
         if (currentTx.annonce.mode === 'LOCATION_SOLIDAIRE' && prixSymbolique > 0) {
           await this.walletService.retrait(currentTx.emprunteurId, prixSymbolique, tx);
           await this.walletService.depot(currentTx.preteurId, prixSymbolique, tx);
         }
 
+        // Terminer la transaction
         const updatedTx = await tx.transaction.update({
           where: { id: transactionId },
           data: { statut: 'TERMINEE', dateFinReelle: new Date() },
         });
 
+        // Remettre l'annonce en disponible
         await tx.annonce.update({
           where: { id: currentTx.annonceId },
           data: { statut: 'DISPONIBLE' },
         });
 
-        // NOUVEAUTÉ GAMIFICATION (LBAR-20)
-        // 1. Si c'est un DON, on récompense le donneur (+100)
+        // Ajouter des points au propriétaire selon le type d'annonce
         if (currentTx.annonce.mode === 'DON_GRATUIT') {
           await this.utilisateurService.updateScore(currentTx.preteurId, 100, tx);
-        } 
-        // 2. Si c'est un PRÊT ou une LOCATION, on récompense aussi le service rendu (+20)
-        else {
+        } else {
           await this.utilisateurService.updateScore(currentTx.preteurId, 20, tx);
         }
 
-        // 3. Vérifier les badges pour l'emprunteur aussi (même si score inchangé, le compteur de transactions a bougé)
+        // Vérifier les badges pour l'emprunteur
         await this.utilisateurService.checkAndAwardBadges(currentTx.emprunteurId, tx);
 
         return updatedTx;
@@ -285,6 +287,7 @@ export class TransactionService {
     }
   }
 
+  // Récupérer les transactions de l'utilisateur
   async getMyTransactions(userId: string) {
     try {
       const transactions = await this.prisma.transaction.findMany({
@@ -308,10 +311,7 @@ export class TransactionService {
     }
   }
 
-  /**
-   * SIGNALER UNE DÉGRADATION (LBAR-20)
-   * Le prêteur signale un problème : l'emprunteur perd 200 points.
-   */
+  // Signaler une dégradation
   async signalerDegradation(userId: string, transactionId: string) {
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -323,7 +323,7 @@ export class TransactionService {
         if (transaction.preteurId !== userId) throw new UnauthorizedException('Seul le prêteur peut signaler une dégradation');
         if (transaction.statut !== 'TERMINEE') throw new BadRequestException('Vous ne pouvez signaler une dégradation que sur une transaction terminée');
 
-        // On passe la transaction en LITIGE_DEGRADATION
+        // Mettre la transaction en litige
         const updated = await tx.transaction.update({
           where: { id: transactionId },
           data: { 
@@ -332,7 +332,7 @@ export class TransactionService {
           },
         });
 
-        // SANCTION GAMIFICATION (-200 points)
+        // Retirer des points à l'emprunteur
         await this.utilisateurService.updateScore(transaction.emprunteurId, -200, tx);
 
         return updated;
@@ -343,11 +343,7 @@ export class TransactionService {
     }
   }
 
-  /**
-   * ANNULER une réservation.
-   * L'emprunteur peut annuler tant que le statut est EN_ATTENTE_RECEPTION.
-   * La caution bloquée est débloquée automatiquement.
-   */
+  // Annuler une réservation
   async annuler(userId: string, transactionId: string) {
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -393,7 +389,7 @@ export class TransactionService {
           data: { statut: 'DISPONIBLE' },
         });
 
-        // Notification au prêteur
+        // Notification au propriétaire
         await this.notificationService.create(
           transaction.preteurId,
           '❌ Réservation annulée',

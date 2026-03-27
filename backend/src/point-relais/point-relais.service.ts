@@ -5,10 +5,12 @@ import { UpdatePointRelaisDto } from './dto/update-point-relais.dto';
 import { TypeRelais } from '@prisma/client';
 import { haversineKm } from '../common/utils/geo.util';
 
+// Service pour gérer les points relais
 @Injectable()
 export class PointRelaisService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Créer un nouveau point relais
   async create(dto: CreatePointRelaisDto) {
     try {
       return await this.prisma.pointRelais.create({
@@ -19,6 +21,7 @@ export class PointRelaisService {
     }
   }
 
+  // Récupérer tous les points relais
   async findAll() {
     try {
       return await this.prisma.pointRelais.findMany({
@@ -29,6 +32,7 @@ export class PointRelaisService {
     }
   }
 
+  // Récupérer les points relais proches
   async findNearby(lat: number, lng: number, rayon: number, type?: TypeRelais) {
     try {
       const points = await this.prisma.pointRelais.findMany({
@@ -37,6 +41,7 @@ export class PointRelaisService {
         },
       });
 
+      // Calculer les distances et trier
       const result = points
         .filter((p) => p.geolocalisation && p.geolocalisation.length >= 2)
         .map((p) => ({
@@ -52,6 +57,7 @@ export class PointRelaisService {
     }
   }
 
+  // Récupérer un point relais par ID
   async findById(id: string) {
     const point = await this.prisma.pointRelais.findUnique({
       where: { id },
@@ -62,6 +68,7 @@ export class PointRelaisService {
     return point;
   }
 
+  // Modifier un point relais
   async update(id: string, dto: UpdatePointRelaisDto) {
     try {
       const point = await this.findById(id);
@@ -75,6 +82,7 @@ export class PointRelaisService {
     }
   }
 
+  // Supprimer un point relais
   async remove(id: string) {
     try {
       const point = await this.findById(id);
@@ -88,6 +96,7 @@ export class PointRelaisService {
     }
   }
 
+  // Récupérer les types de points relais
   getTypes() {
     return [
       { code: 'HANOUT', label: 'Hanout (Commerce de proximité)' },

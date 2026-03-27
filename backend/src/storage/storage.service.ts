@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client as MinioClient } from 'minio';
 
+// Service pour gérer le stockage de fichiers (MinIO)
 @Injectable()
 export class StorageService implements OnModuleInit {
     private readonly bucketName: string;
@@ -9,6 +10,7 @@ export class StorageService implements OnModuleInit {
     private readonly minioClient: MinioClient;
 
     constructor(private readonly configService: ConfigService) {
+        // Configuration MinIO
         const endPoint = this.configService.get<string>('MINIO_ENDPOINT', 'localhost');
         const port = Number(this.configService.get<string>('MINIO_PORT', '9000'));
         const accessKey = this.configService.get<string>('MINIO_ACCESS_KEY', 'lbaraka');
@@ -27,6 +29,7 @@ export class StorageService implements OnModuleInit {
         });
     }
 
+    // Créer le bucket au démarrage si nécessaire
     async onModuleInit() {
         const exists = await this.minioClient.bucketExists(this.bucketName);
 
@@ -35,6 +38,7 @@ export class StorageService implements OnModuleInit {
         }
     }
 
+    // Upload des photos en Base64
     async uploadAnnoncePhotosBase64(photos: Array<{ name: string; type: string; base64: string }>): Promise<string[]> {
         const uploadedUrls: string[] = [];
 
@@ -56,6 +60,7 @@ export class StorageService implements OnModuleInit {
         return uploadedUrls;
     }
 
+    // Upload des photos depuis des fichiers
     async uploadAnnoncePhotos(files: Express.Multer.File[]): Promise<string[]> {
         const uploadedUrls: string[] = [];
 
@@ -76,12 +81,13 @@ export class StorageService implements OnModuleInit {
         return uploadedUrls;
     }
 
+    // Récupérer le contenu d'un fichier
     async getFileBuffer(objectPath: string): Promise<Buffer> {
         // Extraire le nom de l'objet de l'URL
         const parts = objectPath.split(`${this.bucketName}/`);
         let objectName = parts[parts.length - 1];
-        
-        // Supprimer les paramètres de requête (?X-Amz-...)
+
+        // Enlever les paramètres d'URL si présents
         if (objectName.includes('?')) {
             objectName = objectName.split('?')[0];
         }
@@ -95,6 +101,7 @@ export class StorageService implements OnModuleInit {
         });
     }
 
+    // Upload un buffer (pour les PDF par exemple)
     async uploadBuffer(buffer: Buffer, originalName: string, contentType: string): Promise<string> {
         const objectName = this.buildObjectName(originalName);
 
@@ -109,6 +116,7 @@ export class StorageService implements OnModuleInit {
         return `${this.publicBaseUrl}/${this.bucketName}/${objectName}`;
     }
 
+    // Générer un nom de fichier unique et sûr
     private buildObjectName(originalName: string): string {
         const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '-');
         const extension = originalName.split('.').pop() || 'dat';
@@ -116,4 +124,3 @@ export class StorageService implements OnModuleInit {
         return `documents/${Date.now()}-${Math.round(Math.random() * 1e9)}-${base}.${extension}`;
     }
 }
-

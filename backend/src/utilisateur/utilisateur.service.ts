@@ -5,6 +5,7 @@ import { RegisterDto } from './dto/register.dto';
 import { UpdateProfilDto } from './dto/update-profil.dto';
 import { NotificationService } from '../notification/notification.service';
 
+// Service pour gérer les utilisateurs
 @Injectable()
 export class UtilisateurService {
     constructor(
@@ -12,11 +13,13 @@ export class UtilisateurService {
         private readonly notificationService: NotificationService,
     ) {}
 
+    // Inscription d'un nouvel utilisateur
     async register(dto: RegisterDto) {
         const email = dto.email.trim().toLowerCase();
         const telephone = this.normalizeTelephone(dto.telephone);
         const cin = dto.cin ? this.normalizeCin(dto.cin) : null;
 
+        // Vérifier si l'email ou le téléphone existe déjà
         const existingUser = await this.prisma.user.findFirst({
             where: { OR: [{ email }, { telephone }] },
         });
@@ -32,6 +35,7 @@ export class UtilisateurService {
 
         }
 
+        // Vérifier si le CIN existe déjà
         if (cin) {
             const existingProfilCin = await this.prisma.profil.findUnique({
                 where: { cin },
@@ -43,10 +47,12 @@ export class UtilisateurService {
             }
         }
 
+        // Hasher le mot de passe
         const motDePasseHash = await bcrypt.hash(dto.motDePasse, 10);
 
         try {
             const utilisateur = await this.prisma.$transaction(async (tx) => {
+                // Créer l'utilisateur
                 const createdUser = await tx.user.create({
                     data: {
                         email,
@@ -55,17 +61,19 @@ export class UtilisateurService {
                     },
                 });
 
+                // Créer le profil avec les données initiales
                 const profil = await tx.profil.create({
                     data: {
                         utilisateurId: createdUser.id,
                         cin,
-                        lBarakaScore: 50, // Bonus de bienvenue ! ✨🎉
+                        lBarakaScore: 50, // Bonus de bienvenue
                         palier: 'BRONZE',
                         langueInterface: 'FRANCAIS',
                         badges: ['BIENVENUE'],
                     },
                 });
 
+                // Créer le portefeuille vide
                 await tx.portefeuille.create({
                     data: {
                         utilisateurId: createdUser.id,
@@ -91,6 +99,7 @@ export class UtilisateurService {
         }
     }
 
+    // Rechercher un utilisateur par email
     async findByEmail(email: string) {
         return this.prisma.user.findUnique({
             where: { email: email.trim().toLowerCase() },
@@ -98,6 +107,7 @@ export class UtilisateurService {
         });
     }
 
+    // Rechercher un utilisateur par ID
     async findById(id: string) {
         return this.prisma.user.findUnique({
             where: { id },
@@ -105,6 +115,7 @@ export class UtilisateurService {
         });
     }
 
+    // Retirer le mot de passe de la réponse
     sanitizeUser(utilisateur: {
         motDePasseHash: string;
         [key: string]: unknown;
@@ -113,6 +124,7 @@ export class UtilisateurService {
         return safeUser;
     }
 
+    // Normaliser le numéro de téléphone
     private normalizeTelephone(telephone: string): string {
         const cleanedTelephone = telephone.replace(/[\s-]/g, '');
 
@@ -123,10 +135,12 @@ export class UtilisateurService {
         return cleanedTelephone;
     }
 
+    // Normaliser le CIN
     private normalizeCin(cin: string): string {
         return cin.trim().toUpperCase().replace(/\s+/g, '');
     }
 
+    // Vérifier si c'est une erreur de contrainte unique
     private isUniqueConstraintError(error: unknown): boolean {
         return (
             typeof error === 'object' &&
@@ -136,14 +150,11 @@ export class UtilisateurService {
         );
     }
 
-    /**
-     * Met à jour le score lBaraka et ajuste automatiquement le palier (Tier).
-     * Logique : Bronze (0+), Argent (500+), Or (1000+), Legende (2000+)
-     */
+    // Mettre à jour le score de l'utilisateur
     async updateScore(userId: string, points: number, tx?: any) {
         const prisma = tx || this.prisma;
         
-        // 1. Mise à jour atomique du score
+        // Mettre à jour le score
         const updatedProfil = await prisma.profil.update({
             where: { utilisateurId: userId },
             data: {
@@ -151,8 +162,7 @@ export class UtilisateurService {
             }
         });
 
-        // 2. LOGIQUE IMPORTANTE : Sécurité anti-négatif
-        // Si le score est descendu en dessous de 0, on le remet à 0 proprement
+        // Empêcher le score négatif
         let finalScore = updatedProfil.lBarakaScore;
         if (finalScore < 0) {
             finalScore = 0;
@@ -162,13 +172,13 @@ export class UtilisateurService {
             });
         }
         
-        // 3. SYNCHRONISATION DU PALIER (Tier)
+        // Mettre à jour le palier selon le score
         let nouveauPalier: 'BRONZE' | 'ARGENT' | 'OR' | 'LEGENDE' = 'BRONZE';
         if (finalScore >= 2000) nouveauPalier = 'LEGENDE';
         else if (finalScore >= 1000) nouveauPalier = 'OR';
         else if (finalScore >= 500) nouveauPalier = 'ARGENT';
 
-        // 4. Mettre à jour le palier si nécessaire
+        // Sauvegarder le nouveau palier si changé
         if (updatedProfil.palier !== nouveauPalier) {
             await prisma.profil.update({
                 where: { utilisateurId: userId },
@@ -176,14 +186,11 @@ export class UtilisateurService {
             });
         }
 
-        // 5. Vérifier les badges (déclencheur score)
+        // Vérifier les badges
         await this.checkAndAwardBadges(userId, prisma);
     }
 
-    /**
-     * Vérifie et attribue les badges selon l'activité de l'utilisateur.
-     * Cette méthode est appelée après chaque transaction importante ou changement de score.
-     */
+    // Vérifier et attribuer les badges
     async checkAndAwardBadges(userId: string, tx?: any) {
         const prisma = tx || this.prisma;
         
@@ -196,13 +203,12 @@ export class UtilisateurService {
         const currentBadges = new Set(profil.badges);
         const nextBadges = new Set(profil.badges);
 
-        // --- RÈGLE 1 : AMBASSADEUR_LOCAL (Score > 1000) ---
+        // Badge pour score élevé
         if (profil.lBarakaScore >= 1000) {
             nextBadges.add('AMBASSADEUR_LOCAL');
         }
 
-        // --- RÈGLES BASÉES SUR L'HISTORIQUE DES TRANSACTIONS ---
-        // On récupère quelques stats utiles
+        // Récupérer les stats des transactions
         const stats = await prisma.transaction.aggregate({
             where: { 
                 OR: [{ preteurId: userId }, { emprunteurId: userId }],
@@ -211,12 +217,12 @@ export class UtilisateurService {
             _count: true,
         });
 
-        // --- RÈGLE 2 : CHAMPION_ECO (10+ transactions terminées) ---
+        // Badge pour 10+ transactions
         if (stats._count >= 10) {
             nextBadges.add('CHAMPION_ECO');
         }
 
-        // Vérification des dons en tant que prêteur
+        // Badge pour les dons
         const donCount = await prisma.transaction.count({
             where: {
                 preteurId: userId,
@@ -225,12 +231,11 @@ export class UtilisateurService {
             }
         });
 
-        // --- RÈGLE 3 : DONATEUR_BARAKA (1+ don terminé) ---
         if (donCount >= 1) {
             nextBadges.add('DONATEUR_BARAKA');
         }
 
-        // Vérification Food Rescue
+        // Badge pour Food Rescue
         const foodRescueCount = await prisma.transaction.count({
             where: {
                 preteurId: userId,
@@ -239,12 +244,11 @@ export class UtilisateurService {
             }
         });
 
-        // --- RÈGLE 4 : SAUVEUR_ALIMENTAIRE (1+ food rescue terminé) ---
         if (foodRescueCount >= 1) {
             nextBadges.add('SAUVEUR_ALIMENTAIRE');
         }
 
-        // Vérification Voisin de Confiance (5+ emprunts sans retard ni dégats)
+        // Badge pour les emprunts sans problème
         const cleanEmprunts = await prisma.transaction.count({
             where: {
                 emprunteurId: userId,
@@ -254,12 +258,11 @@ export class UtilisateurService {
             }
         });
 
-        // --- RÈGLE 5 : VOISIN_DE_CONFIANCE ---
         if (cleanEmprunts >= 5) {
             nextBadges.add('VOISIN_DE_CONFIANCE');
         }
 
-        // Vérification Location Solidaire
+        // Badge pour location solidaire
         const locationCount = await prisma.transaction.count({
             where: {
                 preteurId: userId,
@@ -268,12 +271,11 @@ export class UtilisateurService {
             }
         });
 
-        // --- RÈGLE 6 : GARANT_SOLIDAIRE ---
         if (locationCount >= 1) {
             nextBadges.add('GARANT_SOLIDAIRE');
         }
 
-        // Si de nouveaux badges ont été ajoutés, on met à jour le profil
+        // Mettre à jour si nouveaux badges
         if (nextBadges.size > currentBadges.size) {
             await prisma.profil.update({
                 where: { utilisateurId: userId },
@@ -281,19 +283,17 @@ export class UtilisateurService {
                     badges: Array.from(nextBadges)
                 }
             });
-            // déclencher une notification "Bravo, nouveau badge !"
+
+            // Envoyer une notification
             await this.notificationService.create(
                 userId,
                 '🎉 Bravo ! Nouveau badge débloqué !',
                 `Félicitations ! Vous avez obtenu le badge "${Array.from(nextBadges).pop()}" pour votre activité sur LBaraka.`
             );
-
         }
     }
 
-    /**
-     * Récupérer le profil complet de l'utilisateur connecté.
-     */
+    // Récupérer le profil complet de l'utilisateur
     async getProfilComplet(userId: string) {
         const utilisateur = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -312,9 +312,7 @@ export class UtilisateurService {
         };
     }
 
-    /**
-     * Modifier le profil de l'utilisateur connecté.
-     */
+    // Modifier le profil de l'utilisateur
     async updateProfil(userId: string, dto: UpdateProfilDto) {
         const profil = await this.prisma.profil.findUnique({
             where: { utilisateurId: userId },
@@ -340,9 +338,7 @@ export class UtilisateurService {
         return { profil: updatedProfil };
     }
 
-    /**
-     * Voir le profil public d'un autre utilisateur (sans données sensibles).
-     */
+    // Voir le profil public d'un utilisateur
     async getProfilPublic(userId: string) {
         const utilisateur = await this.prisma.user.findUnique({
             where: { id: userId },

@@ -2,20 +2,22 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NiveauTier } from '@prisma/client';
 
+// Service pour gérer les notifications
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
+  // Envoyer une notification pour un Food Rescue aux utilisateurs prioritaires
   async notifyFoodRescuePriority(annonceId: string, titre: string, ville?: string) {
-    // 1. Chercher les profils prioritaires (OR et LEGENDE) DANS LA MÊME VILLE
+    // Chercher les profils prioritaires (OR et LEGENDE) dans la même ville
     const priorityUsers = await this.prisma.profil.findMany({
       where: {
         palier: {
           in: [NiveauTier.OR, NiveauTier.LEGENDE],
         },
-        // --- NOUVEAUTÉ : FILTRE PAR VILLE SI DISPONIBLE ---
+        // Filtrer par ville si disponible
         ...(ville ? { ville: { equals: ville, mode: 'insensitive' } } : {}),
       },
       select: {
@@ -26,8 +28,8 @@ export class NotificationService {
       }
     });
 
+    // Créer les notifications en base
     if (priorityUsers.length > 0) {
-        // --- NOUVEAUTÉ : PERSISTANCE EN BASE ---
         await this.prisma.notification.createMany({
             data: priorityUsers.map(p => ({
                 utilisateurId: p.utilisateurId,
@@ -37,16 +39,13 @@ export class NotificationService {
         });
 
         this.logger.log(`🚨 FOOD RESCUE ALERTE LOCALE [${ville || '??'}] : Annonce [${titre}]`);
-        this.logger.log(`📢 Diffusion et ENREGISTREMENT pour ${priorityUsers.length} VIP à proximité.`);
+        this.logger.log(`📢 Diffusion pour ${priorityUsers.length} VIP à proximité.`);
     }
 
     return priorityUsers.length;
   }
 
-  /**
-   * Créer une notification simple en base de données.
-   * Utilisation : notify('user_id', 'Titre', 'Message')
-   */
+  // Créer une notification simple
   async create(utilisateurId: string, titre: string, message: string) {
     try {
       return await this.prisma.notification.create({

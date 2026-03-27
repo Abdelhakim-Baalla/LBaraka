@@ -2,23 +2,25 @@ import { Injectable, NotFoundException, InternalServerErrorException } from '@ne
 import { PrismaService } from '../prisma/prisma.service';
 import { RoleUtilisateur } from '@prisma/client';
 
+// Service pour les fonctions admin
 @Injectable()
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Récupérer les statistiques générales
   async getStats() {
-    // 1. Nombre total d'utilisateurs
+    // Compter les utilisateurs
     const totalUsers = await this.prisma.user.count();
 
-    // 2. Nombre total de points relais
+    // Compter les points relais
     const totalPointsRelais = await this.prisma.pointRelais.count();
 
-    // 3. Transactions Terminées (Impact Réel)
+    // Compter les transactions terminées
     const transactionsTerminees = await this.prisma.transaction.count({
       where: { statut: 'TERMINEE' },
     });
 
-    // 4. Nourriture sauvée (en tranches de 1kg par don alimentaire)
+    // Compter les Food Rescue
     const foodRescueCount = await this.prisma.transaction.count({
       where: {
         statut: 'TERMINEE',
@@ -26,13 +28,13 @@ export class AdminService {
       },
     });
 
-    // On estime que chaque "sauvetage" pèse environ 2kg de nourriture
+    // Calculer la nourriture sauvée en kg
     const tonsFoodSaved = (foodRescueCount * 2) / 1000;
 
-    // 5. Impact CO2 (0.5kg CO2 par transaction d'économie circulaire)
+    // Calculer l'impact CO2
     const co2PreventedKg = transactionsTerminees * 0.5;
 
-    // 6. Impact Économique (Somme des cautions bloquées x0.1 pour estimation service)
+    // Récupérer les stats du portefeuille
     const walletStats = await this.prisma.portefeuille.aggregate({
         _sum: {
             soldeReel: true,
@@ -40,7 +42,7 @@ export class AdminService {
         }
     });
 
-    // 7. Dernières transactions pour le flux d'activité
+    // Récupérer les dernières transactions
     const lastTransactions = await this.prisma.transaction.findMany({
         take: 5,
         orderBy: { dateDebut: 'desc' },
@@ -123,6 +125,7 @@ export class AdminService {
     }
   }
 
+  // Modifier le rôle d'un utilisateur
   async updateUserRole(id: string, role: RoleUtilisateur) {
     try {
       const user = await this.prisma.user.findUnique({ where: { id } });
@@ -139,6 +142,7 @@ export class AdminService {
     }
   }
 
+  // Bloquer ou débloquer un utilisateur
   async updateUserStatus(id: string, isBlocked: boolean) {
     try {
       const user = await this.prisma.user.findUnique({ where: { id } });
