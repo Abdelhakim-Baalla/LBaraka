@@ -1,6 +1,7 @@
 import { IsString, IsNotEmpty, IsEnum, IsInt, IsArray, IsOptional, Min } from 'class-validator';
 import { TypeRelais } from '@prisma/client';
 
+// DTO pour créer un point relais
 export class CreatePointRelaisDto {
   @IsString()
   @IsNotEmpty()

@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsNumber, IsArray } from 'class-validator';
 
+// DTO pour modifier une annonce
 export class UpdateAnnonceDto {
     @IsOptional()
     @IsString()

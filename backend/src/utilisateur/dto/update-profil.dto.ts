@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsDateString } from 'class-validator';
 
+// DTO pour modifier le profil
 export class UpdateProfilDto {
     @IsOptional()
     @IsString()
