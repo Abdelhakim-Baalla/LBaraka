@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ContratService } from './contrat.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -15,5 +16,25 @@ export class ContratController {
   @Get('transaction/:id')
   async getByTransaction(@Param('id') transactionId: string) {
     return this.contratService.getContratByTransaction(transactionId);
+  }
+
+  /**
+   * TÉLÉCHARGER LE PDF DU CONTRAT DIRECTEMENT
+   * GET /contrats/:transactionId/pdf
+   */
+  @Get(':transactionId/pdf')
+  async downloadPdf(
+    @Param('transactionId') transactionId: string,
+    @Res() res: Response,
+  ) {
+    const { buffer, fileName } = await this.contratService.getContratPdfBuffer(transactionId);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Length': buffer.length,
+    });
+
+    res.end(buffer);
   }
 }

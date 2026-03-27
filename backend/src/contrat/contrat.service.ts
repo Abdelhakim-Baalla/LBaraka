@@ -138,4 +138,33 @@ export class ContratService {
     if (!contrat) throw new NotFoundException('Contrat introuvable pour cette transaction');
     return contrat;
   }
+
+  /**
+   * Récupérer le buffer du PDF pour le téléchargement direct.
+   * Si le contrat n'existe pas, on le génère à la volée.
+   */
+  async getContratPdfBuffer(transactionId: string): Promise<{ buffer: Buffer; fileName: string }> {
+    let contrat = await this.prisma.contrat.findUnique({
+      where: { transactionId },
+    });
+
+    if (!contrat || !contrat.urlPdfBilingue) {
+      contrat = await this.generateContrat(transactionId);
+    }
+
+    if (!contrat) {
+      throw new InternalServerErrorException('Échec de la génération du contrat');
+    }
+
+    // Extraire le nom du fichier depuis l'URL (ex: contrat-xxx.pdf)
+    const url = contrat.urlPdfBilingue;
+    const fileName = url.split('/').pop() || `contrat-${transactionId}.pdf`;
+
+    try {
+      const buffer = await this.storageService.getFileBuffer(url);
+      return { buffer, fileName };
+    } catch (error) {
+      throw new InternalServerErrorException('Erreur lors de la récupération du fichier PDF');
+    }
+  }
 }

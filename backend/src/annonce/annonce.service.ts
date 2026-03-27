@@ -1,4 +1,5 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { CategorieAnnonce, Prisma, RoleUtilisateur } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnnonceDto } from './dto/create-annonce.dto';
@@ -10,12 +11,44 @@ import { UtilisateurService } from '../utilisateur/utilisateur.service';
 
 @Injectable()
 export class AnnonceService {
+    private readonly logger = new Logger(AnnonceService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly storageService: StorageService,
         private readonly notificationService: NotificationService,
         private readonly utilisateurService: UtilisateurService,
     ) { }
+
+    /**
+     * Tâche planifiée : Expire les annonces toutes les 15 minutes (ex: Food Rescue).
+     */
+    @Cron('0 */15 * * * *')
+    async handleCron() {
+        this.logger.debug('Vérification des annonces expirées...');
+        
+        try {
+            const now = new Date();
+            const result = await this.prisma.annonce.updateMany({
+                where: {
+                    statut: 'DISPONIBLE',
+                    dateExpiration: {
+                        not: null,
+                        lt: now,
+                    },
+                },
+                data: {
+                    statut: 'EXPIREE',
+                },
+            });
+
+            if (result.count > 0) {
+                this.logger.log(`${result.count} annonces marquées comme expirées.`);
+            }
+        } catch (error) {
+            this.logger.error('Erreur lors de l’expiration automatique des annonces', error);
+        }
+    }
 
     /**
      * Créer une annonce standard (Don, Prêt, Location).

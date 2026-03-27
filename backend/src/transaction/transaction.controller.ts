@@ -56,4 +56,10 @@ export class TransactionController {
     const user = req.user as { userId: string };
     return this.transactionService.signalerDegradation(user.userId, transactionId);
   }
+
+  @Post(':id/annuler')
+  async annuler(@Req() req: Request, @Param('id') transactionId: string) {
+    const user = req.user as { userId: string };
+    return this.transactionService.annuler(user.userId, transactionId);
+  }
 }

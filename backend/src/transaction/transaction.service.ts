@@ -342,4 +342,74 @@ export class TransactionService {
       throw new InternalServerErrorException('Erreur lors du signalement de la dégradation');
     }
   }
+
+  /**
+   * ANNULER une réservation.
+   * L'emprunteur peut annuler tant que le statut est EN_ATTENTE_RECEPTION.
+   * La caution bloquée est débloquée automatiquement.
+   */
+  async annuler(userId: string, transactionId: string) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const transaction = await tx.transaction.findUnique({
+          where: { id: transactionId },
+          include: { annonce: true },
+        });
+
+        if (!transaction) {
+          throw new NotFoundException('Transaction introuvable');
+        }
+
+        // Seul l'emprunteur peut annuler
+        if (transaction.emprunteurId !== userId) {
+          throw new BadRequestException('Seul l\'emprunteur peut annuler cette réservation');
+        }
+
+        // On ne peut annuler que si EN_ATTENTE_RECEPTION
+        if (transaction.statut !== 'EN_ATTENTE_RECEPTION') {
+          throw new BadRequestException(
+            'Impossible d\'annuler : la transaction est déjà en cours ou terminée'
+          );
+        }
+
+        // Débloquer la caution
+        const montantCaution = Number(transaction.montantCautionBloquee || 0);
+        if (montantCaution > 0) {
+          await this.walletService.deblocage(userId, montantCaution, tx);
+        }
+
+        // Mettre à jour la transaction
+        const updated = await tx.transaction.update({
+          where: { id: transactionId },
+          data: {
+            statut: 'ANNULEE',
+            dateFinReelle: new Date(),
+          },
+        });
+
+        // Remettre l'annonce en disponible
+        await tx.annonce.update({
+          where: { id: transaction.annonceId },
+          data: { statut: 'DISPONIBLE' },
+        });
+
+        // Notification au prêteur
+        await this.notificationService.create(
+          transaction.preteurId,
+          '❌ Réservation annulée',
+          `La réservation de votre objet "${transaction.annonce.titre}" a été annulée par l'emprunteur.`
+        );
+
+        return {
+          transaction: updated,
+          message: 'Réservation annulée. Votre caution a été débloquée.',
+        };
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Erreur lors de l\'annulation');
+    }
+  }
 }

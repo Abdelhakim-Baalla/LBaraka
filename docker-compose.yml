@@ -1,7 +1,9 @@
+version: '3.8'
 
 services:
+  # Base de données PostgreSQL (Utilisateurs, Annonces, Transactions, Wallet)
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: lbaraka_postgres
     restart: unless-stopped
     ports:
@@ -13,8 +15,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # Base de données MongoDB (Chat messages)
   mongo:
-    image: mongo:4.4
+    image: mongo:5.0
     container_name: lbaraka_mongo
     restart: unless-stopped
     ports:
@@ -22,6 +25,7 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  # Interface pour MongoDB
   mongo-express:
     image: mongo-express
     container_name: lbaraka_mongo_express
@@ -31,10 +35,18 @@ services:
     environment:
       ME_CONFIG_MONGODB_SERVER: mongo
       ME_CONFIG_MONGODB_PORT: 27017
-      ME_CONFIG_OPTIONS_EDITORTHEME: "ambiance"
     depends_on:
       - mongo
 
+  # Cache Redis (Requirements)
+  redis:
+    image: redis:7-alpine
+    container_name: lbaraka_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  # Stockage MinIO (S3 Compatible pour Photos et Contrats PDF)
   minio:
     image: minio/minio:latest
     container_name: lbaraka_minio
@@ -49,6 +61,33 @@ services:
     volumes:
       - minio_data:/data
 
+  # Backend NestJS (Hot Reload)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lbaraka_backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:lbaraka@postgres:5432/lbaraka?schema=public
+      - MONGODB_URL=mongodb://mongo:27017/lbaraka
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=lbaraka
+      - MINIO_SECRET_KEY=lbaraka123
+      - MINIO_BUCKET=lbaraka-annonces
+      - MINIO_PUBLIC_URL=http://localhost:9000
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - mongo
+      - redis
+      - minio
 
 volumes:
   postgres_data:
