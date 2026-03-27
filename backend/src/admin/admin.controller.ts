@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, Query, Param, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Put, Body, Query, Param, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -7,23 +7,20 @@ import { RoleUtilisateur } from '@prisma/client';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 
+// Routes pour les administrateurs
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RoleUtilisateur.ADMINISTRATEUR)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  /**
-   * RÉCUPÉRER TOUTES LES STATISTIQUES (RÉSERVÉ AUX ADMINS)
-   */
+  // Récupérer les statistiques globales
   @Get('stats')
   async getStats() {
     return this.adminService.getStats();
   }
 
-  /**
-   * LISTE DES UTILISATEURS AVEC PAGINATION ET RECHERCHE
-   */
+  // Récupérer la liste des utilisateurs
   @Get('users')
   async getUsers(
     @Query('page') page?: string,
@@ -35,9 +32,7 @@ export class AdminController {
     return this.adminService.getAllUsers(pageNum, limitNum, search);
   }
 
-  /**
-   * MODIFIER LE RÔLE D'UN UTILISATEUR
-   */
+  // Modifier le rôle d'un utilisateur
   @Put('users/:id/role')
   async updateRole(
     @Param('id') id: string,
@@ -46,9 +41,7 @@ export class AdminController {
     return this.adminService.updateUserRole(id, dto.role);
   }
 
-  /**
-   * BLOQUER / DÉBLOQUER UN UTILISATEUR
-   */
+  // Bloquer ou débloquer un utilisateur
   @Put('users/:id/status')
   async updateStatus(
     @Param('id') id: string,

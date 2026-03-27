@@ -20,16 +20,19 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
+// Routes pour les annonces
 @Controller('annonces')
 export class AnnonceController {
     constructor(private readonly annonceService: AnnonceService) { }
 
+    // Récupérer toutes les annonces
     @Get()
     @UseGuards(JwtAuthGuard)
     async findAll(@Query('categorie') categorie?: CategorieAnnonce) {
         return this.annonceService.findAll(categorie);
     }
 
+    // Récupérer les annonces proches sur une carte
     @Get('carte')
     @UseGuards(JwtAuthGuard)
     async findNearby(
@@ -47,15 +50,14 @@ export class AnnonceController {
         return this.annonceService.findNearby(latNum, lngNum, rayonKm, categorie);
     }
 
+    // Récupérer les Food Rescue actifs
     @Get('food-rescue')
     @UseGuards(JwtAuthGuard)
     async findFoodRescue() {
         return this.annonceService.findFoodRescue();
     }
 
-    /**
-     * GET /annonces/mes-annonces — Mes annonces
-     */
+    // Récupérer mes propres annonces
     @Get('mes-annonces')
     @UseGuards(JwtAuthGuard)
     async findMyAnnonces(@Req() req: Request) {
@@ -63,19 +65,14 @@ export class AnnonceController {
         return this.annonceService.findMyAnnonces(user.userId);
     }
 
-    /**
-     * GET /annonces/:id — Détail d'une annonce
-     */
+    // Récupérer une annonce par son ID
     @Get(':id')
     @UseGuards(JwtAuthGuard)
     async findOne(@Param('id') id: string) {
         return this.annonceService.findById(id);
     }
 
-    /**
-     * Route pour créer une annonce Food Rescue.
-     * SEULS les PARTENAIRES peuvent créer ce type d'annonce.
-     */
+    // Créer une annonce Food Rescue (réservé aux partenaires)
     @Post('food-rescue')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('PARTENAIRE')
@@ -87,6 +84,7 @@ export class AnnonceController {
         return this.annonceService.createFoodRescue(user.userId, user.role, dto);
     }
 
+    // Créer une nouvelle annonce
     @Post()
     @UseGuards(JwtAuthGuard)
     async create(
@@ -97,9 +95,7 @@ export class AnnonceController {
         return this.annonceService.create(user.userId, user.role, dto);
     }
 
-    /**
-     * PUT /annonces/:id — Modifier une annonce
-     */
+    // Modifier une annonce
     @Put(':id')
     @UseGuards(JwtAuthGuard)
     async update(
@@ -111,9 +107,7 @@ export class AnnonceController {
         return this.annonceService.update(user.userId, id, dto);
     }
 
-    /**
-     * DELETE /annonces/:id — Supprimer une annonce
-     */
+    // Supprimer une annonce
     @Delete(':id')
     @UseGuards(JwtAuthGuard)
     async remove(

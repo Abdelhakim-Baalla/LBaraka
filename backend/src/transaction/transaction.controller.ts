@@ -3,60 +3,69 @@ import { TransactionService } from './transaction.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Request } from 'express';
 
+// Routes pour les transactions
 @Controller('transactions')
 @UseGuards(JwtAuthGuard)
 export class TransactionController {
   constructor(private readonly transactionService: TransactionService) { }
 
+  // Réserver une annonce
   @Post('reserve/:annonceId')
   async reserve(@Req() req: Request, @Param('annonceId') annonceId: string) {
     const user = req.user as { userId: string };
     return this.transactionService.reserve(user.userId, annonceId);
   }
 
+  // Générer un QR code pour la réception
   @Get(':id/qr-reception')
   async getReceptionQR(@Req() req: Request, @Param('id') transactionId: string) {
     const user = req.user as { userId: string };
     return this.transactionService.generateReceptionQR(user.userId, transactionId);
   }
 
+  // Valider la réception avec le QR code
   @Post(':id/validate-reception')
   async validateReception(@Req() req: Request, @Param('id') transactionId: string, @Body('secret') secret: string) {
     const user = req.user as { userId: string };
     return this.transactionService.validateReceptionQR(user.userId, transactionId, secret);
   }
 
-  // QR Code de RETOUR
+  // Générer un QR code pour le retour
   @Get(':id/qr-retour')
   async getRetourQR(@Req() req: Request, @Param('id') transactionId: string) {
     const user = req.user as { userId: string };
     return this.transactionService.generateRetourQR(user.userId, transactionId);
   }
 
+  // Valider le retour avec le QR code
   @Post(':id/validate-retour')
   async validateRetour(@Req() req: Request, @Param('id') transactionId: string, @Body('secret') secret: string) {
     const user = req.user as { userId: string };
     return this.transactionService.validateRetourQR(user.userId, transactionId, secret);
   }
 
+  // Confirmer le retour de l'objet
   @Post(':id/valider-retour')
   async validerRetour(@Req() req: Request, @Param('id') transactionId: string) {
     const user = req.user as { userId: string };
     return this.transactionService.validerRetour(user.userId, transactionId);
   }
 
+  // Récupérer mes transactions
   @Get('me')
   async getMyTransactions(@Req() req: Request) {
     const user = req.user as { userId: string };
     return this.transactionService.getMyTransactions(user.userId);
   }
 
+  // Signaler une dégradation
   @Post(':id/signaler-degradation')
   async signalerDegradation(@Req() req: Request, @Param('id') transactionId: string) {
     const user = req.user as { userId: string };
     return this.transactionService.signalerDegradation(user.userId, transactionId);
   }
 
+  // Annuler une réservation
   @Post(':id/annuler')
   async annuler(@Req() req: Request, @Param('id') transactionId: string) {
     const user = req.user as { userId: string };

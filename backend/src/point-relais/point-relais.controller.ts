@@ -18,17 +18,20 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleUtilisateur, TypeRelais } from '@prisma/client';
 
+// Routes pour les points relais
 @Controller('points-relais')
 @UseGuards(JwtAuthGuard)
 export class PointRelaisController {
   constructor(private readonly pointRelaisService: PointRelaisService) {}
 
+  // Récupérer tous les points relais
   @Get()
   async findAll() {
     const points = await this.pointRelaisService.findAll();
     return { points };
   }
 
+  // Récupérer les points relais proches
   @Get('nearby')
   async findNearby(
     @Query('lat') lat: string,
@@ -48,18 +51,21 @@ export class PointRelaisController {
     return { points };
   }
 
+  // Récupérer les types de points relais
   @Get('types')
   async getTypes() {
     const types = this.pointRelaisService.getTypes();
     return { types };
   }
 
+  // Récupérer un point relais par ID
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const point = await this.pointRelaisService.findById(id);
     return { point };
   }
 
+  // Créer un nouveau point relais (admin seulement)
   @Post()
   @UseGuards(RolesGuard)
   @Roles(RoleUtilisateur.ADMINISTRATEUR)
@@ -67,6 +73,7 @@ export class PointRelaisController {
     return this.pointRelaisService.create(dto);
   }
 
+  // Modifier un point relais (admin seulement)
   @Put(':id')
   @UseGuards(RolesGuard)
   @Roles(RoleUtilisateur.ADMINISTRATEUR)
@@ -74,6 +81,7 @@ export class PointRelaisController {
     return this.pointRelaisService.update(id, dto);
   }
 
+  // Supprimer un point relais (admin seulement)
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles(RoleUtilisateur.ADMINISTRATEUR)
