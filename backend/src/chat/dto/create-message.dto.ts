@@ -1,5 +1,6 @@
-import { IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsEnum } from 'class-validator';
 
+// DTO pour créer un message
 export class CreateMessageDto {
   @IsNotEmpty()
   receiverId: string;
@@ -11,5 +12,5 @@ export class CreateMessageDto {
   type: string = 'TEXT';
 
   @IsNotEmpty()
-  content: string; // Not required for voice if sent as multipart
+  content: string;
 }

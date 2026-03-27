@@ -1,12 +1,14 @@
-import { Controller, Get, Patch, UseGuards, Req, Param, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Patch, UseGuards, Req, Param, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
+// Routes pour les notifications
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationController {
   constructor(private readonly prisma: PrismaService) { }
 
+  // Récupérer mes notifications
   @Get()
   async getMyNotifications(@Req() req: any) {
     const userId = req.user.userId;
@@ -16,6 +18,7 @@ export class NotificationController {
     });
   }
 
+  // Marquer une notification comme lue
   @Patch(':id/read')
   async markAsRead(@Req() req: any, @Param('id') notificationId: string) {
     const userId = req.user.userId;
@@ -32,18 +35,16 @@ export class NotificationController {
       throw new NotFoundException('Notification non trouvée');
     }
 
-    // Marquer comme lue
     return this.prisma.notification.update({
       where: { id: notificationId },
       data: { lu: true }
     });
   }
 
+  // Marquer toutes les notifications comme lues
   @Patch('read-all')
   async markAllAsRead(@Req() req: any) {
     const userId = req.user.userId;
-
-    // Marquer toutes les notifications non lues comme lues
     return this.prisma.notification.updateMany({
       where: {
         utilisateurId: userId,
@@ -53,6 +54,7 @@ export class NotificationController {
     });
   }
 
+  // Récupérer le nombre de notifications non lues
   @Get('count')
   async getUnreadCount(@Req() req: any) {
     const userId = req.user.userId;

@@ -107,6 +107,7 @@ model User {
   mouvementsWallet  MouvementWallet[]
   transactionsPret  Transaction[]     @relation("TransactionPreteur")
   transactionsEmpr  Transaction[]     @relation("TransactionEmprunteur")
+  isBlocked         Boolean           @default(false) @map("is_blocked")
   notifications     Notification[]
 
   @@map("utilisateurs")
