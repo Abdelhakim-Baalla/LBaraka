@@ -15,10 +15,12 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
+// Constantes pour la validation GPS
 const BLOCKED_DEFAULT_LAT = 33.5731;
 const BLOCKED_DEFAULT_LNG = -7.5898;
 const EPSILON = 0.000001;
 
+// Validateur pour vérifier que c'est une position GPS valide
 function IsValidGeoPoint(validationOptions?: ValidationOptions) {
     return function (object: object, propertyName: string) {
         registerDecorator({
@@ -59,6 +61,7 @@ function IsValidGeoPoint(validationOptions?: ValidationOptions) {
     };
 }
 
+// DTO pour créer une annonce
 export class CreateAnnonceDto {
     @IsString()
     @IsNotEmpty()
@@ -95,6 +98,7 @@ export class CreateAnnonceDto {
     @IsOptional()
     expirationDate?: string;
 
+    // Transformer les coordonnées GPS
     @Transform(({ value }) => {
         if (Array.isArray(value)) {
             return value.map((entry) => Number(entry));
@@ -119,9 +123,9 @@ export class CreateAnnonceDto {
     @IsValidGeoPoint()
     geolocalisation: number[];
 
+    // Liste des 3 photos en Base64
     @IsArray()
     @ArrayMinSize(3, { message: 'Vous devez inclure exactement 3 photos' })
     @ArrayMaxSize(3, { message: 'Vous devez inclure exactement 3 photos' })
     photosBase64: Array<{ name: string; type: string; base64: string }>;
 }
-

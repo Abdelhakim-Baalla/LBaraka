@@ -5,6 +5,7 @@ import { Message, MessageDocument } from './entities/message.schema';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { StorageService } from '../storage/storage.service';
 
+// Service pour gérer le chat
 @Injectable()
 export class ChatService {
   constructor(
@@ -12,11 +13,9 @@ export class ChatService {
     private storageService: StorageService,
   ) {}
 
+  // Envoyer un message texte
   async create(senderId: string, createMessageDto: CreateMessageDto) {
     try {
-      console.log('SENDER ID reçu par Service:', senderId);
-      console.log('DTO reçu par Service:', JSON.stringify(createMessageDto));
-      
       const newMessage = new this.messageModel({
         ...createMessageDto,
         senderId,
@@ -28,13 +27,14 @@ export class ChatService {
     }
   }
 
+  // Envoyer un message vocal
   async sendVoiceMessage(senderId: string, receiverId: string, annonceId: string, audioBuffer: Buffer) {
     try {
-      // 1. Upload vocal sur MinIO
+      // Upload le fichier audio sur MinIO
       const fileName = `voice-${senderId}-${Date.now()}.m4a`;
       const urlVocal = await this.storageService.uploadBuffer(audioBuffer, fileName, 'audio/m4a');
 
-      // 2. Enregistrer le message dans Mongo
+      // Enregistrer le message dans MongoDB
       const newMessage = new this.messageModel({
         senderId,
         receiverId,
@@ -49,6 +49,7 @@ export class ChatService {
     }
   }
 
+  // Récupérer les messages d'une conversation
   async findConversation(userId: string, otherId: string, annonceId: string) {
     return this.messageModel
       .find({
@@ -62,8 +63,8 @@ export class ChatService {
       .exec();
   }
 
+  // Récupérer toutes les conversations de l'utilisateur
   async getMyConversations(userId: string) {
-    // Liste simplifiée : on récupère les derniers messages groupés par annonce et destinataire
     return this.messageModel.aggregate([
       { $match: { $or: [{ senderId: userId }, { receiverId: userId }] } },
       { $sort: { createdAt: -1 } },

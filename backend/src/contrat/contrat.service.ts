@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as html_to_pdf from 'html-pdf-node';
 import * as crypto from 'crypto';
 
+// Service pour gérer les contrats PDF
 @Injectable()
 export class ContratService {
   constructor(
@@ -15,10 +16,12 @@ export class ContratService {
     private readonly storageService: StorageService,
   ) {}
 
+  // Générer un hash pour sécuriser le contrat
   private generateHash(data: any): string {
     return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex').toUpperCase();
   }
 
+  // Convertir une image en Base64
   private async getBase64Image(url: string): Promise<string> {
     try {
       const buffer = await this.storageService.getFileBuffer(url);
@@ -32,6 +35,7 @@ export class ContratService {
     }
   }
 
+  // Générer un contrat PDF pour une transaction
   async generateContrat(transactionId: string): Promise<any> {
     try {
       const transaction = await this.prisma.transaction.findUnique({
@@ -45,7 +49,7 @@ export class ContratService {
 
       if (!transaction) throw new NotFoundException('Transaction introuvable');
 
-      // Transformation et Fallback Dynamique (On lit la base de données)
+      // Préparer les photos de l'annonce
       const photosRaw = transaction.annonce.photos || [];
       const defaultImage = "http://localhost:9000/lbaraka-annonces/annonces/1773757925920-722706832-photo_1773757912301.jpg";
       
@@ -57,12 +61,12 @@ export class ContratService {
         })
       );
 
-      // 1. Lire le template
+      // Lire le template Handlebars
       const templatePath = path.join(process.cwd(), 'src', 'contrat', 'templates', 'contrat-bilingue.hbs');
       const templateSource = fs.readFileSync(templatePath, 'utf8');
       const template = handlebars.compile(templateSource);
 
-      // 2. Préparer les données (avec Hash pour force probante Loi 53-05)
+      // Préparer les données pour le template
       const dataHash = this.generateHash({
         id: transaction.id,
         date: new Date(),
@@ -81,10 +85,10 @@ export class ContratService {
         timestamp: new Date().toLocaleString('fr-FR', { timeZone: 'Africa/Casablanca' }),
       };
 
-      // 3. Générer le HTML
+      // Générer le HTML à partir du template
       const html = template(data);
 
-      // 4. Convertir en PDF
+      // Convertir en PDF
       const options = { 
         format: 'A4', 
         printBackground: true,
@@ -102,11 +106,11 @@ export class ContratService {
         });
       });
 
-      // 5. Uploader sur MinIO
+      // Uploader le PDF sur le storage
       const fileName = `contrat-${transactionId}.pdf`;
       const urlPdf = await this.storageService.uploadBuffer(pdfBuffer, fileName, 'application/pdf');
 
-      // 6. Sauvegarder ou Mettre à jour en base (Upsert)
+      // Sauvegarder en base (ou mettre à jour si existe déjà)
       const contrat = await this.prisma.contrat.upsert({
         where: { transactionId: transaction.id },
         update: {
@@ -131,11 +135,39 @@ export class ContratService {
     }
   }
 
+  // Récupérer un contrat par transaction
   async getContratByTransaction(transactionId: string) {
     const contrat = await this.prisma.contrat.findUnique({
       where: { transactionId },
     });
     if (!contrat) throw new NotFoundException('Contrat introuvable pour cette transaction');
     return contrat;
+  }
+
+  // Récupérer le PDF du contrat pour téléchargement
+  async getContratPdfBuffer(transactionId: string): Promise<{ buffer: Buffer; fileName: string }> {
+    let contrat = await this.prisma.contrat.findUnique({
+      where: { transactionId },
+    });
+
+    // Générer le contrat si n'existe pas
+    if (!contrat || !contrat.urlPdfBilingue) {
+      contrat = await this.generateContrat(transactionId);
+    }
+
+    if (!contrat) {
+      throw new InternalServerErrorException('Échec de la génération du contrat');
+    }
+
+    // Extraire le nom du fichier depuis l'URL
+    const url = contrat.urlPdfBilingue;
+    const fileName = url.split('/').pop() || `contrat-${transactionId}.pdf`;
+
+    try {
+      const buffer = await this.storageService.getFileBuffer(url);
+      return { buffer, fileName };
+    } catch (error) {
+      throw new InternalServerErrorException('Erreur lors de la récupération du fichier PDF');
+    }
   }
 }
