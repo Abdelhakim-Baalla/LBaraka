@@ -150,44 +150,50 @@ export class UtilisateurService {
         );
     }
 
+    // Calculer le palier selon le score (Seuils CDC)
+    private calculatePalier(score: number): 'BRONZE' | 'ARGENT' | 'OR' | 'LEGENDE' {
+        if (score >= 10000) return 'LEGENDE';
+        if (score >= 2001) return 'OR';
+        if (score >= 501) return 'ARGENT';
+        return 'BRONZE';
+    }
+
     // Mettre à jour le score de l'utilisateur
     async updateScore(userId: string, points: number, tx?: any) {
         const prisma = tx || this.prisma;
-        
-        // Mettre à jour le score
-        const updatedProfil = await prisma.profil.update({
-            where: { utilisateurId: userId },
-            data: {
-                lBarakaScore: { increment: points }
+
+        try {
+            // Récupérer le profil actuel
+            const profil = await prisma.profil.findUnique({
+                where: { utilisateurId: userId },
+                select: { lBarakaScore: true, palier: true }
+            });
+
+            if (!profil) {
+                // Si on est dans une transaction et que le profil n'existe pas encore (rare), on l'ignore ou log
+                return;
             }
-        });
 
-        // Empêcher le score négatif
-        let finalScore = updatedProfil.lBarakaScore;
-        if (finalScore < 0) {
-            finalScore = 0;
+            // Calculer le nouveau score (minimum 0)
+            const newScore = Math.max(0, profil.lBarakaScore + points);
+            const newPalier = this.calculatePalier(newScore);
+
+            // Mise à jour du profil
             await prisma.profil.update({
                 where: { utilisateurId: userId },
-                data: { lBarakaScore: 0 }
+                data: {
+                    lBarakaScore: newScore,
+                    palier: newPalier,
+                }
             });
-        }
-        
-        // Mettre à jour le palier selon le score
-        let nouveauPalier: 'BRONZE' | 'ARGENT' | 'OR' | 'LEGENDE' = 'BRONZE';
-        if (finalScore >= 2000) nouveauPalier = 'LEGENDE';
-        else if (finalScore >= 1000) nouveauPalier = 'OR';
-        else if (finalScore >= 500) nouveauPalier = 'ARGENT';
 
-        // Sauvegarder le nouveau palier si changé
-        if (updatedProfil.palier !== nouveauPalier) {
-            await prisma.profil.update({
-                where: { utilisateurId: userId },
-                data: { palier: nouveauPalier }
-            });
+            // Vérifier et attribuer les badges
+            await this.checkAndAwardBadges(userId, prisma);
+        } catch (error) {
+            // On ne bloque pas tout si c'est juste un score (sauf si on est en transaction critique)
+            console.error('Erreur mise à jour score:', error);
+            if (tx) throw error; // Relancer si on est dans une transaction pour rollback
         }
-
-        // Vérifier les badges
-        await this.checkAndAwardBadges(userId, prisma);
     }
 
     // Vérifier et attribuer les badges

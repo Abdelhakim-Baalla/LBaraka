@@ -203,6 +203,8 @@ model Transaction {
   preteurId              String            @map("preteur_id")
   qrCodeReception        String?           @map("qr_code_reception")
   qrCodeRetour           String?           @map("qr_code_retour")
+  qrCodeToken            String?           @map("qr_code_token")
+  isQrUsed               Boolean           @default(false) @map("is_qr_used")
   statut                 StatutTransaction @default(EN_ATTENTE_RECEPTION)
   dateDebut              DateTime?         @map("date_debut")
   dateFinPrevue          DateTime?         @map("date_fin_prevue")
