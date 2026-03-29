@@ -1,5 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css";
  
 @import "nativewind/theme";
+
+@theme {
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "SF Mono", monospace;
+  --font-outfit: "Outfit", sans-serif;
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+}
