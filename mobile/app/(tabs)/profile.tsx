@@ -75,7 +75,7 @@ export default function ProfileScreen() {
               <Text className="text-xl font-bold text-primary mb-1">
                 {user.profil?.nom || user.profil?.prenom 
                   ? `${user.profil?.prenom || ''} ${user.profil?.nom || ''}`.trim()
-                  : 'Utilisateur'}
+                  : 'Nom et prénom non renseignés'}
               </Text>
               <Text className="text-sm text-on-surface-variant">{user.email}</Text>
             </View>
