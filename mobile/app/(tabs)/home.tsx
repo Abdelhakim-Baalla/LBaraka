@@ -9,6 +9,9 @@ export default function HomeScreen() {
       <Text>Home</Text>
       <Link href="/(annonces)/create">Create Annonce</Link>
       <Link href="/(annonces)/123">View Annonce Details</Link>
+
+      <Link href="/(auth)/sign-in">Sign In</Link>
+      <Link href="/(auth)/sign-up">Sign Up</Link>
     </View>
   );
 }
