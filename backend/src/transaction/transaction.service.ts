@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
 import { ContratService } from '../contrat/contrat.service';
@@ -17,6 +18,7 @@ export class TransactionService {
     private readonly contratService: ContratService,
     private readonly utilisateurService: UtilisateurService,
     private readonly notificationService: NotificationService,
+    private readonly jwtService: JwtService,
   ) { }
 
   // Réserver une annonce
@@ -101,51 +103,125 @@ export class TransactionService {
     }
   }
 
-  // Générer un QR code pour la réception
+  // Générer un QR code sécurisé pour la réception avec JWT
   async generateReceptionQR(userId: string, transactionId: string): Promise<string> {
+    // Récupérer la transaction depuis la base
     const transaction = await this.prisma.transaction.findUnique({
       where: { id: transactionId },
     });
 
-    if (!transaction) throw new NotFoundException('Transaction introuvable');
-    if (transaction.emprunteurId !== userId) throw new UnauthorizedException('Seul l\'emprunteur peut générer son QR Code de réception');
+    // Vérifier que la transaction existe
+    if (!transaction) {
+      throw new NotFoundException('Transaction introuvable');
+    }
 
-    const secret = crypto.randomBytes(16).toString('hex');
+    // Vérifier que l'utilisateur est bien l'emprunteur
+    if (transaction.emprunteurId !== userId) {
+      throw new UnauthorizedException('Seul l\'emprunteur peut générer le QR Code de réception');
+    }
 
-    await this.prisma.transaction.update({
-      where: { id: transactionId },
-      data: { qrCodeReception: secret },
+    // Vérifier que le QR n'a pas déjà été utilisé
+    if (transaction.isQrUsed) {
+      throw new BadRequestException('Ce QR Code a déjà été utilisé');
+    }
+
+    // Générer un payload JWT contenant transactionId, userId et le type QR_RECEPTION
+    const payload = {
+      transactionId,
+      userId,
+      type: 'QR_RECEPTION',
+      exp: Math.floor(Date.now() / 1000) + (15 * 60), // 15 minutes d'expiration
+    };
+
+    // Signe ce payload avec le secret QR_JWT_SECRET
+    const token = this.jwtService.sign(payload, {
+      secret: process.env.QR_JWT_SECRET || 'lbaraka_qr_super_secret_2026',
     });
 
-    return QRCode.toDataURL(JSON.stringify({ transactionId, secret }));
+    // Sauvegarder le token en base de données avec isQrUsed à false
+    await this.prisma.transaction.update({
+      where: { id: transactionId },
+      data: {
+        qrCodeToken: token,
+        isQrUsed: false,
+      },
+    });
+
+    // Retourner le QR code encodé en base64
+    return QRCode.toDataURL(token);
   }
 
-  // Valider le QR code de réception
-  async validateReceptionQR(userId: string, transactionId: string, secret: string) {
+  // Valider le QR code de réception sécurisé avec JWT
+  async validateReceptionQR(userId: string, transactionId: string, token: string) {
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const transaction = await tx.transaction.findUnique({
-          where: { id: transactionId },
-        });
+      // Vérifier et décoder le token JWT avec le secret QR_JWT_SECRET
+      const decoded = this.jwtService.verify(token, {
+        secret: process.env.QR_JWT_SECRET || 'lbaraka_qr_super_secret_2026',
+      });
 
-        if (!transaction) throw new NotFoundException('Transaction introuvable');
-        if (transaction.preteurId !== userId) throw new UnauthorizedException('Seul le prêteur peut scanner ce code pour valider la remise');
-        if (transaction.qrCodeReception !== secret) throw new BadRequestException('Code QR invalide ou l\'emprunteur n\'est pas celui attendu');
-        if (transaction.statut !== 'EN_ATTENTE_RECEPTION') throw new BadRequestException('Transaction déjà en cours ou terminée');
+      // Récupérer le transactionId du payload
+      if (decoded.transactionId !== transactionId) {
+        throw new BadRequestException('Token QR invalide pour cette transaction');
+      }
 
-        const updated = await tx.transaction.update({
+      // Charger la transaction correspondante depuis la base
+      const transaction = await this.prisma.transaction.findUnique({
+        where: { id: transactionId },
+      });
+
+      if (!transaction) {
+        throw new NotFoundException('Transaction introuvable');
+      }
+
+      // Vérifier que le QR n'a pas déjà été utilisé en consultant le champ isQrUsed
+      if (transaction.isQrUsed) {
+        throw new BadRequestException('Ce QR Code a déjà été utilisé');
+      }
+
+      // Vérifier que c'est bien le prêteur qui scanne le QR en comparant scannerId avec preteurId
+      if (userId !== transaction.preteurId) {
+        throw new UnauthorizedException('Seul le prêteur peut scanner ce QR Code');
+      }
+
+      // Utiliser une transaction Prisma pour:
+      // - Marquer le QR comme utilisé
+      // - Changer le statut de la transaction à EN_COURS
+      // - Ajouter 100 points au score de l'emprunteur via utilisateurService
+      const updated = await this.prisma.$transaction(async (tx) => {
+        // Marquer le QR comme utilisé
+        await tx.transaction.update({
           where: { id: transactionId },
           data: {
+            isQrUsed: true,
             statut: 'EN_COURS',
             scannedReception: true,
             dateDebut: new Date(),
           },
         });
 
-        return updated;
+        // Ajouter 100 points au score de l'emprunteur
+        await this.utilisateurService.updateScore(transaction.emprunteurId, 100, tx);
+
+        // Récupérer la transaction mise à jour
+        return tx.transaction.findUnique({
+          where: { id: transactionId },
+        });
       });
-    } catch (error) {
-      if (error instanceof BadRequestException || error instanceof NotFoundException || error instanceof UnauthorizedException) throw error;
+
+      // Retourner un message de confirmation
+      return {
+        message: 'Réception validée avec succès ! L\'emprunteur a reçu 100 points.',
+        transaction: updated,
+      };
+    } catch (error: unknown) {
+      if (error instanceof BadRequestException || error instanceof NotFoundException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+      if (error instanceof Error) {
+        if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+          throw new BadRequestException('QR Code expiré ou invalide');
+        }
+      }
       throw new InternalServerErrorException('Erreur lors de la validation du QR Code');
     }
   }
@@ -213,37 +289,34 @@ export class TransactionService {
         if (currentTx.preteurId !== userId) throw new BadRequestException('Seul le prêteur peut valider le retour');
         if (currentTx.statut === 'TERMINEE') throw new BadRequestException('Cette transaction est déjà terminée');
 
-        // Calculer le retard éventuel
+        // Calcul du malus de retard
+        const maintenant = new Date();
+        const dateFinPrevue = currentTx.dateFinPrevue ? new Date(currentTx.dateFinPrevue) : null;
         let joursRetard = 0;
-        if (currentTx.dateFinPrevue) {
-          const now = new Date();
-          const finPrevue = new Date(currentTx.dateFinPrevue);
-          if (now > finPrevue) {
-            const diffMs = now.getTime() - finPrevue.getTime();
-            joursRetard = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-          }
-        }
 
-        // Gérer la caution avec les pénalités si retard
-        const montantCautionBloquee = Number(currentTx.montantCautionBloquee || 0);
-        if (montantCautionBloquee > 0) {
+        if (dateFinPrevue && maintenant > dateFinPrevue) {
+          const diffMs = maintenant.getTime() - dateFinPrevue.getTime();
+          joursRetard = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
           if (joursRetard > 0) {
-            // Appliquer les pénalités pour retard
-            const penalite = joursRetard * 30;
-            const montantApresPenalite = Math.max(0, montantCautionBloquee - penalite);
-
-            if (montantApresPenalite > 0) {
-              await this.walletService.deblocage(currentTx.emprunteurId, montantApresPenalite, tx);
-            }
-
+            const malusPoints = joursRetard * 30;
+            await this.utilisateurService.updateScore(currentTx.emprunteurId, -malusPoints, tx);
+            
+            // Enregistrer le retard en base
             await tx.transaction.update({
               where: { id: transactionId },
               data: { retard: joursRetard },
             });
-          } else {
-            // Pas de retard, débloquer tout
-            await this.walletService.deblocage(currentTx.emprunteurId, montantCautionBloquee, tx);
           }
+        }
+
+        // +50 points pour retour conforme (score de l'emprunteur)
+        await this.utilisateurService.updateScore(currentTx.emprunteurId, 50, tx);
+
+        // Libérer la caution (toujours débloquer le montant total ici, sauf si litige séparé)
+        const montantCautionBloquee = Number(currentTx.montantCautionBloquee || 0);
+        if (montantCautionBloquee > 0) {
+          await this.walletService.deblocage(currentTx.emprunteurId, montantCautionBloquee, tx);
         }
 
         // Payer le prix symbolique au propriétaire
@@ -326,7 +399,7 @@ export class TransactionService {
         // Mettre la transaction en litige
         const updated = await tx.transaction.update({
           where: { id: transactionId },
-          data: { 
+          data: {
             statut: 'LITIGE_DEGRADATION',
             degats: true
           },
