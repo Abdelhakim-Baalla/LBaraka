@@ -1,138 +1,79 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
-import { useSignUp } from '@clerk/expo';
-import { Link, useRouter, type Href } from 'expo-router';
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function SignUp() {
-  const { signUp, errors, fetchStatus } = useSignUp();
   const router = useRouter();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [telephone, setTelephone] = useState('');
   const [cin, setCin] = useState('');
-  const [code, setCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async () => {
-    const { error } = await signUp.password({
-      emailAddress: email,
-      password,
-    });
-    
-    if (error) {
-      console.error(JSON.stringify(error, null, 2));
+    // Validation
+    if (!email || !password || !telephone) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
       return;
     }
 
-    if (!error) await signUp.verifications.sendEmailCode();
-  };
+    setIsLoading(true);
 
-  const handleVerify = async () => {
-    await signUp.verifications.verifyEmailCode({ code });
-    
-    if (signUp.status === 'complete') {
-      await signUp.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            console.log(session?.currentTask);
-            return;
-          }
-          const url = decorateUrl('/');
-          if (url.startsWith('http')) {
-            // @ts-ignore
-            window.location.href = url;
-          } else {
-            router.push(url as Href);
-          }
+    try {
+      const phoneNumber = telephone.startsWith('0') ? telephone : `0${telephone}`;
+      
+      const requestData = {
+        email: email.trim().toLowerCase(),
+        motDePasse: password,
+        telephone: phoneNumber,
+        cin: cin || undefined,
+      };
+
+      console.log('📤 Sending registration data:', requestData);
+
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(requestData),
       });
-    } else {
-      console.error('Sign-up attempt not complete:', signUp);
+
+      const data = await response.json();
+      console.log('📥 Response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erreur lors de l\'inscription');
+      }
+
+      // Save token
+      await AsyncStorage.setItem('accessToken', data.accessToken);
+      await AsyncStorage.setItem('user', JSON.stringify(data.utilisateur));
+
+      Alert.alert(
+        'Succès',
+        'Inscription réussie! Bienvenue dans la communauté LBaraka',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/(tabs)/home'),
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('❌ Registration error:', error);
+      Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Verification screen
-  if (
-    signUp.status === 'missing_requirements' &&
-    signUp.unverifiedFields.includes('email_address') &&
-    signUp.missingFields.length === 0
-  ) {
-    return (
-      <View className="flex-1 bg-surface">
-        {/* Header */}
-        <View className="bg-white/70 backdrop-blur-xl shadow-lg px-6 h-16 flex-row items-center justify-between">
-          <Pressable 
-            onPress={() => signUp.reset()}
-            className="w-10 h-10 rounded-xl items-center justify-center active:bg-primary-fixed/20"
-          >
-            <Ionicons name="arrow-back" size={24} color="#012d1d" />
-          </Pressable>
-          <Text className="text-xl font-bold tracking-widest text-primary">LBARAKA</Text>
-          <View className="w-10" />
-        </View>
-
-        <ScrollView className="flex-1 px-6 pt-24" showsVerticalScrollIndicator={false}>
-          <View className="mb-10">
-            <Text className="text-4xl font-bold text-primary leading-tight mb-3">
-              Verify your account
-            </Text>
-            <Text className="text-lg text-on-surface-variant/80 leading-relaxed">
-              We've sent a verification code to {email}
-            </Text>
-          </View>
-
-          <View className="space-y-5">
-            <View>
-              <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-                Verification Code
-              </Text>
-              <TextInput
-                className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
-                value={code}
-                placeholder="Enter 6-digit code"
-                placeholderTextColor="#717973"
-                onChangeText={setCode}
-                keyboardType="numeric"
-                maxLength={6}
-              />
-              {errors.fields.code && (
-                <Text className="text-error text-xs mt-2 ml-1">{errors.fields.code.message}</Text>
-              )}
-            </View>
-
-            <Pressable
-              onPress={handleVerify}
-              disabled={fetchStatus === 'fetching' || !code}
-              className={`w-full bg-primary-container rounded-xl py-5 px-6 flex-row items-center justify-between shadow-lg ${
-                (fetchStatus === 'fetching' || !code) ? 'opacity-50' : ''
-              }`}
-            >
-              <Text className="text-white font-bold text-lg tracking-wide">Verify</Text>
-              {fetchStatus === 'fetching' ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Ionicons name="arrow-forward" size={20} color="#ffffff" />
-              )}
-            </Pressable>
-
-            <Pressable
-              onPress={() => signUp.verifications.sendEmailCode()}
-              className="py-4 items-center"
-            >
-              <Text className="text-secondary font-bold text-sm">I need a new code</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-
-        {/* Required for Clerk's bot protection */}
-        <View nativeID="clerk-captcha" />
-      </View>
-    );
-  }
-
-  // Sign-up form
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -166,7 +107,7 @@ export default function SignUp() {
           {/* Email */}
           <View>
             <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Email Address
+              Email Address *
             </Text>
             <TextInput
               className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
@@ -176,17 +117,15 @@ export default function SignUp() {
               placeholderTextColor="#717973"
               onChangeText={setEmail}
               keyboardType="email-address"
+              editable={!isLoading}
             />
-            {errors.fields.emailAddress && (
-              <Text className="text-error text-xs mt-2 ml-1">{errors.fields.emailAddress.message}</Text>
-            )}
           </View>
 
           {/* Phone & CIN */}
           <View className="flex-row gap-4">
             <View className="flex-1">
               <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-                Phone (MAR)
+                Phone (MAR) *
               </Text>
               <View className="flex-row gap-2">
                 <View className="bg-surface-container-high rounded-xl px-3 py-4 items-center justify-center min-w-[64px]">
@@ -199,6 +138,8 @@ export default function SignUp() {
                   placeholderTextColor="#717973"
                   onChangeText={setTelephone}
                   keyboardType="phone-pad"
+                  maxLength={10}
+                  editable={!isLoading}
                 />
               </View>
             </View>
@@ -214,6 +155,7 @@ export default function SignUp() {
                 placeholderTextColor="#717973"
                 onChangeText={setCin}
                 autoCapitalize="characters"
+                editable={!isLoading}
               />
             </View>
           </View>
@@ -221,7 +163,7 @@ export default function SignUp() {
           {/* Password */}
           <View>
             <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Secure Password
+              Secure Password *
             </Text>
             <View className="relative">
               <TextInput
@@ -231,10 +173,12 @@ export default function SignUp() {
                 placeholderTextColor="#717973"
                 secureTextEntry={!showPassword}
                 onChangeText={setPassword}
+                editable={!isLoading}
               />
               <Pressable
                 onPress={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2"
+                disabled={isLoading}
               >
                 <Ionicons 
                   name={showPassword ? "eye-off" : "eye"} 
@@ -243,22 +187,24 @@ export default function SignUp() {
                 />
               </Pressable>
             </View>
-            {errors.fields.password && (
-              <Text className="text-error text-xs mt-2 ml-1">{errors.fields.password.message}</Text>
-            )}
+            <Text className="text-xs text-on-surface-variant/60 mt-2 ml-1">
+              Minimum 8 caractères
+            </Text>
           </View>
         </View>
 
         {/* Submit Button */}
         <Pressable
           onPress={handleSubmit}
-          disabled={!email || !password || fetchStatus === 'fetching'}
+          disabled={!email || !password || !telephone || isLoading}
           className={`w-full bg-primary-container rounded-xl py-5 px-6 flex-row items-center justify-between shadow-lg mt-8 ${
-            (!email || !password || fetchStatus === 'fetching') ? 'opacity-50' : ''
+            (!email || !password || !telephone || isLoading) ? 'opacity-50' : ''
           }`}
         >
-          <Text className="text-white font-bold text-lg tracking-wide">Join the Community</Text>
-          {fetchStatus === 'fetching' ? (
+          <Text className="text-white font-bold text-lg tracking-wide">
+            {isLoading ? 'Inscription...' : 'Join the Community'}
+          </Text>
+          {isLoading ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
             <Ionicons name="arrow-forward" size={20} color="#ffffff" />
@@ -296,9 +242,6 @@ export default function SignUp() {
             </Link>
           </View>
         </View>
-
-        {/* Required for Clerk's bot protection */}
-        <View nativeID="clerk-captcha" />
       </ScrollView>
 
       {/* Decorative Elements */}
