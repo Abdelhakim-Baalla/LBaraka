@@ -7,6 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { ApiService } from '../../services/api';
 
+const MAP_CATEGORIES = ['Toutes', 'POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
+
 export default function MapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -17,6 +19,7 @@ export default function MapScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [annonces, setAnnonces] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('Toutes');
 
   const useCurrentLocation = async () => {
     try {
@@ -57,7 +60,8 @@ export default function MapScreen() {
         return;
       }
 
-      const data = await ApiService.getAnnoncesNearby(token, lat, lng, rayonKm);
+      const categorie = selectedCategory === 'Toutes' ? undefined : selectedCategory;
+      const data = await ApiService.getAnnoncesNearby(token, lat, lng, rayonKm, categorie);
       setAnnonces(data.annonces || []);
     } catch (error) {
       console.error('Nearby annonces error:', error);
@@ -158,6 +162,14 @@ export default function MapScreen() {
             >
               <Text className="text-base font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
               <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={2}>{annonce.description}</Text>
+                  <View className="flex-row flex-wrap gap-2 mt-2">
+                    <View className="bg-primary/10 px-2 py-1 rounded-lg">
+                      <Text className="text-[10px] font-semibold text-primary">{annonce.categorie}</Text>
+                    </View>
+                    <View className="bg-surface-container px-2 py-1 rounded-lg">
+                      <Text className="text-[10px] text-on-surface-variant">{String(annonce.mode || '').replaceAll('_', ' ')}</Text>
+                    </View>
+                  </View>
               <View className="flex-row items-center justify-between mt-3">
                 <Text className="text-xs text-on-surface-variant">Distance: {String(annonce.distance ?? '-')} km</Text>
                 <Ionicons name="chevron-forward" size={18} color="#1B4332" />
@@ -166,6 +178,21 @@ export default function MapScreen() {
           ))
         )}
       </ScrollView>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+            {MAP_CATEGORIES.map((cat) => {
+              const active = selectedCategory === cat;
+              return (
+                <Pressable
+                  key={cat}
+                  onPress={() => setSelectedCategory(cat)}
+                  className={`px-3 py-2 rounded-lg border ${active ? 'bg-primary border-primary' : 'bg-white border-outline-variant'}`}
+                >
+                  <Text className={`${active ? 'text-white' : 'text-on-surface'} text-xs font-bold`}>{cat}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
 
       <Pressable
         onPress={() => router.push('/(points-relais)')}

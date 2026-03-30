@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Pressable, Image, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, Pressable, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../../services/api';
+import SmartAnnonceImage from '../../components/smart-annonce-image';
 
 export default function AnnonceDetailsScreen() {
   const router = useRouter();
@@ -118,11 +119,16 @@ export default function AnnonceDetailsScreen() {
   return (
     <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 24 }}>
-        <Image
-          source={{ uri: annonce.photos?.[0] || 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=70' }}
-          className="w-full h-56 rounded-2xl mb-4"
-          resizeMode="cover"
-        />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 6 }} className="mb-3">
+          {(annonce.photos?.length ? annonce.photos : ['']).map((photo: string, index: number) => (
+            <SmartAnnonceImage
+              key={`${annonce.id}-${index}`}
+              uri={photo}
+              className="w-80 h-56 rounded-2xl overflow-hidden"
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
 
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
           <Text className="text-lg font-extrabold text-primary">{annonce.titre}</Text>
@@ -147,6 +153,34 @@ export default function AnnonceDetailsScreen() {
           {annonce.montantCaution !== null && annonce.montantCaution !== undefined ? (
             <Text className="text-sm font-semibold text-on-surface mt-1">Caution: {String(annonce.montantCaution)} MAD</Text>
           ) : null}
+
+          <View className="mt-3 pt-3 border-t border-outline-variant/20 gap-2">
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="person-outline" size={14} color="#717973" />
+              <Text className="text-xs text-on-surface-variant">
+                Publié par: {annonce.createur?.profil?.prenom || ''} {annonce.createur?.profil?.nom || ''}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="location-outline" size={14} color="#717973" />
+              <Text className="text-xs text-on-surface-variant">
+                Position: {annonce.geolocalisation?.[0] ? `${annonce.geolocalisation[0]}, ${annonce.geolocalisation[1]}` : 'Non disponible'}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="calendar-outline" size={14} color="#717973" />
+              <Text className="text-xs text-on-surface-variant">
+                Publié le: {annonce.dateCreation ? new Date(annonce.dateCreation).toLocaleDateString('fr-FR') : 'N/A'}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="eye-outline" size={14} color="#717973" />
+              <Text className="text-xs text-on-surface-variant">Vues: {annonce.nombreVues || 0}</Text>
+            </View>
+          </View>
         </View>
 
         {!isOwner ? (

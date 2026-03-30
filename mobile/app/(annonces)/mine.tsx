@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, ScrollView, RefreshControl, Image, Alert } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, ScrollView, RefreshControl, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../../services/api';
+import SmartAnnonceImage from '../../components/smart-annonce-image';
 
 export default function MyAnnoncesScreen() {
   const router = useRouter();
@@ -111,13 +112,31 @@ export default function MyAnnoncesScreen() {
           annonces.map((annonce) => (
             <View key={annonce.id} className="bg-white border border-outline-variant rounded-2xl p-3 mb-3">
               <Pressable onPress={() => router.push(`/(annonces)/${annonce.id}`)}>
-                <Image
-                  source={{ uri: annonce.photos?.[0] || 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=70' }}
-                  className="w-full h-36 rounded-xl mb-3"
+                <SmartAnnonceImage
+                  uri={annonce.photos?.[0]}
+                  className="w-full h-36 rounded-xl mb-3 overflow-hidden"
                   resizeMode="cover"
                 />
                 <Text className="text-base font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
                 <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={2}>{annonce.description}</Text>
+
+                <View className="flex-row flex-wrap gap-2 mt-2">
+                  <View className="bg-primary/10 px-2 py-1 rounded-lg">
+                    <Text className="text-[10px] font-semibold text-primary">{annonce.categorie}</Text>
+                  </View>
+                  <View className="bg-surface-container px-2 py-1 rounded-lg">
+                    <Text className="text-[10px] text-on-surface-variant">Statut: {annonce.statut}</Text>
+                  </View>
+                  <View className="bg-surface-container px-2 py-1 rounded-lg">
+                    <Text className="text-[10px] text-on-surface-variant">
+                      Caution: {annonce.montantCaution !== null && annonce.montantCaution !== undefined ? `${annonce.montantCaution} MAD` : 'Aucune'}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text className="text-[11px] text-on-surface-variant mt-2">
+                  Créée le {annonce.dateCreation ? new Date(annonce.dateCreation).toLocaleDateString('fr-FR') : 'N/A'}
+                </Text>
               </Pressable>
 
               <View className="flex-row gap-2 mt-3">

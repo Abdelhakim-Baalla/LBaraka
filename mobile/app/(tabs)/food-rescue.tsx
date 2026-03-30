@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, ScrollView, RefreshControl, Image } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../../services/api';
+import SmartAnnonceImage from '../../components/smart-annonce-image';
 
 export default function FoodRescueScreen() {
   const router = useRouter();
@@ -79,13 +80,25 @@ export default function FoodRescueScreen() {
               onPress={() => router.push(`/(annonces)/${annonce.id}`)}
               className="bg-white border border-outline-variant rounded-2xl p-3 mb-3"
             >
-              <Image
-                source={{ uri: annonce.photos?.[0] || 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1200&q=70' }}
-                className="w-full h-40 rounded-xl mb-3"
+              <SmartAnnonceImage
+                uri={annonce.photos?.[0]}
+                className="w-full h-40 rounded-xl mb-3 overflow-hidden"
                 resizeMode="cover"
               />
               <Text className="text-base font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
               <Text className="text-sm text-on-surface-variant mt-1" numberOfLines={2}>{annonce.description}</Text>
+
+              <View className="flex-row flex-wrap gap-2 mt-2">
+                <View className="bg-primary/10 px-2 py-1 rounded-lg">
+                  <Text className="text-[10px] text-primary font-semibold">{annonce.condition || 'BON_ETAT'}</Text>
+                </View>
+                <View className="bg-surface-container px-2 py-1 rounded-lg">
+                  <Text className="text-[10px] text-on-surface-variant">
+                    Expire: {annonce.dateExpiration ? new Date(annonce.dateExpiration).toLocaleString('fr-FR') : 'Bientôt'}
+                  </Text>
+                </View>
+              </View>
+
               <View className="flex-row items-center justify-between mt-3">
                 <View className="bg-primary/10 px-2 py-1 rounded-lg">
                   <Text className="text-xs font-semibold text-primary">Expire bientôt</Text>

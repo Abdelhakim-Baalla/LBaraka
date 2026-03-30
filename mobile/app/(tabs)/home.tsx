@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Image, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import SmartAnnonceImage from '../../components/smart-annonce-image';
 
 const CATEGORIES = ['Tous', 'POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 
@@ -173,15 +174,14 @@ export default function HomeScreen() {
               <Animated.View key={annonce.id} entering={FadeInUp.delay(200 + idx * 50).duration(600)} className="px-5">
                 <Pressable
                   onPress={() => router.push(`/(annonces)/${annonce.id}`)}
-                  className="bg-white rounded-2xl p-4 border border-outline-variant/70 active:opacity-85"
+                  className="bg-white rounded-2xl p-4 border border-outline-variant/70 active:opacity-85 mb-3"
                 >
-                  {annonce.photos?.[0] && (
-                    <Image
-                      source={{ uri: annonce.photos[0] }}
-                      className="w-full h-44 rounded-xl mb-3"
-                      resizeMode="cover"
-                    />
-                  )}
+                  <SmartAnnonceImage
+                    uri={annonce.photos?.[0]}
+                    className="w-full h-44 rounded-xl mb-3 overflow-hidden"
+                    resizeMode="cover"
+                  />
+
                   <View className="flex-row items-start justify-between">
                     <View className="flex-1">
                       <Text className="text-base font-bold text-primary mb-1" numberOfLines={1}>
@@ -203,6 +203,33 @@ export default function HomeScreen() {
                         </View>
                       </View>
                       <Text className="text-xs text-on-surface-variant">{String(annonce.mode || '').replaceAll('_', ' ')}</Text>
+                    </View>
+                  </View>
+
+                  <View className="flex-row flex-wrap gap-2 mt-3">
+                    <View className="bg-surface-container rounded-lg px-2 py-1">
+                      <Text className="text-[11px] text-on-surface-variant">Etat: {annonce.condition || 'N/A'}</Text>
+                    </View>
+                    <View className="bg-surface-container rounded-lg px-2 py-1">
+                      <Text className="text-[11px] text-on-surface-variant">
+                        Caution: {annonce.montantCaution !== null && annonce.montantCaution !== undefined ? `${annonce.montantCaution} MAD` : 'Aucune'}
+                      </Text>
+                    </View>
+                    <View className="bg-surface-container rounded-lg px-2 py-1">
+                      <Text className="text-[11px] text-on-surface-variant">
+                        Prix: {annonce.prixSymbolique !== null && annonce.prixSymbolique !== undefined ? `${annonce.prixSymbolique} MAD` : 'Gratuit'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="mt-3 pt-3 border-t border-outline-variant/30 flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-1">
+                      <Ionicons name="eye-outline" size={14} color="#717973" />
+                      <Text className="text-xs text-on-surface-variant">{annonce.nombreVues || 0} vues</Text>
+                    </View>
+                    <View className="flex-row items-center gap-1">
+                      <Ionicons name="chevron-forward-circle-outline" size={16} color="#1B4332" />
+                      <Text className="text-xs font-bold text-primary">Voir détail</Text>
                     </View>
                   </View>
                 </Pressable>

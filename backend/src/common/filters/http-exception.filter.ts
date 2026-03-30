@@ -37,12 +37,25 @@ export class GlobalExceptionFilter implements ExceptionFilter {
                 error = responseObj.error || exception.name;
             }
         } else if (exception instanceof Error) {
+            const payloadTooLarge =
+                exception.name === 'PayloadTooLargeError' ||
+                (exception as any).status === HttpStatus.PAYLOAD_TOO_LARGE;
+
+            if (payloadTooLarge) {
+                status = HttpStatus.PAYLOAD_TOO_LARGE;
+                message = 'Payload trop volumineux. Réduisez la taille des images.';
+                error = 'PayloadTooLargeError';
+            }
+
             this.logger.error(
                 `Unhandled exception: ${exception.message}`,
                 exception.stack,
             );
-            message = 'Une erreur inattendue est survenue.';
-            error = exception.name;
+
+            if (!payloadTooLarge) {
+                message = 'Une erreur inattendue est survenue.';
+                error = exception.name;
+            }
         }
 
         // Log pour le debugging (côté serveur)

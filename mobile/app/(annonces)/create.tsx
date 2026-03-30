@@ -1,18 +1,16 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, Alert, ActivityIndicator, Switch } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, Alert, ActivityIndicator, Switch, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 import { ApiService } from '../../services/api';
 
 const CATEGORIES = ['POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 const MODES = ['DON_GRATUIT', 'PRET_TEMPORAIRE', 'LOCATION_SOLIDAIRE'];
 const CONDITIONS = ['NEUF', 'BON_ETAT', 'USE'];
-
-const DEMO_BASE64_IMAGE =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl7w7QAAAAASUVORK5CYII=';
 
 export default function CreateAnnonceScreen() {
   const router = useRouter();
@@ -30,6 +28,101 @@ export default function CreateAnnonceScreen() {
   const [isFoodRescue, setIsFoodRescue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [photosBase64, setPhotosBase64] = useState<Array<{ name: string; type: string; base64: string }>>([]);
+
+  const estimateBase64Bytes = (base64: string) => {
+    const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+    return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
+  };
+
+  const pickFromLibrary = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission refusée', 'Autorisez la galerie pour sélectionner vos photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        quality: 0.5,
+        base64: true,
+        selectionLimit: 3,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const mapped = result.assets
+        .slice(0, 3)
+        .map((asset, index) => ({
+          name: asset.fileName || `gallery-${Date.now()}-${index + 1}.jpg`,
+          type: asset.mimeType || 'image/jpeg',
+          base64: asset.base64 || '',
+        }))
+        .filter((asset) => asset.base64.length > 0);
+
+      const hasBigPhoto = mapped.some((photo) => estimateBase64Bytes(photo.base64) > 6 * 1024 * 1024);
+      if (hasBigPhoto) {
+        Alert.alert('Photo trop grande', 'Une photo dépasse 6MB. Choisissez des photos plus légères.');
+        return;
+      }
+
+      setPhotosBase64(mapped);
+    } catch {
+      Alert.alert('Erreur', 'Impossible d\'ouvrir la galerie.');
+    }
+  };
+
+  const pickFromCamera = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission refusée', 'Autorisez la caméra pour prendre des photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: false,
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (result.canceled || !result.assets?.[0]) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      const next = [...photosBase64];
+
+      if (next.length >= 3) {
+        Alert.alert('Limite atteinte', 'Maximum 3 photos.');
+        return;
+      }
+
+      if (!asset.base64) {
+        Alert.alert('Erreur', 'Photo invalide. Réessayez.');
+        return;
+      }
+
+      if (estimateBase64Bytes(asset.base64) > 6 * 1024 * 1024) {
+        Alert.alert('Photo trop grande', 'La photo dépasse 6MB. Reprenez une photo plus légère.');
+        return;
+      }
+
+      next.push({
+        name: asset.fileName || `camera-${Date.now()}-${next.length + 1}.jpg`,
+        type: asset.mimeType || 'image/jpeg',
+        base64: asset.base64,
+      });
+
+      setPhotosBase64(next);
+    } catch {
+      Alert.alert('Erreur', 'Impossible d\'ouvrir la caméra.');
+    }
+  };
 
   const useCurrentLocation = async () => {
     try {
@@ -68,6 +161,17 @@ export default function CreateAnnonceScreen() {
       return;
     }
 
+    if (photosBase64.length !== 3) {
+      Alert.alert('Validation', 'Veuillez sélectionner exactement 3 photos.');
+      return;
+    }
+
+    const totalBytes = photosBase64.reduce((sum, photo) => sum + estimateBase64Bytes(photo.base64), 0);
+    if (totalBytes > 18 * 1024 * 1024) {
+      Alert.alert('Payload trop grand', 'Les 3 photos sont trop lourdes. Choisissez des images plus légères.');
+      return;
+    }
+
     const token = await AsyncStorage.getItem('accessToken');
     const userRaw = await AsyncStorage.getItem('user');
 
@@ -92,13 +196,14 @@ export default function CreateAnnonceScreen() {
       mode,
       condition,
       geolocalisation: [lat, lng],
-      photosBase64: [
-        { name: 'photo-1.png', type: 'image/png', base64: DEMO_BASE64_IMAGE },
-        { name: 'photo-2.png', type: 'image/png', base64: DEMO_BASE64_IMAGE },
-        { name: 'photo-3.png', type: 'image/png', base64: DEMO_BASE64_IMAGE },
-      ],
+      photosBase64,
       isFoodRescue,
     };
+
+    if (isFoodRescue) {
+      payload.categorie = 'NOURRITURE';
+      payload.mode = 'DON_GRATUIT';
+    }
 
     if (prixSymbolique.trim()) {
       payload.prixSymbolique = Number(prixSymbolique);
@@ -249,10 +354,53 @@ export default function CreateAnnonceScreen() {
           <Switch value={isFoodRescue} onValueChange={setIsFoodRescue} />
         </View>
 
-        <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
-          <Text className="text-amber-800 text-xs">
-            Pour simplifier les tests, 3 photos de démonstration sont envoyées automatiquement.
-          </Text>
+        <View className="bg-white border border-outline-variant rounded-xl p-3 mb-4">
+          <Text className="text-sm font-bold text-primary mb-2">Photos de l'annonce (3 obligatoires)</Text>
+
+          <View className="flex-row gap-2 mb-3">
+            <Pressable onPress={pickFromLibrary} className="flex-1 bg-primary rounded-lg py-3 items-center">
+              <Text className="text-white font-bold text-xs">Choisir galerie</Text>
+            </Pressable>
+            <Pressable onPress={pickFromCamera} className="flex-1 bg-white border border-outline-variant rounded-lg py-3 items-center">
+              <Text className="text-primary font-bold text-xs">Prendre photo</Text>
+            </Pressable>
+          </View>
+
+          <View className="flex-row gap-2">
+            {[0, 1, 2].map((index) => {
+              const photo = photosBase64[index];
+              return (
+                <View key={index} className="flex-1">
+                  {photo ? (
+                    <View className="relative">
+                      <Image
+                        source={{ uri: `data:${photo.type};base64,${photo.base64}` }}
+                        className="w-full h-20 rounded-lg"
+                        resizeMode="cover"
+                      />
+                      <Pressable
+                        onPress={() => {
+                          const clone = [...photosBase64];
+                          clone.splice(index, 1);
+                          setPhotosBase64(clone);
+                        }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-error rounded-full items-center justify-center"
+                      >
+                        <Ionicons name="close" size={14} color="#fff" />
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <View className="w-full h-20 rounded-lg bg-surface-container items-center justify-center border border-outline-variant">
+                      <Ionicons name="image-outline" size={18} color="#717973" />
+                      <Text className="text-[10px] text-on-surface-variant mt-1">Photo {index + 1}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          <Text className="text-xs text-on-surface-variant mt-2">{photosBase64.length}/3 photos sélectionnées</Text>
         </View>
 
         <Pressable

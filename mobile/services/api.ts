@@ -313,9 +313,9 @@ export class ApiService {
     return await response.json();
   }
 
-  static async getAnnoncesNearby(token: string, lat: number, lng: number, rayon?: number) {
+  static async getAnnoncesNearby(token: string, lat: number, lng: number, rayon?: number, categorie?: string) {
     const baseUrl = this.getBaseUrl();
-    const url = `${baseUrl}/annonces/carte?lat=${lat}&lng=${lng}${rayon ? `&rayon=${rayon}` : ''}`;
+    const url = `${baseUrl}/annonces/carte?lat=${lat}&lng=${lng}${rayon ? `&rayon=${rayon}` : ''}${categorie ? `&categorie=${categorie}` : ''}`;
     const response = await fetch(url, {
       headers: await this.getAuthHeaders(token)
     });
