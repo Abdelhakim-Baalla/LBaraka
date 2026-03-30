@@ -361,17 +361,29 @@ export class ApiService {
       const message = await this.getErrorMessage(response, 'Failed to generate QR');
       throw new Error(message);
     }
-    const data = await response.json();
-    if (typeof data === 'string') {
-      return { qrCode: data };
+    const rawText = await response.text();
+
+    if (!rawText) {
+      return { qrCode: '', code: '' };
     }
-    if (typeof data?.qrCode === 'string') {
-      return { qrCode: data.qrCode };
+
+    try {
+      const data = JSON.parse(rawText);
+
+      if (typeof data === 'string') {
+        return { qrCode: data, code: '' };
+      }
+
+      const qrCode = String(data?.qrCode || data?.data || '');
+      const code = String(data?.code || data?.token || '');
+      return { qrCode, code };
+    } catch {
+      if (rawText.startsWith('data:image')) {
+        return { qrCode: rawText, code: '' };
+      }
+
+      return { qrCode: '', code: rawText };
     }
-    if (typeof data?.data === 'string') {
-      return { qrCode: data.data };
-    }
-    return { qrCode: '' };
   }
 
   // Valide la réception avec le QR code
@@ -489,17 +501,29 @@ export class ApiService {
       const message = await this.getErrorMessage(response, 'Failed to generate QR retour');
       throw new Error(message);
     }
-    const data = await response.json();
-    if (typeof data === 'string') {
-      return { qrCode: data };
+    const rawText = await response.text();
+
+    if (!rawText) {
+      return { qrCode: '', code: '' };
     }
-    if (typeof data?.qrCode === 'string') {
-      return { qrCode: data.qrCode };
+
+    try {
+      const data = JSON.parse(rawText);
+
+      if (typeof data === 'string') {
+        return { qrCode: data, code: '' };
+      }
+
+      const qrCode = String(data?.qrCode || data?.data || '');
+      const code = String(data?.code || data?.secret || '');
+      return { qrCode, code };
+    } catch {
+      if (rawText.startsWith('data:image')) {
+        return { qrCode: rawText, code: '' };
+      }
+
+      return { qrCode: '', code: rawText };
     }
-    if (typeof data?.data === 'string') {
-      return { qrCode: data.data };
-    }
-    return { qrCode: '' };
   }
 
   // Annule une reservation

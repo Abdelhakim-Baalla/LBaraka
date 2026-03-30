@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Clipboard from 'expo-clipboard';
 import { ApiService } from '../../services/api';
 
 // Ecran transactions avec reservations et QR codes
@@ -20,12 +21,13 @@ export default function TransactionsScreen() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrData, setQrData] = useState('');
+  const [qrRawCode, setQrRawCode] = useState('');
   const [qrType, setQrType] = useState<'reception' | 'retour'>('reception');
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationType, setValidationType] = useState<'reception' | 'retour'>('reception');
   const [validationCode, setValidationCode] = useState('');
   const [isValidating, setIsValidating] = useState(false);
-  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [isScannerActive, setIsScannerActive] = useState(false);
   const [scanLocked, setScanLocked] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [filter, setFilter] = useState<'ALL' | 'EMPRUNTS' | 'PRETS'>('ALL');
@@ -33,6 +35,15 @@ export default function TransactionsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadTransactions();
+
+      return () => {
+        // Nettoyage forcé pour éviter un overlay invisible bloquant sur Android
+        setShowDetailModal(false);
+        setShowQRModal(false);
+        setShowValidationModal(false);
+        setIsScannerActive(false);
+        setScanLocked(false);
+      };
     }, [])
   );
 
@@ -90,6 +101,7 @@ export default function TransactionsScreen() {
 
       const data = await ApiService.getQRReception(token, transactionId);
       setQrData(data.qrCode || '');
+      setQrRawCode(data.code || '');
       setQrType('reception');
       setShowQRModal(true);
     } catch (error: any) {
@@ -105,6 +117,7 @@ export default function TransactionsScreen() {
 
       const data = await ApiService.getQRRetour(token, transactionId);
       setQrData(data.qrCode || '');
+      setQrRawCode(data.code || '');
       setQrType('retour');
       setShowQRModal(true);
     } catch (error: any) {
@@ -185,7 +198,15 @@ export default function TransactionsScreen() {
   const openValidationModal = (type: 'reception' | 'retour') => {
     setValidationType(type);
     setValidationCode('');
+    // Evite les modals empilées qui peuvent bloquer les interactions sur Android
+    setShowDetailModal(false);
     setShowValidationModal(true);
+  };
+
+  const closeValidationFlow = () => {
+    setIsScannerActive(false);
+    setShowValidationModal(false);
+    setScanLocked(false);
   };
 
   const openCameraScanner = async () => {
@@ -199,7 +220,7 @@ export default function TransactionsScreen() {
       }
 
       setScanLocked(false);
-      setShowScannerModal(true);
+      setIsScannerActive(true);
     } catch {
       Alert.alert('Erreur', 'Impossible d\'ouvrir la caméra.');
     }
@@ -213,8 +234,18 @@ export default function TransactionsScreen() {
     setScanLocked(true);
     const scannedValue = String(event?.data || '').trim();
     setValidationCode(scannedValue);
-    setShowScannerModal(false);
+    setIsScannerActive(false);
     Alert.alert('Scan réussi', 'Code QR ajouté automatiquement.');
+  };
+
+  const handleCopyQrCode = async () => {
+    if (!qrRawCode) {
+      Alert.alert('Info', 'Aucun code brut disponible.');
+      return;
+    }
+
+    await Clipboard.setStringAsync(qrRawCode);
+    Alert.alert('Copié', 'Le code QR brut est copié. Vous pouvez le coller sur l\'autre appareil.');
   };
 
   const handleValidateQr = async () => {
@@ -252,7 +283,7 @@ export default function TransactionsScreen() {
         await ApiService.validateRetour(token, selectedTransaction.id, codeToValidate);
       }
 
-      setShowValidationModal(false);
+      closeValidationFlow();
       setValidationCode('');
       setShowDetailModal(false);
       Alert.alert('Succes', validationType === 'reception' ? 'Remise validée' : 'Retour confirmé');
@@ -662,11 +693,41 @@ export default function TransactionsScreen() {
                     ? 'Montrez ce QR au preteur pour valider la remise'
                     : 'Montrez ce QR a l\'emprunteur pour valider le retour'}
                 </Text>
+
+                {qrRawCode ? (
+                  <>
+                    <Pressable
+                      onPress={handleCopyQrCode}
+                      className="bg-white border border-outline-variant rounded-xl py-2.5 px-4 mt-4"
+                    >
+                      <Text className="text-primary font-bold">Copier le code brut</Text>
+                    </Pressable>
+                    <Text selectable className="text-[10px] text-on-surface-variant text-center mt-3 px-2" numberOfLines={3}>
+                      {qrRawCode}
+                    </Text>
+                  </>
+                ) : null}
               </View>
             ) : (
               <View className="items-center py-10">
-                <ActivityIndicator size="large" color="#1B4332" />
-                <Text className="text-sm text-on-surface-variant mt-3">Chargement...</Text>
+                <Ionicons name="alert-circle-outline" size={26} color="#A5A6AA" />
+                <Text className="text-sm text-on-surface-variant mt-3 text-center">
+                  QR image non disponible. Utilisez le code brut si affiché.
+                </Text>
+
+                {qrRawCode ? (
+                  <>
+                    <Pressable
+                      onPress={handleCopyQrCode}
+                      className="bg-white border border-outline-variant rounded-xl py-2.5 px-4 mt-4"
+                    >
+                      <Text className="text-primary font-bold">Copier le code brut</Text>
+                    </Pressable>
+                    <Text selectable className="text-[10px] text-on-surface-variant text-center mt-3 px-2" numberOfLines={4}>
+                      {qrRawCode}
+                    </Text>
+                  </>
+                ) : null}
               </View>
             )}
           </View>
@@ -674,14 +735,19 @@ export default function TransactionsScreen() {
       </Modal>
 
       {/* Modal Validation QR */}
-      <Modal visible={showValidationModal} transparent animationType="slide">
+      <Modal
+        visible={showValidationModal}
+        transparent
+        animationType="slide"
+        onRequestClose={closeValidationFlow}
+      >
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: insets.bottom + 24 }}>
             <View className="flex-row items-center justify-between mb-4">
               <Text className="text-lg font-bold text-primary">
                 {validationType === 'reception' ? 'Valider Remise' : 'Confirmer Retour'}
               </Text>
-              <Pressable onPress={() => setShowValidationModal(false)}>
+              <Pressable onPress={closeValidationFlow}>
                 <Ionicons name="close" size={24} color="#1B4332" />
               </Pressable>
             </View>
@@ -704,6 +770,35 @@ export default function TransactionsScreen() {
               <Text className="text-primary font-bold">Scanner avec la caméra</Text>
             </Pressable>
 
+            {isScannerActive ? (
+              <View className="mt-3 rounded-2xl overflow-hidden border border-outline-variant">
+                <View style={{ height: 260 }}>
+                  <CameraView
+                    style={{ flex: 1 }}
+                    barcodeScannerSettings={{
+                      barcodeTypes: ['qr'],
+                    }}
+                    onBarcodeScanned={handleBarcodeScanned}
+                  />
+                </View>
+
+                <View className="p-3 bg-surface border-t border-outline-variant">
+                  <Text className="text-xs text-on-surface-variant text-center">
+                    Placez le QR dans le cadre pour scanner automatiquement.
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      setIsScannerActive(false);
+                      setScanLocked(false);
+                    }}
+                    className="mt-2 bg-white border border-outline-variant rounded-lg py-2 items-center"
+                  >
+                    <Text className="text-primary font-semibold text-xs">Fermer le scanner</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
             <Pressable
               onPress={handleValidateQr}
               disabled={isValidating}
@@ -719,33 +814,6 @@ export default function TransactionsScreen() {
         </View>
       </Modal>
 
-      {/* Modal Scanner Camera */}
-      <Modal visible={showScannerModal} transparent animationType="fade" onRequestClose={() => setShowScannerModal(false)}>
-        <View className="flex-1 bg-black">
-          <View className="flex-row items-center justify-between px-4" style={{ paddingTop: insets.top + 8, paddingBottom: 8 }}>
-            <Text className="text-white font-bold text-base">Scanner QR</Text>
-            <Pressable onPress={() => setShowScannerModal(false)} className="bg-white/20 rounded-full p-2">
-              <Ionicons name="close" size={22} color="#fff" />
-            </Pressable>
-          </View>
-
-          <View className="flex-1 px-4 pb-6">
-            <View className="flex-1 rounded-2xl overflow-hidden border border-white/30">
-              <CameraView
-                style={{ flex: 1 }}
-                barcodeScannerSettings={{
-                  barcodeTypes: ['qr'],
-                }}
-                onBarcodeScanned={handleBarcodeScanned}
-              />
-            </View>
-
-            <Text className="text-white/85 text-center text-xs mt-4">
-              Placez le QR dans le cadre pour scanner automatiquement.
-            </Text>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
