@@ -1,26 +1,50 @@
-import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, Pressable, Alert } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { ApiService } from '../../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    loadUser();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadUser();
+    }, [])
+  );
 
   const loadUser = async () => {
     try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
+        return;
+      }
+
+      try {
+        const data = await ApiService.getUserProfile(token);
+        setUser(data.utilisateur);
+        await AsyncStorage.setItem('user', JSON.stringify(data.utilisateur));
+      } catch {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
       const userData = await AsyncStorage.getItem('user');
       if (userData) {
         setUser(JSON.parse(userData));
       }
-    } catch (error) {
-      console.error('Error loading user:', error);
     }
   };
 
@@ -39,6 +63,10 @@ export default function ProfileScreen() {
           onPress: async () => {
             setIsLoading(true);
             try {
+              const token = await AsyncStorage.getItem('accessToken');
+              if (token) {
+                await ApiService.logout(token);
+              }
               await AsyncStorage.removeItem('accessToken');
               await AsyncStorage.removeItem('user');
               router.replace('/(auth)/sign-in');
@@ -56,122 +84,137 @@ export default function ProfileScreen() {
 
   return (
     <View className="flex-1 bg-surface">
-      {/* Header */}
-      <View className="bg-white/70 backdrop-blur-xl shadow-lg px-6 h-16 flex-row items-center justify-between">
-        <Text className="text-xl font-bold tracking-widest text-primary">PROFILE</Text>
-        <View className="w-10" />
+      <View
+        className="bg-white/90 px-6 pb-3 border-b border-outline-variant/30"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <View className="flex-row items-center justify-between">
+          <View>
+            <Text className="text-xs font-semibold text-on-surface-variant">Espace personnel</Text>
+            <Text className="text-2xl font-extrabold text-primary">Mon Profil</Text>
+          </View>
+          <Pressable className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
+            <Ionicons name="settings-outline" size={20} color="#1B4332" />
+          </Pressable>
+        </View>
       </View>
 
-      <ScrollView className="flex-1 px-6 pt-8" showsVerticalScrollIndicator={false}>
-        {/* User Info Card */}
-        {user && (
-          <View className="bg-white rounded-xl p-6 shadow-sm mb-6">
-            <View className="items-center mb-4">
-              <View className="w-20 h-20 rounded-full bg-primary-container items-center justify-center mb-3">
-                <Text className="text-white text-3xl font-bold">
-                  {user.email?.charAt(0).toUpperCase()}
-                </Text>
+      <View className="flex-1 px-6 pt-4 pb-4 justify-between">
+        <View>
+          {/* User Info Card */}
+          {user && (
+            <View className="bg-white rounded-2xl p-4 border border-outline-variant/70 mb-4">
+              <View className="flex-row items-center gap-3 mb-3">
+                <View className="w-14 h-14 rounded-full bg-primary-container items-center justify-center">
+                  <Text className="text-white text-xl font-bold">
+                    {user.email?.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-bold text-primary" numberOfLines={1}>
+                    {user.profil?.prenom || user.profil?.nom
+                      ? `${user.profil?.prenom || ''} ${user.profil?.nom || ''}`.trim()
+                      : 'Utilisateur'}
+                  </Text>
+                  <Text className="text-xs text-on-surface-variant" numberOfLines={1}>{user.email}</Text>
+                  <Text className="text-xs text-on-surface-variant" numberOfLines={1}>{user.telephone}</Text>
+                </View>
               </View>
-              <Text className="text-xl font-bold text-primary mb-1">
-                {user.profil?.nom || user.profil?.prenom 
-                  ? `${user.profil?.prenom || ''} ${user.profil?.nom || ''}`.trim()
-                  : 'Nom et prénom non renseignés'}
-              </Text>
-              <Text className="text-sm text-on-surface-variant">{user.email}</Text>
-            </View>
 
-            {/* Stats */}
-            <View className="flex-row justify-around pt-4 border-t border-outline-variant/20">
-              <View className="items-center">
-                <Text className="text-2xl font-bold text-primary">
-                  {user.profil?.lBarakaScore || 0}
-                </Text>
-                <Text className="text-xs text-on-surface-variant uppercase tracking-wider">
-                  Points
-                </Text>
+              <View className="flex-row justify-between gap-2 pt-3 border-t border-outline-variant/20">
+                <View className="items-center bg-surface-container rounded-xl py-2.5 flex-1">
+                  <Text className="text-lg font-bold text-primary">{user.profil?.lBarakaScore || 0}</Text>
+                  <Text className="text-[10px] text-on-surface-variant uppercase tracking-wider">Points</Text>
+                </View>
+                <View className="items-center bg-surface-container rounded-xl py-2.5 flex-1">
+                  <Text className="text-lg font-bold text-secondary" numberOfLines={1}>{user.profil?.palier || 'BRONZE'}</Text>
+                  <Text className="text-[10px] text-on-surface-variant uppercase tracking-wider">Palier</Text>
+                </View>
+                <View className="items-center bg-surface-container rounded-xl py-2.5 flex-1">
+                  <Text className="text-lg font-bold text-primary">{user.profil?.badges?.length || 0}</Text>
+                  <Text className="text-[10px] text-on-surface-variant uppercase tracking-wider">Badges</Text>
+                </View>
               </View>
-              <View className="items-center">
-                <Text className="text-2xl font-bold text-secondary">
-                  {user.profil?.palier || 'BRONZE'}
-                </Text>
-                <Text className="text-xs text-on-surface-variant uppercase tracking-wider">
-                  Palier
-                </Text>
-              </View>
-              <View className="items-center">
-                <Text className="text-2xl font-bold text-primary">
-                  {user.profil?.badges?.length || 0}
-                </Text>
-                <Text className="text-xs text-on-surface-variant uppercase tracking-wider">
-                  Badges
-                </Text>
-              </View>
+            </View>
+          )}
+
+          <View className="bg-primary rounded-2xl p-3.5 mb-4 flex-row items-center gap-3">
+            <Ionicons name="leaf-outline" size={20} color="#ffffff" />
+            <View className="flex-1">
+              <Text className="text-white font-bold text-sm">Impact personnel</Text>
+              <Text className="text-white/85 text-[11px]">Continuez vos échanges pour progresser.</Text>
             </View>
           </View>
-        )}
 
-        {/* Menu Items */}
-        <View className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
-          <Pressable className="flex-row items-center justify-between px-6 py-4 border-b border-outline-variant/10 active:bg-surface-container-low">
+          {/* Menu Items */}
+          <View className="bg-white rounded-2xl border border-outline-variant/70 overflow-hidden">
+          <Pressable 
+            onPress={() => router.push('/edit-profile')}
+            className="flex-row items-center justify-between px-5 py-3.5 border-b border-outline-variant/10 active:bg-surface-container-low"
+          >
             <View className="flex-row items-center gap-3">
-              <Ionicons name="person-outline" size={24} color="#012d1d" />
-              <Text className="text-base font-semibold text-on-surface">
+              <Ionicons name="person-outline" size={21} color="#012d1d" />
+              <Text className="text-sm font-semibold text-on-surface">
                 Modifier le profil
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#717973" />
           </Pressable>
 
-          <Pressable className="flex-row items-center justify-between px-6 py-4 border-b border-outline-variant/10 active:bg-surface-container-low">
+          <Pressable 
+            onPress={() => router.push('/(tabs)/wallet')}
+            className="flex-row items-center justify-between px-5 py-3.5 border-b border-outline-variant/10 active:bg-surface-container-low"
+          >
             <View className="flex-row items-center gap-3">
-              <Ionicons name="wallet-outline" size={24} color="#012d1d" />
-              <Text className="text-base font-semibold text-on-surface">
+              <Ionicons name="wallet-outline" size={21} color="#012d1d" />
+              <Text className="text-sm font-semibold text-on-surface">
                 Mon portefeuille
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#717973" />
           </Pressable>
 
-          <Pressable className="flex-row items-center justify-between px-6 py-4 border-b border-outline-variant/10 active:bg-surface-container-low">
+          <Pressable className="flex-row items-center justify-between px-5 py-3.5 border-b border-outline-variant/10 active:bg-surface-container-low">
             <View className="flex-row items-center gap-3">
-              <Ionicons name="notifications-outline" size={24} color="#012d1d" />
-              <Text className="text-base font-semibold text-on-surface">
+              <Ionicons name="notifications-outline" size={21} color="#012d1d" />
+              <Text className="text-sm font-semibold text-on-surface">
                 Notifications
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#717973" />
           </Pressable>
 
-          <Pressable className="flex-row items-center justify-between px-6 py-4 active:bg-surface-container-low">
+          <Pressable className="flex-row items-center justify-between px-5 py-3.5 active:bg-surface-container-low">
             <View className="flex-row items-center gap-3">
-              <Ionicons name="settings-outline" size={24} color="#012d1d" />
-              <Text className="text-base font-semibold text-on-surface">
+              <Ionicons name="settings-outline" size={21} color="#012d1d" />
+              <Text className="text-sm font-semibold text-on-surface">
                 Paramètres
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#717973" />
           </Pressable>
         </View>
-
-        {/* Logout Button */}
-        <Pressable
-          onPress={handleLogout}
-          disabled={isLoading}
-          className={`bg-error rounded-xl py-5 px-6 flex-row items-center justify-center shadow-lg mb-8 ${
-            isLoading ? 'opacity-50' : ''
-          }`}
-        >
-          <Ionicons name="log-out-outline" size={24} color="#ffffff" />
-          <Text className="text-white font-bold text-lg tracking-wide ml-3">
-            {isLoading ? 'Déconnexion...' : 'Se déconnecter'}
-          </Text>
-        </Pressable>
-
-        {/* App Info */}
-        <View className="items-center pb-8 opacity-50">
-          <Text className="text-xs text-on-surface-variant">LBaraka v1.0.0</Text>
         </View>
-      </ScrollView>
+
+        <View>
+          <Pressable
+            onPress={handleLogout}
+            disabled={isLoading}
+            className={`bg-error rounded-xl py-4 px-6 flex-row items-center justify-center shadow-lg ${
+              isLoading ? 'opacity-50' : ''
+            }`}
+          >
+            <Ionicons name="log-out-outline" size={22} color="#ffffff" />
+            <Text className="text-white font-bold text-base tracking-wide ml-2.5">
+              {isLoading ? 'Déconnexion...' : 'Se déconnecter'}
+            </Text>
+          </Pressable>
+
+          <View className="items-center pt-3 opacity-50">
+            <Text className="text-xs text-on-surface-variant">LBaraka v1.0.0</Text>
+          </View>
+        </View>
+      </View>
 
       {/* Decorative Elements */}
       <View className="absolute -bottom-32 -left-32 w-96 h-96 bg-primary/5 rounded-full blur-3xl" style={{ opacity: 0.3 }} />

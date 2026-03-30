@@ -1,11 +1,42 @@
 // API Service for LBaraka Backend Integration
-// Place this in: mobile/services/api.ts
+import Constants from 'expo-constants';
 
-import { useAuth } from '@clerk/expo';
-
-const API_BASE_URL = 'http://localhost:3000'; // Change to your backend URL
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || '').trim();
 
 export class ApiService {
+  private static getExpoHostApiUrl() {
+    const expoConfig = Constants.expoConfig as any;
+    const hostUri = expoConfig?.hostUri as string | undefined;
+
+    if (!hostUri || typeof hostUri !== 'string') {
+      return '';
+    }
+
+    const host = hostUri.split(':')[0];
+
+    if (!host) {
+      return '';
+    }
+
+    return `http://${host}:3000`;
+  }
+
+  private static getBaseUrl() {
+    // En mode dev Expo Go, on prefere l'IP du host Expo pour suivre automatiquement le changement de Wi-Fi.
+    if (__DEV__) {
+      const expoHostUrl = this.getExpoHostApiUrl();
+      if (expoHostUrl) {
+        return expoHostUrl;
+      }
+    }
+
+    if (!API_BASE_URL) {
+      throw new Error('EXPO_PUBLIC_API_URL est manquante. Configure-la dans mobile/.env');
+    }
+
+    return API_BASE_URL;
+  }
+
   private static async getAuthHeaders(token?: string) {
     return {
       'Content-Type': 'application/json',
@@ -13,54 +44,39 @@ export class ApiService {
     };
   }
 
-  /**
-   * Sync Clerk user with LBaraka backend after successful sign-up
-   */
-  static async syncUserWithBackend(clerkUser: any, additionalData: {
-    telephone: string;
-    cin?: string;
-  }) {
+  private static async getErrorMessage(response: Response, fallbackMessage: string) {
     try {
-      const token = await clerkUser.getToken();
-      
-      const response = await fetch(`${API_BASE_URL}/auth/clerk-sync`, {
-        method: 'POST',
-        headers: await this.getAuthHeaders(token),
-        body: JSON.stringify({
-          email: clerkUser.emailAddresses[0].emailAddress,
-          clerkId: clerkUser.id,
-          telephone: additionalData.telephone,
-          cin: additionalData.cin,
-          nom: clerkUser.firstName || '',
-          prenom: clerkUser.lastName || ''
-        })
-      });
+      const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error('Failed to sync user with backend');
+      if (typeof data?.message === 'string') {
+        return data.message;
       }
 
-      return await response.json();
-    } catch (error) {
-      console.error('Backend sync error:', error);
-      throw error;
+      if (Array.isArray(data?.message) && data.message.length > 0) {
+        return String(data.message[0]);
+      }
+
+      return fallbackMessage;
+    } catch {
+      return fallbackMessage;
     }
   }
 
   /**
-   * Login with backend (if using backend auth instead of Clerk)
+   * Login with backend
    */
   static async loginWithBackend(email: string, motDePasse: string) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const baseUrl = this.getBaseUrl();
+      const response = await fetch(`${baseUrl}/auth/login`, {
         method: 'POST',
         headers: await this.getAuthHeaders(),
         body: JSON.stringify({ email, motDePasse })
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login failed');
+        const message = await this.getErrorMessage(response, 'Login failed');
+        throw new Error(message);
       }
 
       return await response.json();
@@ -71,26 +87,25 @@ export class ApiService {
   }
 
   /**
-   * Register with backend (if using backend auth instead of Clerk)
+   * Register with backend
    */
   static async registerWithBackend(data: {
     email: string;
     motDePasse: string;
     telephone: string;
     cin?: string;
-    nom?: string;
-    prenom?: string;
   }) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const baseUrl = this.getBaseUrl();
+      const response = await fetch(`${baseUrl}/auth/register`, {
         method: 'POST',
         headers: await this.getAuthHeaders(),
         body: JSON.stringify(data)
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Registration failed');
+        const message = await this.getErrorMessage(response, 'Registration failed');
+        throw new Error(message);
       }
 
       return await response.json();
@@ -105,13 +120,15 @@ export class ApiService {
    */
   static async getUserProfile(token: string) {
     try {
-      const response = await fetch(`${API_BASE_URL}/utilisateur/me`, {
+      const baseUrl = this.getBaseUrl();
+      const response = await fetch(`${baseUrl}/utilisateurs/profil`, {
         method: 'GET',
         headers: await this.getAuthHeaders(token)
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch user profile');
+        const message = await this.getErrorMessage(response, 'Failed to fetch user profile');
+        throw new Error(message);
       }
 
       return await response.json();
@@ -126,14 +143,16 @@ export class ApiService {
    */
   static async updateUserProfile(token: string, data: any) {
     try {
-      const response = await fetch(`${API_BASE_URL}/utilisateur/me`, {
-        method: 'PATCH',
+      const baseUrl = this.getBaseUrl();
+      const response = await fetch(`${baseUrl}/utilisateurs/profil`, {
+        method: 'PUT',
         headers: await this.getAuthHeaders(token),
         body: JSON.stringify(data)
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update profile');
+        const message = await this.getErrorMessage(response, 'Failed to update profile');
+        throw new Error(message);
       }
 
       return await response.json();
@@ -142,62 +161,245 @@ export class ApiService {
       throw error;
     }
   }
-}
 
-/**
- * React Hook for API calls with Clerk authentication
- */
-export function useApi() {
-  const { getToken } = useAuth();
-
-  const callApi = async (
-    endpoint: string,
-    options: RequestInit = {}
-  ) => {
+  /**
+   * Get public user profile
+   */
+  static async getPublicProfile(token: string, userId: string) {
     try {
-      const token = await getToken();
-      
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-          ...options.headers
-        }
+      const baseUrl = this.getBaseUrl();
+      const response = await fetch(`${baseUrl}/utilisateurs/${userId}`, {
+        method: 'GET',
+        headers: await this.getAuthHeaders(token)
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'API call failed');
+        const message = await this.getErrorMessage(response, 'Failed to fetch public profile');
+        throw new Error(message);
       }
 
       return await response.json();
     } catch (error) {
-      console.error('API call error:', error);
+      console.error('Public profile fetch error:', error);
       throw error;
     }
-  };
+  }
 
-  return { callApi };
+  /**
+   * Logout
+   */
+  static async logout(token: string) {
+    try {
+      const baseUrl = this.getBaseUrl();
+      const response = await fetch(`${baseUrl}/auth/logout`, {
+        method: 'POST',
+        headers: await this.getAuthHeaders(token)
+      });
+
+      if (!response.ok) {
+        const message = await this.getErrorMessage(response, 'Failed to logout');
+        throw new Error(message);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
+  }
+
+  // ANNONCES
+  static async getAnnonces(token: string, categorie?: string) {
+    const baseUrl = this.getBaseUrl();
+    const url = categorie ? `${baseUrl}/annonces?categorie=${categorie}` : `${baseUrl}/annonces`;
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch annonces');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async getAnnonceById(token: string, id: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/annonces/${id}`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch annonce');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async createAnnonce(token: string, data: any) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/annonces`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to create annonce');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async getFoodRescue(token: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/annonces/food-rescue`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch food rescue');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async getAnnoncesNearby(token: string, lat: number, lng: number, rayon?: number) {
+    const baseUrl = this.getBaseUrl();
+    const url = `${baseUrl}/annonces/carte?lat=${lat}&lng=${lng}${rayon ? `&rayon=${rayon}` : ''}`;
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch nearby annonces');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // TRANSACTIONS
+  static async getMyTransactions(token: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/transactions/me`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch transactions');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async reserveAnnonce(token: string, annonceId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/transactions/reserve/${annonceId}`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to reserve');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async getQRReception(token: string, transactionId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/transactions/${transactionId}/qr-reception`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to generate QR');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async validateReception(token: string, transactionId: string, secret: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/transactions/${transactionId}/validate-reception`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ secret })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to validate reception');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // WALLET
+  static async getWallet(token: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/wallet/me`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch wallet');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async depositMoney(token: string, montant: number) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/wallet/depot`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ montant })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to deposit');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // CHAT
+  static async getConversations(token: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/chat/conversations`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch conversations');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async getChatHistory(token: string, otherId: string, annonceId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/chat/${otherId}/${annonceId}`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch chat history');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // POINTS RELAIS
+  static async getPointsRelais(token: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/points-relais`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch points relais');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async getNearbyPointsRelais(token: string, lat: number, lng: number, rayon?: number) {
+    const baseUrl = this.getBaseUrl();
+    const url = `${baseUrl}/points-relais/nearby?lat=${lat}&lng=${lng}${rayon ? `&rayon=${rayon}` : ''}`;
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch nearby points');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
 }
-
-/**
- * Example usage in a component:
- * 
- * import { useApi } from '@/services/api';
- * 
- * const MyComponent = () => {
- *   const { callApi } = useApi();
- * 
- *   const fetchAnnonces = async () => {
- *     try {
- *       const data = await callApi('/annonces');
- *       console.log(data);
- *     } catch (error) {
- *       console.error(error);
- *     }
- *   };
- * 
- *   return <View>...</View>;
- * };
- */
