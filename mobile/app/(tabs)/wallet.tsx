@@ -22,6 +22,7 @@ export default function WalletScreen() {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [error, setError] = useState('');
   const [errorRetrait, setErrorRetrait] = useState('');
+  const [historyFilter, setHistoryFilter] = useState<'ALL' | 'CREDIT' | 'DEBIT'>('ALL');
 
   useFocusEffect(
     useCallback(() => {
@@ -121,6 +122,14 @@ export default function WalletScreen() {
     return type === 'DEPOT' || type === 'DEBLOCAGE';
   };
 
+  const getMouvementIcon = (type: string) => {
+    if (type === 'DEPOT') return 'arrow-down-circle-outline';
+    if (type === 'RETRAIT') return 'arrow-up-circle-outline';
+    if (type === 'BLOCAGE') return 'lock-closed-outline';
+    if (type === 'DEBLOCAGE') return 'lock-open-outline';
+    return 'swap-horizontal-outline';
+  };
+
   // Formater la date
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('fr-FR', {
@@ -131,6 +140,29 @@ export default function WalletScreen() {
       minute: '2-digit'
     });
   };
+
+  const soldeReel = Number(wallet?.wallet?.soldeReel || 0);
+  const soldeBloque = Number(wallet?.wallet?.soldeBloque || 0);
+  const mouvements = Array.isArray(wallet?.mouvements) ? wallet.mouvements : [];
+  const mouvementsCredit = mouvements.filter((item: any) => isPositiveMouvement(item.type)).length;
+  const mouvementsDebit = mouvements.filter((item: any) => !isPositiveMouvement(item.type)).length;
+  const totalMouvements = mouvements.length;
+
+  const filteredMouvements = mouvements.filter((item: any) => {
+    if (historyFilter === 'ALL') {
+      return true;
+    }
+
+    if (historyFilter === 'CREDIT') {
+      return isPositiveMouvement(item.type);
+    }
+
+    return !isPositiveMouvement(item.type);
+  });
+
+  const ratioBloque = soldeReel + soldeBloque > 0
+    ? Math.round((soldeBloque / (soldeReel + soldeBloque)) * 100)
+    : 0;
 
   if (isLoading) {
     return (
@@ -145,19 +177,38 @@ export default function WalletScreen() {
       <ScrollView
         className="flex-1 px-4"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1B4332" />}
+        contentContainerStyle={{ paddingBottom: 24 }}
       >
-        {/* Carte Solde */}
+        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
+          <View className="flex-row items-center justify-between mb-2">
+            <View>
+              <Text className="text-xs text-on-surface-variant font-semibold">Espace Finance</Text>
+              <Text className="text-base font-extrabold text-primary">Portefeuille Solidaire</Text>
+            </View>
+            <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
+              <Ionicons name="wallet-outline" size={20} color="#1B4332" />
+            </View>
+          </View>
+          <Text className="text-xs text-on-surface-variant">
+            Démo simple: dépôt et retrait direct utilisateur. En production, paiement externe recommandé.
+          </Text>
+        </View>
+
+        {/* Carte Solde Hero */}
         <View className="bg-primary rounded-2xl p-4 mb-4">
-          <Text className="text-white/80 text-xs font-semibold uppercase">Mon portefeuille</Text>
-          <Text className="text-white text-2xl font-black mt-1">
-            {wallet?.wallet?.soldeReel?.toFixed(2) || '0.00'} MAD
-          </Text>
-          <Text className="text-white/80 text-xs mt-1">
-            Caution bloquée: {wallet?.wallet?.soldeBloque?.toFixed(2) || '0.00'} MAD
-          </Text>
-          <Text className="text-white/70 text-[11px] mt-2">
-            Version démo: le dépôt est autorisé pour l'utilisateur connecté.
-          </Text>
+          <Text className="text-white/80 text-xs font-semibold uppercase">Solde principal</Text>
+          <Text className="text-white text-3xl font-black mt-1">{soldeReel.toFixed(2)} MAD</Text>
+          <Text className="text-white/80 text-xs mt-1">Caution bloquée: {soldeBloque.toFixed(2)} MAD</Text>
+
+          <View className="mt-3">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-[11px] text-white/85">Part du solde bloqué</Text>
+              <Text className="text-[11px] text-white font-bold">{ratioBloque}%</Text>
+            </View>
+            <View className="h-2 rounded-full bg-white/25 overflow-hidden">
+              <View className="h-2 rounded-full bg-white" style={{ width: `${ratioBloque}%` }} />
+            </View>
+          </View>
         </View>
 
         {/* Mini stats */}
@@ -168,11 +219,15 @@ export default function WalletScreen() {
           </View>
           <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
             <Text className="text-[11px] text-on-surface-variant">Mouvements</Text>
-            <Text className="text-sm font-bold text-primary mt-1">{wallet?.mouvements?.length || 0}</Text>
+            <Text className="text-sm font-bold text-primary mt-1">{totalMouvements}</Text>
+          </View>
+          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
+            <Text className="text-[11px] text-on-surface-variant">Crédits</Text>
+            <Text className="text-sm font-bold text-emerald-700 mt-1">{mouvementsCredit}</Text>
           </View>
         </View>
 
-        {/* Actions */}
+        {/* Actions rapides */}
         <View className="flex-row gap-2 mb-3">
           <Pressable
             onPress={() => setShowDepotModal(true)}
@@ -195,26 +250,85 @@ export default function WalletScreen() {
             </View>
             <Ionicons name="chevron-forward" size={16} color="#6c757d" />
           </Pressable>
+
+          <Pressable
+            onPress={() => router.push('/(tabs)/transactions')}
+            className="flex-1 bg-white rounded-2xl p-4 border border-outline-variant flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="receipt-outline" size={18} color="#1B4332" />
+              <Text className="text-on-surface font-semibold text-xs">Transactions</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#6c757d" />
+          </Pressable>
+        </View>
+
+        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-3">
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-sm font-extrabold text-primary">Synthèse rapide</Text>
+            <Ionicons name="stats-chart-outline" size={18} color="#1B4332" />
+          </View>
+          <Text className="text-xs text-on-surface-variant">
+            Débits: {mouvementsDebit} • Crédits: {mouvementsCredit} • Opérations totales: {totalMouvements}
+          </Text>
+          <Text className="text-xs text-on-surface-variant mt-1">
+            Conseil: gardez un petit solde libre pour réserver plus vite les annonces utiles.
+          </Text>
+        </View>
+
+        <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
+          <View className="flex-row items-center gap-2 mb-2">
+            <Ionicons name="information-circle-outline" size={18} color="#b45309" />
+            <Text className="text-sm font-bold text-amber-800">Règles simples du wallet</Text>
+          </View>
+          <Text className="text-xs text-amber-800">1. Dépôt: ajoute du solde réel immédiatement.</Text>
+          <Text className="text-xs text-amber-800 mt-1">2. Blocage caution: réservé automatiquement pendant une transaction.</Text>
+          <Text className="text-xs text-amber-800 mt-1">3. Déblocage: la caution revient après validation du retour.</Text>
         </View>
 
         {/* Historique */}
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-3">
-          <View className="flex-row items-center gap-3 mb-3">
-            <Ionicons name="time-outline" size={20} color="#1B4332" />
-            <Text className="text-on-surface font-semibold">Historique</Text>
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="time-outline" size={20} color="#1B4332" />
+              <Text className="text-on-surface font-semibold">Historique</Text>
+            </View>
+            <View className="flex-row gap-1">
+              <Pressable
+                onPress={() => setHistoryFilter('ALL')}
+                className={`px-2 py-1 rounded-lg ${historyFilter === 'ALL' ? 'bg-primary' : 'bg-surface-container'}`}
+              >
+                <Text className={`text-[10px] font-bold ${historyFilter === 'ALL' ? 'text-white' : 'text-on-surface-variant'}`}>Tout</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setHistoryFilter('CREDIT')}
+                className={`px-2 py-1 rounded-lg ${historyFilter === 'CREDIT' ? 'bg-primary' : 'bg-surface-container'}`}
+              >
+                <Text className={`text-[10px] font-bold ${historyFilter === 'CREDIT' ? 'text-white' : 'text-on-surface-variant'}`}>Crédit</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setHistoryFilter('DEBIT')}
+                className={`px-2 py-1 rounded-lg ${historyFilter === 'DEBIT' ? 'bg-primary' : 'bg-surface-container'}`}
+              >
+                <Text className={`text-[10px] font-bold ${historyFilter === 'DEBIT' ? 'text-white' : 'text-on-surface-variant'}`}>Débit</Text>
+              </Pressable>
+            </View>
           </View>
 
-          {wallet?.mouvements && wallet.mouvements.length > 0 ? (
-            wallet.mouvements.map((mouvement: any, index: number) => (
+          {filteredMouvements.length > 0 ? (
+            filteredMouvements.map((mouvement: any, index: number) => (
               <View
                 key={mouvement.id || index}
                 className="py-3 border-b border-outline-variant/30 flex-row items-center justify-between"
               >
-                <View className="flex-1">
+                <View className="flex-1 flex-row items-start gap-2">
+                  <Ionicons name={getMouvementIcon(mouvement.type)} size={16} color="#1B4332" style={{ marginTop: 2 }} />
+                  <View className="flex-1">
                   <Text className="text-sm font-semibold text-on-surface">{getMouvementLabel(mouvement.type)}</Text>
                   <Text className="text-xs text-on-surface-variant mt-1">
                     {formatDate(mouvement.date)}
                   </Text>
+                  </View>
                 </View>
                 <Text
                   className={`text-sm font-bold ${
@@ -230,7 +344,7 @@ export default function WalletScreen() {
             ))
           ) : (
             <Text className="text-sm text-on-surface-variant text-center py-4">
-              Aucun mouvement pour le moment
+              Aucun mouvement pour ce filtre
             </Text>
           )}
         </View>
