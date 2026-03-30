@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, Modal, Image, Alert, TextInput } from 'react-native';
+import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, Modal, Image, Alert, TextInput, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -769,23 +769,26 @@ export default function TransactionsScreen() {
                     </View>
                   ) : null}
 
-                  {/* Contrat */}
-                  {contrat ? (
+                  {/* Contrat PDF */}
+                  {contrat && (contrat.urlPdfBilingue || contrat.urlPdf) ? (
                     <View className="bg-surface rounded-xl p-3 mb-3">
                       <Text className="text-xs text-on-surface-variant mb-2">Contrat</Text>
                       <Text className="text-xs text-on-surface">
-                        Numero: {contrat.numContrat}
+                        Numero: {contrat.numContrat || '-'}
                       </Text>
-                      {contrat.urlPdfBilingue ? (
-                        <Pressable
-                          onPress={() => {
-                            Alert.alert('Info', 'Telechargement PDF: ' + contrat.urlPdfBilingue);
-                          }}
-                          className="mt-2 bg-white border border-outline-variant rounded-lg py-2 items-center"
-                        >
-                          <Text className="text-primary font-semibold text-xs">Telecharger PDF</Text>
-                        </Pressable>
-                      ) : null}
+                      <Pressable
+                        onPress={() => {
+                          const url = contrat.urlPdfBilingue || contrat.urlPdf;
+                          if (url) {
+                            Linking.openURL(url);
+                          } else {
+                            Alert.alert('Erreur', 'PDF non disponible');
+                          }
+                        }}
+                        className="mt-2 bg-primary rounded-lg py-2 items-center"
+                      >
+                        <Text className="text-white font-semibold text-xs">Voir le contrat PDF</Text>
+                      </Pressable>
                     </View>
                   ) : null}
 

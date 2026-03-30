@@ -418,6 +418,7 @@ export class TransactionService {
   // Récupérer les transactions de l'utilisateur
   async getMyTransactions(userId: string) {
     try {
+
       const transactions = await this.prisma.transaction.findMany({
         where: {
           OR: [
@@ -427,6 +428,7 @@ export class TransactionService {
         },
         include: {
           annonce: true,
+          contrat: true,
           emprunteur: { select: { email: true } },
           preteur: { select: { email: true } },
         },
