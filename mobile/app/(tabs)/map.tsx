@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,12 +7,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { ApiService } from '../../services/api';
+import SmartAnnonceImage from '../../components/smart-annonce-image';
 
 export default function MapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(true);
   const [annonces, setAnnonces] = useState<any[]>([]);
+  const [selectedAnnonce, setSelectedAnnonce] = useState<any>(null);
   const [userLocation, setUserLocation] = useState({ latitude: 33.58, longitude: -7.60 });
 
   const loadUserLocation = async () => {
@@ -83,7 +85,7 @@ export default function MapScreen() {
   }
 
   return (
-    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-surface">
       <MapView
         provider={PROVIDER_GOOGLE}
         style={styles.map}
@@ -108,21 +110,64 @@ export default function MapScreen() {
               title={annonce.titre}
               description={`${annonce.categorie} - ${annonce.distance}km`}
               pinColor={getMarkerColor(annonce.categorie)}
-              onCalloutPress={() => router.push(`/(annonces)/${annonce.id}`)}
+              onPress={() => setSelectedAnnonce(annonce)}
             />
           );
         })}
       </MapView>
 
-      <View className="absolute bottom-5 left-4 right-4">
-        <View className="bg-white rounded-2xl p-3 border border-outline-variant shadow-lg">
-          <Text className="text-xs font-bold text-primary mb-1">
-            {annonces.length} annonce{annonces.length > 1 ? 's' : ''} autour de vous
-          </Text>
-          <Text className="text-xs text-on-surface-variant">
-            Cliquez sur un marqueur pour voir les détails
-          </Text>
+      {/* Header flottant */}
+      <View className="absolute top-0 left-0 right-0 bg-white/95 border-b border-outline-variant/30 px-5 pb-3" style={{ paddingTop: insets.top + 10 }}>
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1">
+            <Text className="text-xs font-semibold text-on-surface-variant">Carte Interactive</Text>
+            <Text className="text-base font-extrabold text-primary">Annonces Proches</Text>
+          </View>
+          <View className="bg-primary/10 px-3 py-2 rounded-lg">
+            <Text className="text-xs font-bold text-primary">{annonces.length} annonces</Text>
+          </View>
         </View>
+      </View>
+
+      {/* Bottom sheet avec liste des annonces */}
+      <View className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl border-t border-outline-variant" style={{ paddingBottom: insets.bottom + 10 }}>
+        <View className="px-5 pt-4 pb-2">
+          <View className="w-12 h-1 bg-outline-variant rounded-full self-center mb-3" />
+          <Text className="text-sm font-extrabold text-primary mb-2">Annonces à proximité</Text>
+        </View>
+        
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 12 }}>
+          {annonces.length === 0 ? (
+            <View className="bg-surface rounded-xl p-4 items-center justify-center" style={{ width: 280 }}>
+              <Ionicons name="map-outline" size={24} color="#A5A6AA" />
+              <Text className="text-xs text-on-surface-variant mt-2">Aucune annonce dans ce rayon</Text>
+            </View>
+          ) : (
+            annonces.map((annonce) => (
+              <Pressable
+                key={annonce.id}
+                onPress={() => router.push(`/(annonces)/${annonce.id}`)}
+                className={`bg-white border rounded-2xl p-3 ${selectedAnnonce?.id === annonce.id ? 'border-primary' : 'border-outline-variant'}`}
+                style={{ width: 280 }}
+              >
+                <SmartAnnonceImage
+                  uri={annonce.photos?.[0]}
+                  className="w-full h-32 rounded-xl mb-2 overflow-hidden"
+                  resizeMode="cover"
+                />
+                <Text className="text-sm font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
+                <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={2}>{annonce.description}</Text>
+                
+                <View className="flex-row items-center justify-between mt-2">
+                  <View className="bg-primary/10 px-2 py-1 rounded-lg">
+                    <Text className="text-[10px] font-semibold text-primary">{annonce.categorie}</Text>
+                  </View>
+                  <Text className="text-xs text-on-surface-variant">{annonce.distance} km</Text>
+                </View>
+              </Pressable>
+            ))
+          )}
+        </ScrollView>
       </View>
     </View>
   );
