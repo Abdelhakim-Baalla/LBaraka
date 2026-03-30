@@ -1,14 +1,25 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { ApiService } from '../../services/api';
 import SmartAnnonceImage from '../../components/smart-annonce-image';
+
+// Import conditionnel de react-native-maps (seulement sur mobile)
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
+
+if (Platform.OS !== 'web') {
+  const Maps = require('react-native-maps');
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+}
 
 export default function MapScreen() {
   const router = useRouter();
@@ -109,6 +120,27 @@ export default function MapScreen() {
     };
     return colors[categorie] || '#1B4332';
   };
+
+  // Si on est sur web, afficher un message
+  if (Platform.OS === 'web') {
+    return (
+      <View className="flex-1 bg-surface items-center justify-center px-6" style={{ paddingTop: insets.top + 10 }}>
+        <Ionicons name="map-outline" size={64} color="#A5A6AA" />
+        <Text className="text-lg font-bold text-primary mt-4 text-center">
+          Carte non disponible sur web
+        </Text>
+        <Text className="text-sm text-on-surface-variant mt-2 text-center">
+          La carte interactive est disponible uniquement sur l'application mobile (Android/iOS).
+        </Text>
+        <Pressable
+          onPress={() => router.push('/(tabs)/home')}
+          className="bg-primary rounded-xl py-3 px-6 mt-6"
+        >
+          <Text className="text-white font-bold">Retour à l'accueil</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   if (isLoading) {
     return (

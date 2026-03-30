@@ -209,26 +209,45 @@ export default function ChatScreen() {
   }
 
   return (
-    <View className="flex-1 bg-surface">
-      {/* Header */}
-      <Animated.View entering={FadeInUp.duration(500)} className="bg-white/90 border-b border-outline-variant/30 px-5 pb-3" style={{ paddingTop: insets.top + 10 }}>
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-1">
-            <Text className="text-xs font-semibold text-on-surface-variant">Espace Discussion</Text>
-            <Text className="text-base font-extrabold text-primary">Messagerie</Text>
+    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
+      <ScrollView
+        className="flex-1 px-4"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1B4332" />}
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
+        {/* Header */}
+        <Animated.View entering={FadeInUp.duration(500)} className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-1">
+              <Text className="text-xs font-semibold text-on-surface-variant">Espace Discussion</Text>
+              <Text className="text-base font-extrabold text-primary">Messagerie</Text>
+            </View>
+            <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
+              <Ionicons name="chatbubbles-outline" size={20} color="#1B4332" />
+            </View>
           </View>
-          <View className="bg-primary/10 px-3 py-2 rounded-lg">
-            <Text className="text-xs font-bold text-primary">
-              {activeTab === 'conversations' ? conversations.length : reservations.length}
-            </Text>
+          <Text className="text-xs text-on-surface-variant">
+            Communiquez avec les membres pour vos échanges.
+          </Text>
+        </Animated.View>
+
+        {/* Stats */}
+        <Animated.View entering={FadeInUp.delay(100).duration(600)} className="flex-row gap-2 mb-4">
+          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
+            <Text className="text-[11px] text-on-surface-variant">Conversations</Text>
+            <Text className="text-sm font-bold text-primary mt-1">{conversations.length}</Text>
           </View>
-        </View>
+          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
+            <Text className="text-[11px] text-on-surface-variant">Réservations</Text>
+            <Text className="text-sm font-bold text-blue-600 mt-1">{reservations.length}</Text>
+          </View>
+        </Animated.View>
 
         {/* Tabs */}
-        <View className="flex-row gap-2">
+        <Animated.View entering={FadeInUp.delay(150).duration(600)} className="flex-row gap-2 mb-4">
           <Pressable
             onPress={() => setActiveTab('conversations')}
-            className={`flex-1 py-2 rounded-lg ${activeTab === 'conversations' ? 'bg-primary' : 'bg-surface'}`}
+            className={`flex-1 py-3 rounded-xl ${activeTab === 'conversations' ? 'bg-primary' : 'bg-white border border-outline-variant'}`}
           >
             <Text className={`text-center text-sm font-bold ${activeTab === 'conversations' ? 'text-white' : 'text-on-surface-variant'}`}>
               Conversations
@@ -236,24 +255,16 @@ export default function ChatScreen() {
           </Pressable>
           <Pressable
             onPress={() => setActiveTab('reservations')}
-            className={`flex-1 py-2 rounded-lg ${activeTab === 'reservations' ? 'bg-primary' : 'bg-surface'}`}
+            className={`flex-1 py-3 rounded-xl ${activeTab === 'reservations' ? 'bg-primary' : 'bg-white border border-outline-variant'}`}
           >
             <Text className={`text-center text-sm font-bold ${activeTab === 'reservations' ? 'text-white' : 'text-on-surface-variant'}`}>
               Réservations
             </Text>
           </Pressable>
-        </View>
-      </Animated.View>
-
-      {/* Contenu */}
-      <ScrollView
-        className="flex-1 px-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1B4332" />}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 24 }}
-      >
+        </Animated.View>
         {activeTab === 'conversations' ? (
           <>
-            <Animated.View entering={FadeInUp.delay(100).duration(600)} className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
+            <Animated.View entering={FadeInUp.delay(200).duration(600)} className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
               <View className="flex-row items-center gap-2 mb-2">
                 <Ionicons name="chatbubble-ellipses-outline" size={20} color="#1B4332" />
                 <Text className="text-sm font-extrabold text-primary">Vos conversations</Text>
@@ -264,61 +275,61 @@ export default function ChatScreen() {
             </Animated.View>
 
             {conversations.length === 0 ? (
-          <Animated.View entering={FadeInUp.delay(150).duration(600)} className="bg-white rounded-2xl p-6 border border-outline-variant items-center">
-            <Ionicons name="chatbubbles-outline" size={32} color="#A5A6AA" />
-            <Text className="text-sm text-on-surface-variant text-center mt-3">
-              Aucune conversation pour le moment
-            </Text>
-            <Text className="text-xs text-on-surface-variant text-center mt-1">
-              Réservez une annonce pour démarrer une discussion
-            </Text>
-          </Animated.View>
-        ) : (
-          conversations.map((convo, index) => {
+              <Animated.View entering={FadeInUp.delay(250).duration(600)} className="bg-white rounded-2xl p-6 border border-outline-variant items-center">
+                <Ionicons name="chatbubbles-outline" size={32} color="#A5A6AA" />
+                <Text className="text-sm text-on-surface-variant text-center mt-3">
+                  Aucune conversation pour le moment
+                </Text>
+                <Text className="text-xs text-on-surface-variant text-center mt-1">
+                  Réservez une annonce pour démarrer une discussion
+                </Text>
+              </Animated.View>
+            ) : (
+              conversations.map((convo, index) => {
             const lastMessage = convo.lastMessage || {};
             const annonceId = convo._id?.annonceId || '';
             const participants = convo._id?.participants || [];
             const isFromMe = lastMessage.senderId === currentUserId;
 
-            return (
-              <Animated.View key={`convo-${index}`} entering={FadeInUp.delay(150 + index * 50).duration(600)}>
-                <Pressable
-                  onPress={() => openConversation(convo)}
-                  className="bg-white border border-outline-variant rounded-2xl p-4 mb-3"
-                >
-                  <View className="flex-row items-start justify-between mb-2">
-                    <View className="flex-1 pr-3">
-                      <Text className="text-sm font-bold text-primary" numberOfLines={1}>
-                        Annonce: {annonceId.substring(0, 8)}...
-                      </Text>
-                      <Text className="text-xs text-on-surface-variant mt-1">
-                        {participants.length} participant{participants.length > 1 ? 's' : ''}
-                      </Text>
-                    </View>
-                    <View className="bg-primary/10 rounded-full p-2">
-                      <Ionicons name="chatbubble-outline" size={16} color="#1B4332" />
-                    </View>
-                  </View>
+                return (
+                  <Animated.View key={`convo-${index}`} entering={FadeInUp.delay(250 + index * 50).duration(600)}>
+                    <Pressable
+                      onPress={() => openConversation(convo)}
+                      className="bg-white border border-outline-variant rounded-2xl p-4 mb-3"
+                    >
+                      <View className="flex-row items-start justify-between mb-2">
+                        <View className="flex-1 pr-3">
+                          <Text className="text-sm font-bold text-primary" numberOfLines={1}>
+                            Annonce: {annonceId.substring(0, 8)}...
+                          </Text>
+                          <Text className="text-xs text-on-surface-variant mt-1">
+                            {participants.length} participant{participants.length > 1 ? 's' : ''}
+                          </Text>
+                        </View>
+                        <View className="bg-primary/10 rounded-full p-2">
+                          <Ionicons name="chatbubble-outline" size={16} color="#1B4332" />
+                        </View>
+                      </View>
 
-                  {lastMessage.content ? (
-                    <View className="bg-surface rounded-xl p-2 mt-2">
-                      <Text className="text-xs text-on-surface" numberOfLines={2}>
-                        {isFromMe ? 'Vous: ' : ''}{lastMessage.content}
-                      </Text>
-                      <Text className="text-[10px] text-on-surface-variant mt-1">
-                        {formatDate(lastMessage.createdAt)}
-                      </Text>
-                    </View>
-                  ) : null}
+                      {lastMessage.content ? (
+                        <View className="bg-surface rounded-xl p-2 mt-2">
+                          <Text className="text-xs text-on-surface" numberOfLines={2}>
+                            {isFromMe ? 'Vous: ' : ''}{lastMessage.content}
+                          </Text>
+                          <Text className="text-[10px] text-on-surface-variant mt-1">
+                            {formatDate(lastMessage.createdAt)}
+                          </Text>
+                        </View>
+                      ) : null}
 
-                  <View className="flex-row items-center justify-end mt-2">
-                    <Ionicons name="chevron-forward" size={16} color="#1B4332" />
-                  </View>
-                </Pressable>
-              </Animated.View>
-            );
-          })
-        )}
+                      <View className="flex-row items-center justify-end mt-2">
+                        <Ionicons name="chevron-forward" size={16} color="#1B4332" />
+                      </View>
+                    </Pressable>
+                  </Animated.View>
+                );
+              })
+            )}
 
             <Animated.View entering={FadeInUp.delay(300).duration(600)} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mt-2">
               <View className="flex-row items-center gap-2 mb-2">
@@ -332,7 +343,7 @@ export default function ChatScreen() {
           </>
         ) : (
           <>
-            <Animated.View entering={FadeInUp.delay(100).duration(600)} className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
+            <Animated.View entering={FadeInUp.delay(200).duration(600)} className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
               <View className="flex-row items-center gap-2 mb-2">
                 <Ionicons name="receipt-outline" size={20} color="#1B4332" />
                 <Text className="text-sm font-extrabold text-primary">Vos réservations</Text>
@@ -343,7 +354,7 @@ export default function ChatScreen() {
             </Animated.View>
 
             {reservations.length === 0 ? (
-              <Animated.View entering={FadeInUp.delay(150).duration(600)} className="bg-white rounded-2xl p-6 border border-outline-variant items-center">
+              <Animated.View entering={FadeInUp.delay(250).duration(600)} className="bg-white rounded-2xl p-6 border border-outline-variant items-center">
                 <Ionicons name="calendar-outline" size={32} color="#A5A6AA" />
                 <Text className="text-sm text-on-surface-variant text-center mt-3">
                   Aucune réservation active
@@ -371,7 +382,7 @@ export default function ChatScreen() {
                 };
 
                 return (
-                  <Animated.View key={`res-${index}`} entering={FadeInUp.delay(150 + index * 50).duration(600)}>
+                  <Animated.View key={`res-${index}`} entering={FadeInUp.delay(250 + index * 50).duration(600)}>
                     <View className="bg-white border border-outline-variant rounded-2xl p-4 mb-3">
                       <View className="flex-row items-start justify-between mb-3">
                         <View className="flex-1 pr-3">
