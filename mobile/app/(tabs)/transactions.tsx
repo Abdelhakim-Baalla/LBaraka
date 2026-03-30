@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, Modal, Image, Alert, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +31,9 @@ export default function TransactionsScreen() {
   const [scanLocked, setScanLocked] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [filter, setFilter] = useState<'ALL' | 'EMPRUNTS' | 'PRETS'>('ALL');
+  // Pour surveiller le statut précédent
+  const prevStatusRef = useRef<string | null>(null);
+  const [statusAutoUpdated, setStatusAutoUpdated] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -105,11 +108,30 @@ export default function TransactionsScreen() {
   // Auto-sync du statut quand le détail est ouvert (évite refresh manuel)
   useEffect(() => {
     if (!showDetailModal || !selectedTransaction?.id) {
+      prevStatusRef.current = null;
+      setStatusAutoUpdated(false);
       return;
     }
 
-    const intervalId = setInterval(() => {
-      loadTransactions({ silent: true });
+    prevStatusRef.current = selectedTransaction.statut;
+
+    const intervalId = setInterval(async () => {
+      const nextList = await loadTransactions({ silent: true });
+      const refreshed = nextList.find((t: any) => t.id === selectedTransaction.id);
+      if (refreshed) {
+        // Si le statut a changé, on ferme tout et badge
+        if (prevStatusRef.current && refreshed.statut !== prevStatusRef.current) {
+          setShowDetailModal(false);
+          setShowQRModal(false);
+          setShowValidationModal(false);
+          setIsScannerActive(false);
+          setScanLocked(false);
+          setStatusAutoUpdated(true);
+          setTimeout(() => setStatusAutoUpdated(false), 3500); // Badge visible 3.5s
+        }
+        setSelectedTransaction(refreshed);
+        prevStatusRef.current = refreshed.statut;
+      }
     }, 2500);
 
     return () => {
@@ -562,7 +584,12 @@ export default function TransactionsScreen() {
                 <Ionicons name="close" size={24} color="#1B4332" />
               </Pressable>
             </View>
-
+            {/* Badge de mise à jour auto */}
+            {statusAutoUpdated && (
+              <View className="mb-2 px-3 py-2 bg-emerald-100 border border-emerald-300 rounded-xl items-center">
+                <Text className="text-xs text-emerald-800 font-semibold">Statut mis à jour automatiquement</Text>
+              </View>
+            )}
             <ScrollView showsVerticalScrollIndicator={false}>
               {selectedTransaction ? (
                 <>
