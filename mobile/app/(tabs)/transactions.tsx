@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, Modal, Image, Alert, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,8 +48,12 @@ export default function TransactionsScreen() {
   );
 
   // Charger les transactions
-  const loadTransactions = async () => {
+  const loadTransactions = async (options?: { silent?: boolean }) => {
     try {
+      if (!options?.silent && isLoading === false) {
+        setRefreshing(true);
+      }
+
       const [token, userRaw] = await Promise.all([
         AsyncStorage.getItem('accessToken'),
         AsyncStorage.getItem('user'),
@@ -78,14 +82,40 @@ export default function TransactionsScreen() {
       }
 
       const data = await ApiService.getMyTransactions(token);
-      setTransactions(data.transactions || []);
+      const nextTransactions = data.transactions || [];
+      setTransactions(nextTransactions);
+
+      if (selectedTransaction?.id) {
+        const updatedSelected = nextTransactions.find((t: any) => t.id === selectedTransaction.id);
+        if (updatedSelected) {
+          setSelectedTransaction(updatedSelected);
+        }
+      }
+
+      return nextTransactions;
     } catch (error) {
       console.error('Error loading transactions:', error);
+      return [];
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
   };
+
+  // Auto-sync du statut quand le détail est ouvert (évite refresh manuel)
+  useEffect(() => {
+    if (!showDetailModal || !selectedTransaction?.id) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      loadTransactions({ silent: true });
+    }, 2500);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [showDetailModal, selectedTransaction?.id]);
 
   // Rafraichir les donnees
   const onRefresh = () => {
@@ -283,11 +313,16 @@ export default function TransactionsScreen() {
         await ApiService.validateRetour(token, selectedTransaction.id, codeToValidate);
       }
 
+      const validatedTransactionId = selectedTransaction.id;
       closeValidationFlow();
       setValidationCode('');
-      setShowDetailModal(false);
       Alert.alert('Succes', validationType === 'reception' ? 'Remise validée' : 'Retour confirmé');
-      loadTransactions();
+      const refreshedList = await loadTransactions({ silent: true });
+      const refreshed = refreshedList.find((t: any) => t.id === validatedTransactionId);
+      if (refreshed) {
+        setSelectedTransaction(refreshed);
+      }
+      setShowDetailModal(true);
     } catch (error: any) {
       Alert.alert('Erreur', error?.message || 'Validation impossible');
     } finally {
