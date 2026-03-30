@@ -1,206 +1,626 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import Animated, { FadeInDown, SlideInUp } from 'react-native-reanimated';
-import { Link, useRouter } from 'expo-router';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+  SafeAreaView,
+  useWindowDimensions,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ApiService } from '../../services/api';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ApiService } from '@/services/api';
 
 export default function SignUp() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+
+  // Responsive breakpoints
+  const isSmallScreen = width < 375;
+  const isMediumScreen = width >= 375 && width < 600;
+  const isLargeScreen = width >= 600;
+
+  // Adaptive spacing
+  const horizontalPadding = isSmallScreen ? 16 : isMediumScreen ? 20 : 28;
+  const verticalGap = isSmallScreen ? 14 : isMediumScreen ? 16 : 18;
+  const inputHeight = isSmallScreen ? 44 : isMediumScreen ? 48 : 52;
 
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [telephone, setTelephone] = useState('');
   const [cin, setCin] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = async () => {
-    // Validation
+  const handleRegister = async () => {
     if (!email || !password || !telephone) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+      setError('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    if (!email.includes('@')) {
+      setError('Veuillez entrer une adresse email valide');
+      return;
+    }
+
+    if (telephone.length < 9) {
+      setError('Numéro de téléphone invalide');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
 
     setIsLoading(true);
+    setError('');
 
     try {
       const phoneNumber = telephone.startsWith('0') ? telephone : `0${telephone}`;
-      
-      const requestData = {
-        email: email.trim().toLowerCase(),
-        motDePasse: password,
+
+      const result = await ApiService.registerWithBackend({
+        email,
         telephone: phoneNumber,
         cin: cin || undefined,
-      };
+        motDePasse: password,
+      });
 
-      const data = await ApiService.registerWithBackend(requestData);
+      if (result.accessToken) {
+        await AsyncStorage.setItem('accessToken', result.accessToken);
+        await AsyncStorage.setItem('user', JSON.stringify(result.utilisateur || result.user));
+        await AsyncStorage.setItem('hasSeenOnboarding', 'true');
 
-      // Save token
-      await AsyncStorage.setItem('accessToken', data.accessToken);
-      await AsyncStorage.setItem('user', JSON.stringify(data.utilisateur));
-
-      Alert.alert(
-        'Succès',
-        'Inscription réussie! Bienvenue dans la communauté LBaraka',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/(tabs)/home'),
-          },
-        ]
-      );
-    } catch (error: any) {
-      console.error('❌ Registration error:', error);
-      Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+        router.replace('/(tabs)/home');
+      } else {
+        setError('Inscription échouée: Aucun token reçu');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Erreur lors de l\'inscription');
+      console.error('Register error:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-surface"
-    >
-      {/* Header */}
-      <View
-        className="bg-white/70 backdrop-blur-xl shadow-lg px-6 flex-row items-center justify-between"
-        style={{ paddingTop: insets.top + 8, paddingBottom: 8 }}
+    <SafeAreaView style={{ flex: 1 }} className="bg-surface">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        style={{ flex: 1 }}
       >
-        <Pressable 
-          onPress={() => router.back()}
-          className="w-10 h-10 rounded-xl items-center justify-center active:bg-primary-fixed/20"
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
+          removeClippedSubviews={false}
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + 20,
+            minHeight: '100%',
+          }}
+          bounces={false}
         >
-          <Ionicons name="arrow-back" size={24} color="#012d1d" />
-        </Pressable>
-        <Text className="text-xl font-bold tracking-widest text-primary">LBARAKA</Text>
-        <View className="w-10" />
-      </View>
-
-      <ScrollView className="flex-1 px-6 pt-6 pb-8" showsVerticalScrollIndicator={false}>
-        {/* Header Section */}
-        <View className="mb-6">
-          <Text className="text-2xl font-extrabold text-primary mb-1">S'inscrire</Text>
-          <Text className="text-sm text-on-surface-variant leading-5">
-            Rejoignez LBaraka et commencez vos échanges locaux.
-          </Text>
-        </View>
-
-        {/* Form */}
-        <Animated.View entering={FadeInDown.delay(300).duration(600)} className="gap-4 mb-6">
-          {/* Email */}
-          <View>
-            <Text className="text-xs font-bold text-on-surface-variant/70 mb-2">E-MAIL *</Text>
-            <TextInput
-              className="w-full bg-surface-container-high rounded-xl px-4 py-3.5 h-12 text-on-surface text-base border border-outline-variant/40"
-              autoCapitalize="none"
-              value={email}
-              placeholder="votre@email.com"
-              placeholderTextColor="#a5a6aa"
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              editable={!isLoading}
-            />
-          </View>
-
-          {/* Phone */}
-          <View>
-            <Text className="text-xs font-bold text-on-surface-variant/70 mb-2">TÉLÉPHONE (MAR) *</Text>
-            <View className="flex-row gap-2">
-              <View className="bg-surface-container-high rounded-xl px-3 h-12 items-center justify-center min-w-fit border border-outline-variant/40">
-                <Text className="text-on-surface font-semibold text-sm">+212</Text>
+          {/* Brand Header with Gradient Accent */}
+          <Animated.View entering={FadeInDown.duration(400)} style={{ paddingTop: insets.top + 12 }}>
+            <View
+              style={{ paddingHorizontal: horizontalPadding, marginBottom: verticalGap + 8 }}
+              className="items-center"
+            >
+              <View className="relative mb-4 mt-5">
+                <View
+                  className="absolute -inset-3 rounded-full"
+                  style={{ backgroundColor: '#012d1d', opacity: 0.08 }}
+                />
+                <Image
+                  source={require('../../assets/images/lbaraka-light.png')}
+                  style={{
+                    width: isSmallScreen ? 50 : isMediumScreen ? 55 : 58,
+                    height: isSmallScreen ? 50 : isMediumScreen ? 55 : 58,
+                    borderRadius: (isSmallScreen ? 25 : isMediumScreen ? 27.5 : 30),
+                  }}
+                  resizeMode="contain"
+                />
               </View>
-              <TextInput
-                className="flex-1 bg-surface-container-high rounded-xl px-4 py-3.5 h-12 text-on-surface text-base border border-outline-variant/40"
-                value={telephone}
-                placeholder="600 000000"
-                placeholderTextColor="#a5a6aa"
-                onChangeText={setTelephone}
-                keyboardType="phone-pad"
-                maxLength={10}
-                editable={!isLoading}
+            </View>
+          </Animated.View>
+
+          {/* Main Content Container */}
+          <View
+            style={{
+              paddingHorizontal: horizontalPadding,
+              paddingVertical: isSmallScreen ? 12 : 20,
+            }}
+          >
+            {/* Headline Section */}
+            <Animated.View
+              entering={FadeInDown.delay(100).duration(400)}
+              style={{ marginBottom: verticalGap + 4 }}
+            >
+              <Text
+                style={{
+                  fontSize: isSmallScreen ? 26 : isMediumScreen ? 30 : 34,
+                  fontFamily: 'Outfit',
+                  fontWeight: '700',
+                  color: '#012d1d',
+                  lineHeight: isSmallScreen ? 30 : isMediumScreen ? 36 : 40,
+                  marginBottom: 6,
+                  letterSpacing: -0.5,
+                }}
+                numberOfLines={2}
+              >
+                Rejoignez
+              </Text>
+              <Text
+                style={{
+                  fontSize: isSmallScreen ? 12 : 13,
+                  fontFamily: 'Outfit',
+                  fontWeight: '500',
+                  color: '#66706b',
+                  lineHeight: isSmallScreen ? 17 : 19,
+                }}
+              >
+                Créez votre compte et accédez à des milliers d'annonces
+              </Text>
+            </Animated.View>
+
+            {/* Error Alert Card */}
+            {error ? (
+              <Animated.View
+                entering={FadeInUp.duration(300)}
+                style={{
+                  backgroundColor: 'rgba(184, 34, 51, 0.08)',
+                  borderLeftWidth: 4,
+                  borderLeftColor: '#b82233',
+                  padding: verticalGap,
+                  borderRadius: 12,
+                  marginBottom: verticalGap + 2,
+                }}
+              >
+                <View className="flex-row gap-3 items-flex-start">
+                  <Ionicons
+                    name="alert-circle"
+                    size={18}
+                    color="#b82233"
+                    style={{ marginTop: 1 }}
+                  />
+                  <Text
+                    style={{
+                      fontSize: isSmallScreen ? 11 : 12,
+                      fontFamily: 'Outfit',
+                      color: '#b82233',
+                      fontWeight: '600',
+                      flex: 1,
+                      lineHeight: 16,
+                    }}
+                  >
+                    {error}
+                  </Text>
+                </View>
+              </Animated.View>
+            ) : null}
+
+            {/* Form Card Container */}
+            <Animated.View
+              entering={FadeInDown.delay(150).duration(500)}
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                borderRadius: 16,
+                padding: verticalGap + 2,
+                marginBottom: verticalGap + 6,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.06,
+                shadowRadius: 16,
+                elevation: 4,
+                borderWidth: 1,
+                borderColor: 'rgba(1, 45, 29, 0.08)',
+              }}
+            >
+              {/* Email Input */}
+              <View style={{ marginBottom: verticalGap }}>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontFamily: 'Outfit',
+                    fontWeight: '700',
+                    color: '#012d1d',
+                    letterSpacing: 1,
+                    marginBottom: 6,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Email *
+                </Text>
+                <View
+                  style={{
+                    height: inputHeight,
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: 'rgba(1, 45, 29, 0.15)',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 12,
+                    gap: 10,
+                    shadowColor: 'transparent',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0,
+                    shadowRadius: 8,
+                    elevation: 0,
+                  }}
+                >
+                  <Ionicons
+                    name="mail-outline"
+                    size={18}
+                    color="#a5a6aa"
+                  />
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="nom@exemple.com"
+                    placeholderTextColor="#a5a6aa"
+                    keyboardType="email-address"
+                    editable={!isLoading}
+                    style={{
+                      flex: 1,
+                      fontSize: isSmallScreen ? 12 : 13,
+                      fontFamily: 'Outfit',
+                      color: '#012d1d',
+                      padding: 0,
+                    }}
+                  />
+                </View>
+              </View>
+
+              {/* Phone & CIN Dual Row */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  gap: verticalGap - 2,
+                  marginBottom: verticalGap,
+                }}
+              >
+                {/* Phone Input */}
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontFamily: 'Outfit',
+                      fontWeight: '700',
+                      color: '#012d1d',
+                      letterSpacing: 1,
+                      marginBottom: 6,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Téléphone *
+                  </Text>
+                  <View
+                    style={{
+                      height: inputHeight,
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: 12,
+                      borderWidth: 1.5,
+                      borderColor: 'rgba(1, 45, 29, 0.15)',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 12,
+                      gap: 8,
+                      shadowColor: 'transparent',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0,
+                      shadowRadius: 8,
+                      elevation: 0,
+                    }}
+                  >
+                    <Ionicons
+                      name="call-outline"
+                      size={18}
+                      color="#a5a6aa"
+                    />
+                    <TextInput
+                      value={telephone}
+                      onChangeText={setTelephone}
+                      placeholder="+212..."
+                      placeholderTextColor="#a5a6aa"
+                      keyboardType="phone-pad"
+                      editable={!isLoading}
+                      style={{
+                        flex: 1,
+                        fontSize: isSmallScreen ? 12 : 13,
+                        fontFamily: 'Outfit',
+                        color: '#012d1d',
+                        padding: 0,
+                      }}
+                    />
+                  </View>
+                </View>
+
+                {/* CIN Input */}
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontFamily: 'Outfit',
+                      fontWeight: '700',
+                      color: '#012d1d',
+                      letterSpacing: 1,
+                      marginBottom: 6,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    CIN (Opt)
+                  </Text>
+                  <View
+                    style={{
+                      height: inputHeight,
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: 12,
+                      borderWidth: 1.5,
+                      borderColor: 'rgba(1, 45, 29, 0.15)',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 12,
+                      gap: 8,
+                      shadowColor: 'transparent',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0,
+                      shadowRadius: 8,
+                      elevation: 0,
+                    }}
+                  >
+                    <Ionicons
+                      name="id-card-outline"
+                      size={18}
+                      color="#a5a6aa"
+                    />
+                    <TextInput
+                      value={cin}
+                      onChangeText={setCin}
+                      placeholder="AB12345"
+                      placeholderTextColor="#a5a6aa"
+                      editable={!isLoading}
+                      style={{
+                        flex: 1,
+                        fontSize: isSmallScreen ? 12 : 13,
+                        fontFamily: 'Outfit',
+                        color: '#012d1d',
+                        padding: 0,
+                      }}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Password Input */}
+              <View>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontFamily: 'Outfit',
+                    fontWeight: '700',
+                    color: '#012d1d',
+                    letterSpacing: 1,
+                    marginBottom: 6,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Mot de Passe *
+                </Text>
+                <View
+                  style={{
+                    height: inputHeight,
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: 'rgba(1, 45, 29, 0.15)',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 12,
+                    gap: 8,
+                    shadowColor: 'transparent',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0,
+                    shadowRadius: 8,
+                    elevation: 0,
+                  }}
+                >
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={18}
+                    color="#a5a6aa"
+                  />
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="••••••••••"
+                    placeholderTextColor="#a5a6aa"
+                    secureTextEntry={!showPassword}
+                    editable={!isLoading}
+                    style={{
+                      flex: 1,
+                      fontSize: isSmallScreen ? 12 : 13,
+                      fontFamily: 'Outfit',
+                      color: '#012d1d',
+                      padding: 0,
+                    }}
+                  />
+                  <Pressable
+                    onPress={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
+                    style={{ padding: 6 }}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                      size={18}
+                      color="#a5a6aa"
+                    />
+                  </Pressable>
+                </View>
+              </View>
+            </Animated.View>
+
+            {/* CTA Button with Premium Styling */}
+            <Animated.View entering={FadeInDown.delay(400).duration(500)}>
+              <Pressable
+                onPress={handleRegister}
+                disabled={isLoading}
+                style={({ pressed }) => ({
+                  height: inputHeight + 8,
+                  backgroundColor: '#012d1d',
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  opacity: isLoading ? 0.7 : pressed ? 0.85 : 1,
+                  shadowColor: '#012d1d',
+                  shadowOffset: { width: 0, height: 12 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 16,
+                  elevation: 8,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                  marginBottom: verticalGap + 4,
+                })}
+              >
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    gap: 8,
+                  }}
+                  className="bg-gradient-to-r from-primary to-primary-container"
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Text
+                        style={{
+                          fontSize: isSmallScreen ? 13 : 14,
+                          fontFamily: 'Outfit',
+                          fontWeight: '700',
+                          color: '#fff',
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        REJOINDRE
+                      </Text>
+                      <Ionicons name="arrow-forward" size={16} color="#fff" />
+                    </>
+                  )}
+                </View>
+              </Pressable>
+            </Animated.View>
+
+            {/* Divider */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginVertical: verticalGap + 4,
+                gap: 12,
+              }}
+            >
+              <View
+                style={{
+                  flex: 1,
+                  height: 1,
+                  backgroundColor: 'rgba(1, 45, 29, 0.1)',
+                }}
+              />
+              <Text
+                style={{
+                  fontSize: 9,
+                  fontFamily: 'Outfit',
+                  fontWeight: '700',
+                  color: '#a5a6aa',
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                }}
+              >
+                Déjà membre?
+              </Text>
+              <View
+                style={{
+                  flex: 1,
+                  height: 1,
+                  backgroundColor: 'rgba(1, 45, 29, 0.1)',
+                }}
               />
             </View>
-          </View>
 
-          {/* CIN */}
-          <View>
-            <Text className="text-xs font-bold text-on-surface-variant/70 mb-2">NUMÉRO CIN</Text>
-            <TextInput
-              className="w-full bg-surface-container-high rounded-xl px-4 py-3.5 h-12 text-on-surface text-base border border-outline-variant/40"
-              value={cin}
-              placeholder="AB123456"
-              placeholderTextColor="#a5a6aa"
-              onChangeText={setCin}
-              autoCapitalize="characters"
-              editable={!isLoading}
-            />
-          </View>
-
-          {/* Password */}
-          <View>
-            <Text className="text-xs font-bold text-on-surface-variant/70 mb-2">MOT DE PASSE *</Text>
-            <View className="relative">
-              <TextInput
-                className="w-full bg-surface-container-high rounded-xl px-4 py-3.5 h-12 pr-12 text-on-surface text-base border border-outline-variant/40"
-                value={password}
-                placeholder="••••••••••••"
-                placeholderTextColor="#a5a6aa"
-                secureTextEntry={!showPassword}
-                onChangeText={setPassword}
-                editable={!isLoading}
-              />
+            {/* Sign-in CTA */}
+            <Animated.View entering={FadeInDown.delay(450).duration(500)}>
               <Pressable
-                onPress={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2"
+                onPress={() => router.push('/(auth)/sign-in')}
+                style={({ pressed }) => ({
+                  paddingVertical: verticalGap - 2,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: '#012d1d',
+                  backgroundColor: pressed ? 'rgba(1, 45, 29, 0.05)' : 'transparent',
+                  opacity: isLoading ? 0.5 : 1,
+                })}
                 disabled={isLoading}
               >
-                <Ionicons 
-                  name={showPassword ? "eye-off" : "eye"} 
-                  size={18} 
-                  color="#414844" 
-                />
+                <Text
+                  style={{
+                    textAlign: 'center',
+                    fontSize: isSmallScreen ? 12 : 13,
+                    fontFamily: 'Outfit',
+                    fontWeight: '700',
+                    color: '#012d1d',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  SE CONNECTER
+                </Text>
               </Pressable>
-            </View>
+            </Animated.View>
           </View>
-        </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-        {/* Submit Button */}
-        <Pressable
-          onPress={handleSubmit}
-          disabled={!email || !password || !telephone || isLoading}
-          className={`w-full bg-primary rounded-xl py-3.5 h-12 px-5 flex-row items-center justify-center gap-2 mt-6 ${
-            (!email || !password || !telephone || isLoading) ? 'opacity-60' : ''
-          }`}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <>
-              <Text className="text-white font-bold text-base">Créer mon compte</Text>
-              <Ionicons name="arrow-forward" size={18} color="#ffffff" />
-            </>
-          )}
-        </Pressable>
-
-        {/* Sign In Link */}
-        <View className="items-center mt-8">
-          <View className="flex-row items-center gap-1">
-            <Text className="text-on-surface-variant text-sm">Déjà membre ? </Text>
-            <Link href="/(auth)/sign-in" asChild>
-              <Pressable>
-                <Text className="text-primary font-bold text-sm">Se connecter</Text>
-              </Pressable>
-            </Link>
-          </View>
-        </View>
-      </ScrollView>
-
-
-    </KeyboardAvoidingView>
+      {/* Decorative Elements */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: -60,
+          left: -40,
+          width: 200,
+          height: 200,
+          borderRadius: 100,
+          backgroundColor: '#012d1d',
+          opacity: 0.04,
+          pointerEvents: 'none',
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          top: -40,
+          right: -60,
+          width: 180,
+          height: 180,
+          borderRadius: 90,
+          backgroundColor: '#fed65b',
+          opacity: 0.08,
+          pointerEvents: 'none',
+        }}
+      />
+    </SafeAreaView>
   );
 }
