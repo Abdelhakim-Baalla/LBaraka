@@ -308,7 +308,7 @@ export class TransactionService {
           if (joursRetard > 0) {
             const malusPoints = joursRetard * 30;
             await this.utilisateurService.updateScore(currentTx.emprunteurId, -malusPoints, tx);
-            
+
             // Enregistrer le retard en base
             await tx.transaction.update({
               where: { id: transactionId },

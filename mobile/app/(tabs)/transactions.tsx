@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, Modal, Image, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, Modal, Image, Alert, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ApiService } from '../../services/api';
 
 // Ecran transactions avec reservations et QR codes
@@ -12,6 +13,7 @@ export default function TransactionsScreen() {
   const router = useRouter();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState('');
+  const [currentUserEmail, setCurrentUserEmail] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
@@ -19,6 +21,13 @@ export default function TransactionsScreen() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrData, setQrData] = useState('');
   const [qrType, setQrType] = useState<'reception' | 'retour'>('reception');
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationType, setValidationType] = useState<'reception' | 'retour'>('reception');
+  const [validationCode, setValidationCode] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [scanLocked, setScanLocked] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [filter, setFilter] = useState<'ALL' | 'EMPRUNTS' | 'PRETS'>('ALL');
 
   useFocusEffect(
@@ -42,7 +51,19 @@ export default function TransactionsScreen() {
 
       if (userRaw) {
         const user = JSON.parse(userRaw);
-        setCurrentUserId(String(user?.id || ''));
+        const safeUserId =
+          user?.id ||
+          user?.utilisateur?.id ||
+          user?.user?.id ||
+          user?.utilisateurId ||
+          '';
+        const safeUserEmail =
+          user?.email ||
+          user?.utilisateur?.email ||
+          user?.user?.email ||
+          '';
+        setCurrentUserId(String(safeUserId));
+        setCurrentUserEmail(String(safeUserEmail));
       }
 
       const data = await ApiService.getMyTransactions(token);
@@ -161,6 +182,88 @@ export default function TransactionsScreen() {
     );
   };
 
+  const openValidationModal = (type: 'reception' | 'retour') => {
+    setValidationType(type);
+    setValidationCode('');
+    setShowValidationModal(true);
+  };
+
+  const openCameraScanner = async () => {
+    try {
+      if (!cameraPermission?.granted) {
+        const result = await requestCameraPermission();
+        if (!result.granted) {
+          Alert.alert('Permission requise', 'Activez la caméra pour scanner le code QR.');
+          return;
+        }
+      }
+
+      setScanLocked(false);
+      setShowScannerModal(true);
+    } catch {
+      Alert.alert('Erreur', 'Impossible d\'ouvrir la caméra.');
+    }
+  };
+
+  const handleBarcodeScanned = (event: any) => {
+    if (scanLocked) {
+      return;
+    }
+
+    setScanLocked(true);
+    const scannedValue = String(event?.data || '').trim();
+    setValidationCode(scannedValue);
+    setShowScannerModal(false);
+    Alert.alert('Scan réussi', 'Code QR ajouté automatiquement.');
+  };
+
+  const handleValidateQr = async () => {
+    if (!selectedTransaction?.id) {
+      Alert.alert('Erreur', 'Transaction introuvable');
+      return;
+    }
+
+    if (!validationCode.trim()) {
+      Alert.alert('Erreur', 'Code QR requis');
+      return;
+    }
+
+    try {
+      setIsValidating(true);
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) return;
+
+      let codeToValidate = validationCode.trim();
+
+      if (validationType === 'retour') {
+        try {
+          const parsed = JSON.parse(codeToValidate);
+          if (parsed?.secret && typeof parsed.secret === 'string') {
+            codeToValidate = parsed.secret;
+          }
+        } catch {
+          // Le code peut déjà être un secret brut
+        }
+      }
+
+      if (validationType === 'reception') {
+        await ApiService.validateReception(token, selectedTransaction.id, codeToValidate);
+      } else {
+        await ApiService.validateRetour(token, selectedTransaction.id, codeToValidate);
+      }
+
+      setShowValidationModal(false);
+      setValidationCode('');
+      setShowDetailModal(false);
+      Alert.alert('Succes', validationType === 'reception' ? 'Remise validée' : 'Retour confirmé');
+      loadTransactions();
+    } catch (error: any) {
+      Alert.alert('Erreur', error?.message || 'Validation impossible');
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   // Formater la date
   const formatDate = (date?: string) => {
     if (!date) {
@@ -199,12 +302,20 @@ export default function TransactionsScreen() {
 
   // Type de transaction selon l'utilisateur connecté
   const getTransactionType = (transaction: any): 'EMPRUNT' | 'PRET' => {
-    if (!currentUserId) {
+    if (currentUserId && transaction?.emprunteurId === currentUserId) {
+      return 'EMPRUNT';
+    }
+
+    if (currentUserId && transaction?.preteurId === currentUserId) {
       return 'PRET';
     }
 
-    if (transaction?.emprunteurId === currentUserId) {
+    if (currentUserEmail && transaction?.emprunteur?.email === currentUserEmail) {
       return 'EMPRUNT';
+    }
+
+    if (currentUserEmail && transaction?.preteur?.email === currentUserEmail) {
+      return 'PRET';
     }
 
     return 'PRET';
@@ -444,6 +555,16 @@ export default function TransactionsScreen() {
                     </Pressable>
                   ) : null}
 
+                  {type === 'PRET' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
+                    <Pressable
+                      onPress={() => openValidationModal('reception')}
+                      className="bg-emerald-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
+                    >
+                      <Ionicons name="checkmark-done-circle-outline" size={18} color="#fff" />
+                      <Text className="text-white font-bold">Valider Remise (scan)</Text>
+                    </Pressable>
+                  ) : null}
+
                   {type === 'PRET' && selectedTransaction.statut === 'EN_COURS' ? (
                     <Pressable
                       onPress={() => handleGenerateQRRetour(selectedTransaction.id)}
@@ -451,6 +572,16 @@ export default function TransactionsScreen() {
                     >
                       <Ionicons name="qr-code-outline" size={18} color="#fff" />
                       <Text className="text-white font-bold">Generer QR Retour</Text>
+                    </Pressable>
+                  ) : null}
+
+                  {type === 'EMPRUNT' && selectedTransaction.statut === 'EN_COURS' ? (
+                    <Pressable
+                      onPress={() => openValidationModal('retour')}
+                      className="bg-emerald-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
+                    >
+                      <Ionicons name="checkmark-done-circle-outline" size={18} color="#fff" />
+                      <Text className="text-white font-bold">Confirmer Retour (scan)</Text>
                     </Pressable>
                   ) : null}
 
@@ -538,6 +669,80 @@ export default function TransactionsScreen() {
                 <Text className="text-sm text-on-surface-variant mt-3">Chargement...</Text>
               </View>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Validation QR */}
+      <Modal visible={showValidationModal} transparent animationType="slide">
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: insets.bottom + 24 }}>
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-lg font-bold text-primary">
+                {validationType === 'reception' ? 'Valider Remise' : 'Confirmer Retour'}
+              </Text>
+              <Pressable onPress={() => setShowValidationModal(false)}>
+                <Ionicons name="close" size={24} color="#1B4332" />
+              </Pressable>
+            </View>
+
+            <Text className="text-xs text-on-surface-variant mb-2">Code QR scanné (ou token)</Text>
+            <TextInput
+              value={validationCode}
+              onChangeText={setValidationCode}
+              placeholder="Collez le code scanné ici"
+              multiline
+              className="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-on-surface min-h-[110px]"
+              textAlignVertical="top"
+            />
+
+            <Pressable
+              onPress={openCameraScanner}
+              className="bg-white border border-outline-variant rounded-xl py-3 items-center justify-center mt-3 flex-row gap-2"
+            >
+              <Ionicons name="scan-outline" size={18} color="#1B4332" />
+              <Text className="text-primary font-bold">Scanner avec la caméra</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleValidateQr}
+              disabled={isValidating}
+              className="bg-primary rounded-xl py-3.5 items-center justify-center mt-4"
+            >
+              {isValidating ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-white font-bold">Valider</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Scanner Camera */}
+      <Modal visible={showScannerModal} transparent animationType="fade" onRequestClose={() => setShowScannerModal(false)}>
+        <View className="flex-1 bg-black">
+          <View className="flex-row items-center justify-between px-4" style={{ paddingTop: insets.top + 8, paddingBottom: 8 }}>
+            <Text className="text-white font-bold text-base">Scanner QR</Text>
+            <Pressable onPress={() => setShowScannerModal(false)} className="bg-white/20 rounded-full p-2">
+              <Ionicons name="close" size={22} color="#fff" />
+            </Pressable>
+          </View>
+
+          <View className="flex-1 px-4 pb-6">
+            <View className="flex-1 rounded-2xl overflow-hidden border border-white/30">
+              <CameraView
+                style={{ flex: 1 }}
+                barcodeScannerSettings={{
+                  barcodeTypes: ['qr'],
+                }}
+                onBarcodeScanned={handleBarcodeScanned}
+              />
+            </View>
+
+            <Text className="text-white/85 text-center text-xs mt-4">
+              Placez le QR dans le cadre pour scanner automatiquement.
+            </Text>
           </View>
         </View>
       </Modal>
