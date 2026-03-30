@@ -4,9 +4,11 @@ import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SignIn() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,7 +51,10 @@ export default function SignIn() {
       className="flex-1 bg-surface"
     >
       {/* Header */}
-      <View className="bg-white/70 backdrop-blur-xl shadow-lg px-6 h-16 flex-row items-center justify-between">
+      <View
+        className="bg-white/70 backdrop-blur-xl shadow-lg px-6 flex-row items-center justify-between"
+        style={{ paddingTop: insets.top + 8, paddingBottom: 8 }}
+      >
         <Pressable 
           onPress={() => router.back()}
           className="w-10 h-10 rounded-xl items-center justify-center active:bg-primary-fixed/20"
@@ -60,29 +65,32 @@ export default function SignIn() {
         <View className="w-10" />
       </View>
 
-      <ScrollView className="flex-1 px-6 pt-24 pb-12" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 px-6 pt-7 pb-10" showsVerticalScrollIndicator={false}>
         {/* Header Section */}
-        <View className="mb-10">
-          <Text className="text-4xl font-bold text-primary leading-tight mb-3">
-            Welcome Back
+        <View className="mb-7">
+          <View className="bg-secondary-container self-start px-3 py-1.5 rounded-full mb-3">
+            <Text className="text-secondary font-bold text-[11px] tracking-wider">CONNEXION</Text>
+          </View>
+          <Text className="text-[34px] leading-[38px] font-extrabold text-primary mb-2">
+            Bon retour
           </Text>
-          <Text className="text-lg text-on-surface-variant/80 leading-relaxed">
-            Re-enter the LBaraka community—a digital sanctuary engineered for growth, connection, and timeless excellence.
+          <Text className="text-sm text-on-surface-variant/90 leading-6">
+            Connectez-vous pour continuer vos échanges, suivre vos transactions et gérer votre profil.
           </Text>
         </View>
 
         {/* Form */}
-        <View className="space-y-5">
+        <View className="bg-white rounded-2xl border border-outline-variant/60 p-4 gap-4">
           {/* Email */}
           <View>
             <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Email Address
+              Adresse e-mail
             </Text>
             <TextInput
               className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
               autoCapitalize="none"
               value={email}
-              placeholder="architect@lbaraka.com"
+              placeholder="exemple@mail.com"
               placeholderTextColor="#717973"
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -93,7 +101,7 @@ export default function SignIn() {
           {/* Password */}
           <View>
             <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Secure Password
+              Mot de passe
             </Text>
             <View className="relative">
               <TextInput
@@ -134,7 +142,7 @@ export default function SignIn() {
               <Text className="text-sm font-semibold text-on-surface-variant">Remember Me</Text>
             </Pressable>
             <Pressable>
-              <Text className="text-sm font-bold text-secondary">Forgot Password?</Text>
+              <Text className="text-sm font-bold text-secondary">Mot de passe oublié ?</Text>
             </Pressable>
           </View>
         </View>
@@ -143,12 +151,12 @@ export default function SignIn() {
         <Pressable
           onPress={handleSubmit}
           disabled={!email || !password || isLoading}
-          className={`w-full bg-primary-container rounded-xl py-5 px-6 flex-row items-center justify-between shadow-lg mt-8 ${
+          className={`w-full bg-primary rounded-2xl py-4 px-5 flex-row items-center justify-between shadow-lg mt-7 ${
             (!email || !password || isLoading) ? 'opacity-50' : ''
           }`}
         >
-          <Text className="text-white font-bold text-lg tracking-wide">
-            {isLoading ? 'Connexion...' : 'Enter the Riad'}
+          <Text className="text-white font-bold text-base tracking-wide">
+            {isLoading ? 'Connexion...' : 'Se connecter'}
           </Text>
           {isLoading ? (
             <ActivityIndicator color="#ffffff" />
@@ -158,15 +166,15 @@ export default function SignIn() {
         </Pressable>
 
         {/* Divider */}
-        <View className="relative flex-row items-center justify-center my-10">
+        <View className="relative flex-row items-center justify-center my-8">
           <View className="absolute w-full border-t border-outline-variant/30" />
           <Text className="bg-surface px-4 text-[10px] font-bold uppercase tracking-widest text-outline">
-            Or Continue With
+            Ou continuer avec
           </Text>
         </View>
 
         {/* Social Login Buttons */}
-        <View className="flex-row gap-4 mb-12">
+        <View className="flex-row gap-4 mb-9">
           <Pressable className="flex-1 flex-row items-center justify-center gap-3 bg-white border border-outline-variant/20 rounded-xl py-4 shadow-sm active:bg-surface-container-low">
             <Ionicons name="logo-google" size={20} color="#191c1d" />
             <Text className="text-sm font-semibold text-on-surface">Google</Text>
@@ -178,12 +186,12 @@ export default function SignIn() {
         </View>
 
         {/* Footer */}
-        <View className="items-center pb-8">
+        <View className="items-center pb-6">
           <View className="flex-row items-center">
-            <Text className="text-on-surface-variant font-medium">New to LBaraka? </Text>
+            <Text className="text-on-surface-variant font-medium">Pas encore de compte ? </Text>
             <Link href="/(auth)/sign-up" asChild>
               <Pressable>
-                <Text className="text-primary font-bold ml-1">Join the community</Text>
+                <Text className="text-primary font-bold ml-1">Créer mon compte</Text>
               </Pressable>
             </Link>
           </View>

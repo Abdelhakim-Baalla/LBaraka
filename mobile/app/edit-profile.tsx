@@ -4,9 +4,11 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EditProfile() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
@@ -88,17 +90,29 @@ export default function EditProfile() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-surface"
     >
-      <View className="bg-white/70 backdrop-blur-xl shadow-lg px-6 h-16 flex-row items-center justify-between">
-        <Pressable onPress={() => router.back()} className="w-10 h-10 rounded-xl items-center justify-center">
+      <View
+        className="bg-white/90 px-6 pb-3 border-b border-outline-variant/30"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <View className="flex-row items-center justify-between">
+        <Pressable onPress={() => router.back()} className="w-10 h-10 rounded-xl items-center justify-center bg-surface-container">
           <Ionicons name="arrow-back" size={24} color="#012d1d" />
         </Pressable>
-        <Text className="text-xl font-bold tracking-widest text-primary">MODIFIER PROFIL</Text>
-        <View className="w-10" />
+        <Text className="text-base font-extrabold tracking-wide text-primary">MODIFIER PROFIL</Text>
+        <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
+          <Ionicons name="create-outline" size={18} color="#1B4332" />
+        </View>
+        </View>
       </View>
 
       <ScrollView className="flex-1 px-6 pt-8" showsVerticalScrollIndicator={false}>
+        <View className="bg-primary rounded-2xl p-4 mb-5">
+          <Text className="text-white font-bold text-base">Informations personnelles</Text>
+          <Text className="text-white/80 text-xs mt-1">Les champs sensibles restent protégés et non modifiables.</Text>
+        </View>
+
         {/* Read-only Information Section */}
-        <View className="bg-surface-container-high rounded-xl p-4 mb-6">
+        <View className="bg-white border border-outline-variant/70 rounded-2xl p-4 mb-6">
           <Text className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 mb-3">
             Informations non modifiables
           </Text>
@@ -201,13 +215,13 @@ export default function EditProfile() {
             <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
               Langue d'interface
             </Text>
-            <View className="flex-row gap-2">
+            <View className="flex-row flex-wrap gap-2">
               {['FRANCAIS', 'ARABE', 'AMAZIGH', 'BILINGUE'].map((lang) => (
                 <Pressable
                   key={lang}
                   onPress={() => setLangueInterface(lang)}
                   disabled={isLoading}
-                  className={`flex-1 rounded-xl py-3 px-4 ${
+                  className={`w-[48%] rounded-xl py-3 px-4 ${
                     langueInterface === lang ? 'bg-primary-container' : 'bg-surface-container-high'
                   }`}
                 >

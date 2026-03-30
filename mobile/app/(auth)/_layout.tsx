@@ -7,6 +7,7 @@ import '@/global.css';
 export default function AuthLayout() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -14,10 +15,16 @@ export default function AuthLayout() {
 
   const checkAuth = async () => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const [token, onboardingSeen] = await Promise.all([
+        AsyncStorage.getItem('accessToken'),
+        AsyncStorage.getItem('hasSeenOnboarding'),
+      ]);
+
       setIsAuthenticated(!!token);
+      setHasSeenOnboarding(onboardingSeen === 'true');
     } catch (error) {
       setIsAuthenticated(false);
+      setHasSeenOnboarding(false);
     } finally {
       setIsLoading(false);
     }
@@ -25,6 +32,10 @@ export default function AuthLayout() {
 
   if (isLoading) {
     return null;
+  }
+
+  if (!hasSeenOnboarding) {
+    return <Redirect href="/onboarding" />;
   }
 
   if (isAuthenticated) {

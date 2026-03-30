@@ -4,9 +4,11 @@ import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SignUp() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -64,7 +66,10 @@ export default function SignUp() {
       className="flex-1 bg-surface"
     >
       {/* Header */}
-      <View className="bg-white/70 backdrop-blur-xl shadow-lg px-6 h-16 flex-row items-center justify-between">
+      <View
+        className="bg-white/70 backdrop-blur-xl shadow-lg px-6 flex-row items-center justify-between"
+        style={{ paddingTop: insets.top + 8, paddingBottom: 8 }}
+      >
         <Pressable 
           onPress={() => router.back()}
           className="w-10 h-10 rounded-xl items-center justify-center active:bg-primary-fixed/20"
@@ -75,23 +80,26 @@ export default function SignUp() {
         <View className="w-10" />
       </View>
 
-      <ScrollView className="flex-1 px-6 pt-24 pb-12" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 px-6 pt-7 pb-10" showsVerticalScrollIndicator={false}>
         {/* Header Section */}
-        <View className="mb-10">
-          <Text className="text-4xl font-bold text-primary leading-tight mb-3">
-            Create your account
+        <View className="mb-7">
+          <View className="bg-primary/10 self-start px-3 py-1.5 rounded-full mb-3">
+            <Text className="text-primary font-bold text-[11px] tracking-wider">NOUVEL UTILISATEUR</Text>
+          </View>
+          <Text className="text-[34px] leading-[38px] font-extrabold text-primary mb-2">
+            Créer un compte
           </Text>
-          <Text className="text-lg text-on-surface-variant/80 leading-relaxed">
-            Join a community built on trust, transparency, and the shared values of Baraka.
+          <Text className="text-sm text-on-surface-variant/90 leading-6">
+            Rejoignez la communauté LBaraka pour prêter, réserver et suivre votre impact local.
           </Text>
         </View>
 
         {/* Form */}
-        <View className="space-y-5">
+        <View className="bg-white rounded-2xl border border-outline-variant/60 p-4 gap-4">
           {/* Email */}
           <View>
             <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Email Address *
+              Adresse e-mail *
             </Text>
             <TextInput
               className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
@@ -106,10 +114,10 @@ export default function SignUp() {
           </View>
 
           {/* Phone & CIN */}
-          <View className="flex-row gap-4">
-            <View className="flex-1">
+          <View className="gap-4">
+            <View>
               <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-                Phone (MAR) *
+                Téléphone (MAR) *
               </Text>
               <View className="flex-row gap-2">
                 <View className="bg-surface-container-high rounded-xl px-3 py-4 items-center justify-center min-w-[64px]">
@@ -128,9 +136,9 @@ export default function SignUp() {
               </View>
             </View>
 
-            <View className="flex-1">
+            <View>
               <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-                CIN Number
+                Numéro CIN
               </Text>
               <TextInput
                 className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
@@ -147,7 +155,7 @@ export default function SignUp() {
           {/* Password */}
           <View>
             <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Secure Password *
+              Mot de passe *
             </Text>
             <View className="relative">
               <TextInput
@@ -172,7 +180,7 @@ export default function SignUp() {
               </Pressable>
             </View>
             <Text className="text-xs text-on-surface-variant/60 mt-2 ml-1">
-              Minimum 8 caractères
+              Minimum 8 caractères, avec au moins une lettre et un chiffre.
             </Text>
           </View>
         </View>
@@ -181,12 +189,12 @@ export default function SignUp() {
         <Pressable
           onPress={handleSubmit}
           disabled={!email || !password || !telephone || isLoading}
-          className={`w-full bg-primary-container rounded-xl py-5 px-6 flex-row items-center justify-between shadow-lg mt-8 ${
+          className={`w-full bg-primary rounded-2xl py-4 px-5 flex-row items-center justify-between shadow-lg mt-7 ${
             (!email || !password || !telephone || isLoading) ? 'opacity-50' : ''
           }`}
         >
-          <Text className="text-white font-bold text-lg tracking-wide">
-            {isLoading ? 'Inscription...' : 'Join the Community'}
+          <Text className="text-white font-bold text-base tracking-wide">
+            {isLoading ? 'Inscription...' : 'Créer mon compte'}
           </Text>
           {isLoading ? (
             <ActivityIndicator color="#ffffff" />
@@ -196,32 +204,32 @@ export default function SignUp() {
         </Pressable>
 
         {/* Divider */}
-        <View className="relative flex-row items-center justify-center my-10">
+        <View className="relative flex-row items-center justify-center my-8">
           <View className="absolute w-full border-t border-outline-variant/30" />
           <Text className="bg-surface px-4 text-[10px] font-bold uppercase tracking-widest text-outline">
-            OR REGISTER WITH
+            Ou s'inscrire avec
           </Text>
         </View>
 
         {/* Social Login Buttons */}
-        <View className="flex-row gap-4 mb-12">
-          <Pressable className="flex-1 flex-row items-center justify-center gap-3 bg-white border border-outline-variant/20 rounded-xl py-4 shadow-sm active:bg-surface-container-low">
+        <View className="gap-3 mb-9">
+          <Pressable className="w-full flex-row items-center justify-center gap-3 bg-white border border-outline-variant/20 rounded-xl py-4 shadow-sm active:bg-surface-container-low">
             <Ionicons name="logo-google" size={20} color="#191c1d" />
             <Text className="text-sm font-semibold text-on-surface">Google</Text>
           </Pressable>
-          <Pressable className="flex-1 flex-row items-center justify-center gap-3 bg-white border border-outline-variant/20 rounded-xl py-4 shadow-sm active:bg-surface-container-low">
+          <Pressable className="w-full flex-row items-center justify-center gap-3 bg-white border border-outline-variant/20 rounded-xl py-4 shadow-sm active:bg-surface-container-low">
             <Ionicons name="logo-apple" size={20} color="#191c1d" />
             <Text className="text-sm font-semibold text-on-surface">Apple</Text>
           </Pressable>
         </View>
 
         {/* Footer */}
-        <View className="items-center pb-8">
+        <View className="items-center pb-6">
           <View className="flex-row items-center">
-            <Text className="text-on-surface-variant font-medium">Already part of the Baraka? </Text>
+            <Text className="text-on-surface-variant font-medium">Déjà membre ? </Text>
             <Link href="/(auth)/sign-in" asChild>
               <Pressable>
-                <Text className="text-primary font-bold ml-1">Login instead</Text>
+                <Text className="text-primary font-bold ml-1">Se connecter</Text>
               </Pressable>
             </Link>
           </View>
