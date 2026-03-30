@@ -593,6 +593,7 @@ export default function TransactionsScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {selectedTransaction ? (
                 <>
+
                   {(() => {
                     const type = getTransactionType(selectedTransaction);
                     const caution = getTransactionCaution(selectedTransaction);
@@ -606,87 +607,94 @@ export default function TransactionsScreen() {
 
                     return (
                       <>
-                  {/* Photo annonce */}
-                  {annonce.photos && annonce.photos.length > 0 ? (
-                    <Image
-                      source={{ uri: annonce.photos[0] }}
-                      style={{ width: '100%', height: 160 }}
-                      className="rounded-xl mb-3"
-                      resizeMode="cover"
-                    />
-                  ) : null}
-
-                  <View className="bg-surface rounded-xl p-3 mb-3">
-                    <Text className="text-xs text-on-surface-variant">Annonce</Text>
-                    <Text className="text-sm font-bold text-primary mt-1">
-                      {annonce.titre || 'N/A'}
-                    </Text>
-                    {annonce.description ? (
-                      <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={2}>
-                        {annonce.description}
-                      </Text>
-                    ) : null}
-                  </View>
-
-                  {/* Infos annonce */}
-                  <View className="flex-row gap-2 mb-3">
-                    {annonce.categorie ? (
-                      <View className="flex-1 bg-surface rounded-xl p-3">
-                        <Text className="text-xs text-on-surface-variant">Categorie</Text>
-                        <Text className="text-xs font-bold text-primary mt-1">
-                          {annonce.categorie}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {annonce.mode ? (
-                      <View className="flex-1 bg-surface rounded-xl p-3">
-                        <Text className="text-xs text-on-surface-variant">Mode</Text>
-                        <Text className="text-xs font-bold text-primary mt-1">
-                          {annonce.mode}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {annonce.condition ? (
-                      <View className="flex-1 bg-surface rounded-xl p-3">
-                        <Text className="text-xs text-on-surface-variant">Etat</Text>
-                        <Text className="text-xs font-bold text-primary mt-1">
-                          {annonce.condition}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-
-                  {/* Autre utilisateur */}
-                  {otherUser && (otherUser.profil || otherUser.email) ? (
-                    <View className="bg-surface rounded-xl p-3 mb-3">
-                      <Text className="text-xs text-on-surface-variant mb-2">
-                        {type === 'EMPRUNT' ? 'Preteur' : 'Emprunteur'}
-                      </Text>
-                      <View className="flex-row items-center gap-3">
-                        {otherUser.profil?.photoProfil ? (
+                        {/* PHOTO PRINCIPALE */}
+                        {annonce.photos && annonce.photos.length > 0 ? (
                           <Image
-                            source={{ uri: otherUser.profil.photoProfil }}
-                            style={{ width: 40, height: 40 }}
-                            className="rounded-full"
+                            source={{ uri: annonce.photos[0] }}
+                            style={{ width: '100%', height: 170, borderRadius: 16, marginBottom: 12 }}
+                            resizeMode="cover"
                           />
                         ) : (
-                          <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-                            <Ionicons name="person-outline" size={20} color="#1B4332" />
+                          <View className="w-full h-[170px] rounded-xl bg-emerald-50 items-center justify-center mb-3">
+                            <Ionicons name="image-outline" size={48} color="#A5A6AA" />
                           </View>
                         )}
-                        <View className="flex-1">
-                          <Text className="text-sm font-bold text-primary">
-                            {otherUser.profil?.prenom || ''} {otherUser.profil?.nom || ''}
+
+                        {/* INFOS ANNONCE */}
+                        <View className="bg-surface rounded-xl p-3 mb-3">
+                          <Text className="text-xs text-on-surface-variant">Annonce</Text>
+                          <Text className="text-base font-bold text-primary mt-1">
+                            {annonce.titre || 'N/A'}
                           </Text>
-                          {otherUser.profil?.lBarakaScore ? (
-                            <Text className="text-xs text-on-surface-variant mt-1">
-                              Score: {otherUser.profil.lBarakaScore} pts
+                          {annonce.description ? (
+                            <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={3}>
+                              {annonce.description}
                             </Text>
                           ) : null}
                         </View>
-                      </View>
-                    </View>
-                  ) : null}
+
+                        <View className="flex-row gap-2 mb-3">
+                          {annonce.categorie ? (
+                            <View className="flex-1 bg-surface rounded-xl p-3">
+                              <Text className="text-xs text-on-surface-variant">Catégorie</Text>
+                              <Text className="text-xs font-bold text-primary mt-1">
+                                {annonce.categorie}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {annonce.mode ? (
+                            <View className="flex-1 bg-surface rounded-xl p-3">
+                              <Text className="text-xs text-on-surface-variant">Mode</Text>
+                              <Text className="text-xs font-bold text-primary mt-1">
+                                {annonce.mode}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {annonce.condition ? (
+                            <View className="flex-1 bg-surface rounded-xl p-3">
+                              <Text className="text-xs text-on-surface-variant">État</Text>
+                              <Text className="text-xs font-bold text-primary mt-1">
+                                {annonce.condition}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+
+                        {/* AUTRE UTILISATEUR */}
+                        {otherUser && (otherUser.profil || otherUser.email) ? (
+                          <View className="bg-surface rounded-xl p-3 mb-3">
+                            <Text className="text-xs text-on-surface-variant mb-2">
+                              {type === 'EMPRUNT' ? 'Prêteur' : 'Emprunteur'}
+                            </Text>
+                            <View className="flex-row items-center gap-3">
+                              {otherUser.profil?.photoProfil ? (
+                                <Image
+                                  source={{ uri: otherUser.profil.photoProfil }}
+                                  style={{ width: 44, height: 44, borderRadius: 22 }}
+                                />
+                              ) : (
+                                <View className="w-11 h-11 rounded-full bg-primary/10 items-center justify-center">
+                                  <Ionicons name="person-outline" size={22} color="#1B4332" />
+                                </View>
+                              )}
+                              <View className="flex-1">
+                                <Text className="text-sm font-bold text-primary">
+                                  {otherUser.profil?.prenom || ''} {otherUser.profil?.nom || ''}
+                                </Text>
+                                {otherUser.email ? (
+                                  <Text className="text-xs text-on-surface-variant mt-1">
+                                    {otherUser.email}
+                                  </Text>
+                                ) : null}
+                                {otherUser.profil?.lBarakaScore ? (
+                                  <Text className="text-xs text-emerald-700 mt-1">
+                                    Score: {otherUser.profil.lBarakaScore} pts
+                                  </Text>
+                                ) : null}
+                              </View>
+                            </View>
+                          </View>
+                        ) : null}
 
                   <View className="flex-row gap-2 mb-3">
                     <View className="flex-1 bg-surface rounded-xl p-3">
