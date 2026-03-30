@@ -9,9 +9,9 @@ export default function WalletScreen() {
 
   return (
     <View className="flex-1 bg-surface px-4" style={{ paddingTop: insets.top + 10 }}>
-      <View className="bg-primary rounded-2xl p-5 mb-4">
+      <View className="bg-primary rounded-2xl p-4 mb-4">
         <Text className="text-white/80 text-xs font-semibold uppercase">Solde disponible</Text>
-        <Text className="text-white text-3xl font-black mt-1">0 MAD</Text>
+        <Text className="text-white text-2xl font-black mt-1">0 MAD</Text>
         <Text className="text-white/80 text-xs mt-1">Caution bloquée: 0 MAD</Text>
       </View>
 

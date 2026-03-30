@@ -142,11 +142,11 @@ export default function SignIn() {
             >
               <Text
                 style={{
-                  fontSize: isSmallScreen ? 28 : isMediumScreen ? 32 : 36,
+                  fontSize: isSmallScreen ? 26 : isMediumScreen ? 30 : 34,
                   fontFamily: 'Outfit',
                   fontWeight: '700',
                   color: '#012d1d',
-                  lineHeight: isSmallScreen ? 32 : isMediumScreen ? 38 : 42,
+                  lineHeight: isSmallScreen ? 30 : isMediumScreen ? 36 : 40,
                   marginBottom: 8,
                   letterSpacing: -0.5,
                 }}

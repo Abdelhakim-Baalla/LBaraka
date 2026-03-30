@@ -23,7 +23,7 @@ export default function PointsRelaisScreen() {
 
       <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
         <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-lg font-extrabold text-primary">Points Relais</Text>
+          <Text className="text-base font-extrabold text-primary">Points Relais</Text>
           <Ionicons name="storefront-outline" size={20} color="#1B4332" />
         </View>
         <Text className="text-sm text-on-surface-variant">Hanout, mosquée ou association proche pour faciliter les échanges.</Text>
@@ -31,13 +31,13 @@ export default function PointsRelaisScreen() {
 
       <Image
         source={{ uri: 'https://images.unsplash.com/photo-1481437156560-3205f6a55735?auto=format&fit=crop&w=1200&q=70' }}
-        className="w-full h-52 rounded-2xl mb-4"
+        className="w-full h-48 rounded-2xl mb-4"
         resizeMode="cover"
       />
 
       <Pressable
         onPress={() => router.push('/(tabs)/map')}
-        className="bg-primary rounded-xl py-4 items-center justify-center flex-row gap-2"
+        className="bg-primary rounded-xl py-3.5 items-center justify-center flex-row gap-2"
       >
         <Ionicons name="map-outline" size={18} color="#fff" />
         <Text className="text-white font-bold">Retour à la carte</Text>

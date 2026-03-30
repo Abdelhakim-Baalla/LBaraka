@@ -57,7 +57,7 @@ export default function FoodRescueScreen() {
     <View className="flex-1 bg-surface px-4" style={{ paddingTop: insets.top + 10 }}>
       <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
         <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-lg font-extrabold text-primary">Food Rescue</Text>
+          <Text className="text-base font-extrabold text-primary">Food Rescue</Text>
           <Ionicons name="restaurant-outline" size={20} color="#1B4332" />
         </View>
         <Text className="text-sm text-on-surface-variant">Repas et invendus à récupérer rapidement dans votre quartier.</Text>
@@ -82,11 +82,11 @@ export default function FoodRescueScreen() {
             >
               <SmartAnnonceImage
                 uri={annonce.photos?.[0]}
-                className="w-full h-40 rounded-xl mb-3 overflow-hidden"
+                className="w-full h-30 rounded-xl mb-3 overflow-hidden"
                 resizeMode="cover"
               />
-              <Text className="text-base font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
-              <Text className="text-sm text-on-surface-variant mt-1" numberOfLines={2}>{annonce.description}</Text>
+              <Text className="text-sm font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
+              <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={2}>{annonce.description}</Text>
 
               <View className="flex-row flex-wrap gap-2 mt-2">
                 <View className="bg-primary/10 px-2 py-1 rounded-lg">

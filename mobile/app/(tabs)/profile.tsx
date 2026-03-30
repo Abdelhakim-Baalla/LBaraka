@@ -85,13 +85,13 @@ export default function ProfileScreen() {
   return (
     <View className="flex-1 bg-surface">
       <View
-        className="bg-white/90 px-6 pb-3 border-b border-outline-variant/30"
+        className="bg-white/90 px-6 pb-4 border-b border-outline-variant/30"
         style={{ paddingTop: insets.top + 8 }}
       >
         <View className="flex-row items-center justify-between">
           <View>
             <Text className="text-xs font-semibold text-on-surface-variant">Espace personnel</Text>
-            <Text className="text-2xl font-extrabold text-primary">Mon Profil</Text>
+            <Text className="text-xl font-extrabold text-primary">Mon Profil</Text>
           </View>
           <Pressable className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
             <Ionicons name="settings-outline" size={20} color="#1B4332" />
@@ -99,11 +99,11 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      <View className="flex-1 px-6 pt-4 pb-4 justify-between">
+      <View className="flex-1 px-6 pt-5 pb-5 justify-between">
         <View>
           {/* User Info Card */}
           {user && (
-            <View className="bg-white rounded-2xl p-4 border border-outline-variant/70 mb-4">
+            <View className="bg-white rounded-2xl p-4 border border-outline-variant/70 mb-5">
               <View className="flex-row items-center gap-3 mb-3">
                 <View className="w-14 h-14 rounded-full bg-primary-container items-center justify-center">
                   <Text className="text-white text-xl font-bold">
@@ -111,7 +111,7 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-bold text-primary" numberOfLines={1}>
+                  <Text className="text-sm font-bold text-primary" numberOfLines={1}>
                     {user.profil?.prenom || user.profil?.nom
                       ? `${user.profil?.prenom || ''} ${user.profil?.nom || ''}`.trim()
                       : 'Utilisateur'}
@@ -138,7 +138,7 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          <View className="bg-primary rounded-2xl p-3.5 mb-4 flex-row items-center gap-3">
+          <View className="bg-primary rounded-2xl p-3.5 mb-5 flex-row items-center gap-3">
             <Ionicons name="leaf-outline" size={20} color="#ffffff" />
             <View className="flex-1">
               <Text className="text-white font-bold text-sm">Impact personnel</Text>
@@ -150,7 +150,7 @@ export default function ProfileScreen() {
           <View className="bg-white rounded-2xl border border-outline-variant/70 overflow-hidden">
           <Pressable 
             onPress={() => router.push('/edit-profile')}
-            className="flex-row items-center justify-between px-5 py-3.5 border-b border-outline-variant/10 active:bg-surface-container-low"
+            className="flex-row items-center justify-between px-5 py-4 border-b border-outline-variant/10 active:bg-surface-container-low"
           >
             <View className="flex-row items-center gap-3">
               <Ionicons name="person-outline" size={21} color="#012d1d" />
@@ -163,7 +163,7 @@ export default function ProfileScreen() {
 
           <Pressable 
             onPress={() => router.push('/(tabs)/wallet')}
-            className="flex-row items-center justify-between px-5 py-3.5 border-b border-outline-variant/10 active:bg-surface-container-low"
+            className="flex-row items-center justify-between px-5 py-4 border-b border-outline-variant/10 active:bg-surface-container-low"
           >
             <View className="flex-row items-center gap-3">
               <Ionicons name="wallet-outline" size={21} color="#012d1d" />
@@ -176,7 +176,7 @@ export default function ProfileScreen() {
 
           <Pressable
             onPress={() => router.push('/(annonces)/mine')}
-            className="flex-row items-center justify-between px-5 py-3.5 border-b border-outline-variant/10 active:bg-surface-container-low"
+            className="flex-row items-center justify-between px-5 py-4 border-b border-outline-variant/10 active:bg-surface-container-low"
           >
             <View className="flex-row items-center gap-3">
               <Ionicons name="albums-outline" size={21} color="#012d1d" />
@@ -187,7 +187,7 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#717973" />
           </Pressable>
 
-          <Pressable className="flex-row items-center justify-between px-5 py-3.5 border-b border-outline-variant/10 active:bg-surface-container-low">
+          <Pressable className="flex-row items-center justify-between px-5 py-4 border-b border-outline-variant/10 active:bg-surface-container-low">
             <View className="flex-row items-center gap-3">
               <Ionicons name="notifications-outline" size={21} color="#012d1d" />
               <Text className="text-sm font-semibold text-on-surface">
@@ -197,7 +197,7 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#717973" />
           </Pressable>
 
-          <Pressable className="flex-row items-center justify-between px-5 py-3.5 active:bg-surface-container-low">
+          <Pressable className="flex-row items-center justify-between px-5 py-4 active:bg-surface-container-low">
             <View className="flex-row items-center gap-3">
               <Ionicons name="settings-outline" size={21} color="#012d1d" />
               <Text className="text-sm font-semibold text-on-surface">

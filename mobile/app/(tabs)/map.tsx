@@ -95,13 +95,28 @@ export default function MapScreen() {
     <View className="flex-1 bg-surface px-4" style={{ paddingTop: insets.top + 10 }}>
       <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
         <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-lg font-extrabold text-primary">Carte Communautaire</Text>
+          <Text className="text-base font-extrabold text-primary">Carte Communautaire</Text>
           <Ionicons name="map-outline" size={20} color="#1B4332" />
         </View>
         <Text className="text-sm text-on-surface-variant">
           Visualisez les annonces proches et les points relais autour de vous.
         </Text>
       </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
+        {MAP_CATEGORIES.map((cat) => {
+          const active = selectedCategory === cat;
+          return (
+            <Pressable
+              key={cat}
+              onPress={() => setSelectedCategory(cat)}
+              className={`px-3 py-2 rounded-lg border ${active ? 'bg-primary border-primary' : 'bg-white border-outline-variant'}`}
+            >
+              <Text className={`${active ? 'text-white' : 'text-on-surface'} text-xs font-bold`}>{cat}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       <View className="bg-white border border-outline-variant rounded-2xl p-3 mb-3">
         <Text className="text-xs font-bold text-on-surface-variant mb-1">Latitude</Text>
@@ -141,7 +156,7 @@ export default function MapScreen() {
       <Pressable
         onPress={handleSearch}
         disabled={isSearching}
-        className={`rounded-xl py-4 px-4 flex-row items-center justify-center gap-2 mb-3 ${isSearching ? 'bg-primary/60' : 'bg-primary'}`}
+        className={`rounded-xl py-3.5 px-4 flex-row items-center justify-center gap-2 mb-3 ${isSearching ? 'bg-primary/60' : 'bg-primary'}`}
       >
         {isSearching ? <ActivityIndicator color="#fff" /> : <Ionicons name="search-outline" size={18} color="#fff" />}
         <Text className="text-white font-bold">{isSearching ? 'Recherche...' : 'Rechercher autour de moi'}</Text>
@@ -179,24 +194,9 @@ export default function MapScreen() {
         )}
       </ScrollView>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
-            {MAP_CATEGORIES.map((cat) => {
-              const active = selectedCategory === cat;
-              return (
-                <Pressable
-                  key={cat}
-                  onPress={() => setSelectedCategory(cat)}
-                  className={`px-3 py-2 rounded-lg border ${active ? 'bg-primary border-primary' : 'bg-white border-outline-variant'}`}
-                >
-                  <Text className={`${active ? 'text-white' : 'text-on-surface'} text-xs font-bold`}>{cat}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
       <Pressable
         onPress={() => router.push('/(points-relais)')}
-        className="bg-white border border-outline-variant rounded-xl py-4 px-4 flex-row items-center justify-center gap-2 mb-3"
+        className="bg-white border border-outline-variant rounded-xl py-3.5 px-4 flex-row items-center justify-center gap-2 mb-3"
       >
         <Ionicons name="storefront-outline" size={18} color="#1B4332" />
         <Text className="text-primary font-bold">Voir les points relais</Text>

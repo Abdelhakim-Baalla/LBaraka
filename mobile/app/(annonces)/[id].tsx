@@ -17,6 +17,7 @@ export default function AnnonceDetailsScreen() {
   const [isReserving, setIsReserving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [reservationError, setReservationError] = useState('');
 
   const formatDate = (value?: string) => {
     if (!value) {
@@ -66,6 +67,7 @@ export default function AnnonceDetailsScreen() {
   const reserveAnnonce = async () => {
     try {
       setIsReserving(true);
+      setReservationError('');
       const token = await AsyncStorage.getItem('accessToken');
 
       if (!token) {
@@ -78,7 +80,13 @@ export default function AnnonceDetailsScreen() {
         { text: 'Voir transactions', onPress: () => router.push('/(tabs)/transactions') },
       ]);
     } catch (error: any) {
-      Alert.alert('Erreur', error?.message || 'Impossible de réserver cette annonce.');
+      const rawMessage = String(error?.message || 'Impossible de réserver cette annonce.');
+
+      if (rawMessage.toLowerCase().includes('solde insuffisant')) {
+        setReservationError('Solde insuffisant pour réserver cette annonce. Veuillez faire un dépôt dans votre wallet.');
+      } else {
+        setReservationError(rawMessage);
+      }
     } finally {
       setIsReserving(false);
     }
@@ -148,14 +156,14 @@ export default function AnnonceDetailsScreen() {
             <SmartAnnonceImage
               key={`${annonce.id}-${index}`}
               uri={photo}
-              className="w-80 h-56 rounded-2xl overflow-hidden"
+              className="w-80 h-52 rounded-2xl overflow-hidden"
               resizeMode="cover"
             />
           ))}
         </ScrollView>
 
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-          <Text className="text-lg font-extrabold text-primary">{annonce.titre}</Text>
+          <Text className="text-base font-extrabold text-primary">{annonce.titre}</Text>
           <Text className="text-sm text-on-surface-variant mt-2">{annonce.description}</Text>
 
           <View className="flex-row flex-wrap gap-2 mt-3">
@@ -247,14 +255,31 @@ export default function AnnonceDetailsScreen() {
         </View>
 
         {!isOwner ? (
-          <Pressable
-            onPress={reserveAnnonce}
-            disabled={isReserving}
-            className={`rounded-xl py-4 items-center justify-center flex-row gap-2 mb-3 ${isReserving ? 'bg-primary/60' : 'bg-primary'}`}
-          >
-            {isReserving ? <ActivityIndicator color="#fff" /> : <Ionicons name="bag-check-outline" size={18} color="#fff" />}
-            <Text className="text-white font-bold">{isReserving ? 'Réservation...' : 'Réserver cette annonce'}</Text>
-          </Pressable>
+          <View>
+            <Pressable
+              onPress={reserveAnnonce}
+              disabled={isReserving}
+              className={`rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 ${isReserving ? 'bg-primary/60' : 'bg-primary'}`}
+            >
+              {isReserving ? <ActivityIndicator color="#fff" /> : <Ionicons name="bag-check-outline" size={18} color="#fff" />}
+              <Text className="text-white font-bold">{isReserving ? 'Réservation...' : 'Réserver cette annonce'}</Text>
+            </Pressable>
+
+            {reservationError ? (
+              <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
+                <View className="flex-row items-start gap-2">
+                  <Ionicons name="alert-circle-outline" size={16} color="#b82233" />
+                  <Text className="text-[12px] text-red-700 flex-1">{reservationError}</Text>
+                </View>
+                <Pressable
+                  onPress={() => router.push('/(tabs)/wallet')}
+                  className="mt-2 self-start bg-red-100 rounded-lg px-3 py-2"
+                >
+                  <Text className="text-red-700 text-xs font-bold">Aller au wallet</Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
         ) : (
           <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
             <Text className="text-amber-800 text-xs">Cette annonce vous appartient. Vous pouvez la supprimer depuis cet écran.</Text>
@@ -264,7 +289,7 @@ export default function AnnonceDetailsScreen() {
         {isOwner ? (
           <Pressable
             onPress={() => router.push(`/(annonces)/edit/${annonce.id}`)}
-            className="rounded-xl py-4 items-center justify-center flex-row gap-2 mb-3 bg-primary"
+            className="rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 bg-primary"
           >
             <Ionicons name="create-outline" size={18} color="#fff" />
             <Text className="text-white font-bold">Modifier l'annonce</Text>
@@ -275,7 +300,7 @@ export default function AnnonceDetailsScreen() {
           <Pressable
             onPress={deleteAnnonce}
             disabled={isDeleting}
-            className={`rounded-xl py-4 items-center justify-center flex-row gap-2 mb-3 ${isDeleting ? 'bg-error/60' : 'bg-error'}`}
+            className={`rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 ${isDeleting ? 'bg-error/60' : 'bg-error'}`}
           >
             {isDeleting ? <ActivityIndicator color="#fff" /> : <Ionicons name="trash-outline" size={18} color="#fff" />}
             <Text className="text-white font-bold">{isDeleting ? 'Suppression...' : 'Supprimer l\'annonce'}</Text>
@@ -284,7 +309,7 @@ export default function AnnonceDetailsScreen() {
 
         <Pressable
           onPress={() => router.push('/(tabs)/transactions')}
-          className="bg-white border border-outline-variant rounded-xl py-4 items-center justify-center flex-row gap-2 mb-3"
+          className="bg-white border border-outline-variant rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3"
         >
           <Ionicons name="swap-horizontal-outline" size={18} color="#1B4332" />
           <Text className="text-primary font-bold">Voir les transactions</Text>
@@ -292,7 +317,7 @@ export default function AnnonceDetailsScreen() {
 
         <Pressable
           onPress={() => router.push('/(tabs)/home')}
-          className="bg-white border border-outline-variant rounded-xl py-4 items-center justify-center flex-row gap-2"
+          className="bg-white border border-outline-variant rounded-xl py-3.5 items-center justify-center flex-row gap-2"
         >
           <Ionicons name="home-outline" size={18} color="#1B4332" />
           <Text className="text-primary font-bold">Retour accueil</Text>

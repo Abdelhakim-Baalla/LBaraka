@@ -247,7 +247,7 @@ export default function CreateAnnonceScreen() {
         </Pressable>
 
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-          <Text className="text-lg font-extrabold text-primary">Nouvelle annonce</Text>
+          <Text className="text-base font-extrabold text-primary">Nouvelle annonce</Text>
           <Text className="text-sm text-on-surface-variant mt-1">Formulaire simple pour tester rapidement le backend annonces.</Text>
         </View>
 
@@ -356,14 +356,14 @@ export default function CreateAnnonceScreen() {
 
         <View className="bg-white border border-outline-variant rounded-xl p-3 mb-4 flex-row items-center justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-sm font-bold text-primary">Publier en Food Rescue</Text>
+            <Text className="text-xs font-bold text-primary">Publier en Food Rescue</Text>
             <Text className="text-xs text-on-surface-variant mt-1">Réservé aux comptes PARTENAIRE.</Text>
           </View>
           <Switch value={isFoodRescue} onValueChange={setIsFoodRescue} />
         </View>
 
         <View className="bg-white border border-outline-variant rounded-xl p-3 mb-4">
-          <Text className="text-sm font-bold text-primary mb-2">Photos de l'annonce (3 obligatoires)</Text>
+          <Text className="text-xs font-bold text-primary mb-2">Photos de l'annonce (3 obligatoires)</Text>
 
           <View className="flex-row gap-2 mb-3">
             <Pressable onPress={pickFromLibrary} className="flex-1 bg-primary rounded-lg py-3 items-center">
@@ -414,7 +414,7 @@ export default function CreateAnnonceScreen() {
         <Pressable
           onPress={handleSubmit}
           disabled={isSubmitting}
-          className={`rounded-xl py-4 items-center justify-center flex-row gap-2 mb-3 ${isSubmitting ? 'bg-primary/60' : 'bg-primary'}`}
+          className={`rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 ${isSubmitting ? 'bg-primary/60' : 'bg-primary'}`}
         >
           {isSubmitting ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />}
           <Text className="text-white font-bold">{isSubmitting ? 'Publication...' : 'Publier l\'annonce'}</Text>
@@ -422,7 +422,7 @@ export default function CreateAnnonceScreen() {
 
         <Pressable
           onPress={() => router.push('/(tabs)/home')}
-          className="bg-white border border-outline-variant rounded-xl py-4 items-center justify-center flex-row gap-2"
+          className="bg-white border border-outline-variant rounded-xl py-3.5 items-center justify-center flex-row gap-2"
         >
           <Ionicons name="arrow-back" size={18} color="#1B4332" />
           <Text className="text-primary font-bold">Retour à l'accueil</Text>

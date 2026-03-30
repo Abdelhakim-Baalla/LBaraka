@@ -161,11 +161,11 @@ export default function SignUp() {
             >
               <Text
                 style={{
-                  fontSize: isSmallScreen ? 26 : isMediumScreen ? 30 : 34,
+                  fontSize: isSmallScreen ? 24 : isMediumScreen ? 28 : 32,
                   fontFamily: 'Outfit',
                   fontWeight: '700',
                   color: '#012d1d',
-                  lineHeight: isSmallScreen ? 30 : isMediumScreen ? 36 : 40,
+                  lineHeight: isSmallScreen ? 28 : isMediumScreen ? 34 : 38,
                   marginBottom: 6,
                   letterSpacing: -0.5,
                 }}

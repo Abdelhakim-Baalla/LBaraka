@@ -76,8 +76,13 @@ export default function MyAnnoncesScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-surface items-center justify-center">
-        <ActivityIndicator size="large" color="#1B4332" />
+      <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
+        <View className="px-4">
+          <View className="h-11 rounded-xl bg-surface-container mb-3" />
+          <View className="h-20 rounded-2xl bg-surface-container mb-4" />
+          <View className="h-48 rounded-2xl bg-surface-container mb-3" />
+          <View className="h-48 rounded-2xl bg-surface-container mb-3" />
+        </View>
       </View>
     );
   }
@@ -96,7 +101,7 @@ export default function MyAnnoncesScreen() {
         <View className="bg-white rounded-2xl p-4 border border-outline-variant">
           <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-lg font-extrabold text-primary">Mes annonces</Text>
+              <Text className="text-base font-extrabold text-primary">Mes annonces</Text>
               <Text className="text-sm text-on-surface-variant mt-1">Gérez vos annonces publiées.</Text>
             </View>
             <Pressable onPress={() => router.push('/(annonces)/create')} className="bg-primary px-3 py-2 rounded-lg">
@@ -122,7 +127,7 @@ export default function MyAnnoncesScreen() {
               <Pressable onPress={() => router.push(`/(annonces)/${annonce.id}`)}>
                 <SmartAnnonceImage
                   uri={annonce.photos?.[0]}
-                  className="w-full h-36 rounded-xl mb-3 overflow-hidden"
+                  className="w-full h-32 rounded-xl mb-3 overflow-hidden"
                   resizeMode="cover"
                 />
                 <Text className="text-base font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
@@ -150,14 +155,14 @@ export default function MyAnnoncesScreen() {
               <View className="flex-row gap-2 mt-3">
                 <Pressable
                   onPress={() => router.push(`/(annonces)/edit/${annonce.id}`)}
-                  className="flex-1 bg-primary rounded-xl py-3 items-center"
+                  className="flex-1 bg-primary rounded-xl py-2.5 items-center"
                 >
                   <Text className="text-white font-bold text-xs">Modifier</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => deleteAnnonce(annonce.id)}
                   disabled={deletingId === annonce.id}
-                  className={`flex-1 rounded-xl py-3 items-center ${deletingId === annonce.id ? 'bg-error/60' : 'bg-error'}`}
+                  className={`flex-1 rounded-xl py-2.5 items-center ${deletingId === annonce.id ? 'bg-error/60' : 'bg-error'}`}
                 >
                   {deletingId === annonce.id ? (
                     <ActivityIndicator color="#fff" />

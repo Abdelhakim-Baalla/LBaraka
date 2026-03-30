@@ -210,7 +210,7 @@ export default function EditAnnonceScreen() {
         </Pressable>
 
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-          <Text className="text-lg font-extrabold text-primary">Modifier annonce</Text>
+          <Text className="text-base font-extrabold text-primary">Modifier annonce</Text>
           <Text className="text-sm text-on-surface-variant mt-1">Mettez à jour les informations de votre annonce.</Text>
         </View>
 
@@ -240,7 +240,7 @@ export default function EditAnnonceScreen() {
                 <View key={`replace-photo-${index}`} className="bg-white border border-outline-variant rounded-xl p-3">
                   <Text className="text-[11px] text-on-surface-variant mb-2">Photo {index + 1}</Text>
 
-                  <View className="w-full h-32 rounded-xl overflow-hidden border border-outline-variant mb-2">
+                  <View className="w-full h-28 rounded-xl overflow-hidden border border-outline-variant mb-2">
                     {newPhoto ? (
                       <Image
                         source={{ uri: `data:${newPhoto.type};base64,${newPhoto.base64}` }}
@@ -368,7 +368,7 @@ export default function EditAnnonceScreen() {
         <Pressable
           onPress={saveAnnonce}
           disabled={isSaving}
-          className={`rounded-xl py-4 items-center justify-center flex-row gap-2 mb-3 ${isSaving ? 'bg-primary/60' : 'bg-primary'}`}
+          className={`rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 ${isSaving ? 'bg-primary/60' : 'bg-primary'}`}
         >
           {isSaving ? <ActivityIndicator color="#fff" /> : <Ionicons name="save-outline" size={18} color="#fff" />}
           <Text className="text-white font-bold">{isSaving ? 'Enregistrement...' : 'Enregistrer les changements'}</Text>
@@ -376,7 +376,7 @@ export default function EditAnnonceScreen() {
 
         <Pressable
           onPress={() => router.back()}
-          className="bg-white border border-outline-variant rounded-xl py-4 items-center justify-center flex-row gap-2"
+          className="bg-white border border-outline-variant rounded-xl py-3.5 items-center justify-center flex-row gap-2"
         >
           <Ionicons name="arrow-back" size={18} color="#1B4332" />
           <Text className="text-primary font-bold">Retour</Text>

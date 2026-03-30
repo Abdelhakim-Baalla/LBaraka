@@ -211,6 +211,22 @@ export class AnnonceService {
                     ]
                 },
                 orderBy: { dateCreation: 'desc' },
+                include: {
+                    createur: {
+                        select: {
+                            id: true,
+                            profil: {
+                                select: {
+                                    nom: true,
+                                    prenom: true,
+                                    ville: true,
+                                    lBarakaScore: true,
+                                    palier: true,
+                                },
+                            },
+                        },
+                    },
+                },
             });
 
             return { annonces };
