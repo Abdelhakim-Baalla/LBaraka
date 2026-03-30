@@ -640,7 +640,7 @@ export class ApiService {
   // Récupère toutes les conversations
   static async getConversations(token: string) {
     const baseUrl = this.getBaseUrl();
-    const response = await fetch(`${baseUrl}/chat/conversations`, {
+    const response = await fetch(`${baseUrl}/chat/me`, {
       headers: await this.getAuthHeaders(token)
     });
     if (!response.ok) {
@@ -653,11 +653,39 @@ export class ApiService {
   // Récupère l'historique d'une conversation
   static async getChatHistory(token: string, otherId: string, annonceId: string) {
     const baseUrl = this.getBaseUrl();
-    const response = await fetch(`${baseUrl}/chat/${otherId}/${annonceId}`, {
+    const response = await fetch(`${baseUrl}/chat/convo/${annonceId}/${otherId}`, {
       headers: await this.getAuthHeaders(token)
     });
     if (!response.ok) {
       const message = await this.getErrorMessage(response, 'Failed to fetch chat history');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Envoie un message texte
+  static async sendMessage(token: string, data: { receiverId: string; annonceId: string; type: string; content: string }) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/chat/text`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to send message');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Récupère le contrat d'une transaction
+  static async getContractByTransaction(token: string, transactionId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/contrats/transaction/${transactionId}`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch contract');
       throw new Error(message);
     }
     return await response.json();

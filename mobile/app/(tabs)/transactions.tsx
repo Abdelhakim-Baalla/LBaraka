@@ -937,16 +937,35 @@ export default function TransactionsScreen() {
                   ) : null}
 
                   {selectedTransaction.annonce?.id ? (
-                    <Pressable
-                      onPress={() => {
-                        setShowDetailModal(false);
-                        router.push(`/(annonces)/${selectedTransaction.annonce.id}`);
-                      }}
-                      className="bg-white border border-outline-variant rounded-xl py-3.5 items-center justify-center flex-row gap-2"
-                    >
-                      <Ionicons name="eye-outline" size={18} color="#1B4332" />
-                      <Text className="text-primary font-bold">Voir Annonce</Text>
-                    </Pressable>
+                    <>
+                      <Pressable
+                        onPress={async () => {
+                          const isEmprunteur = getTransactionType(selectedTransaction) === 'EMPRUNT';
+                          const otherId = isEmprunteur ? selectedTransaction.preteurId : selectedTransaction.emprunteurId;
+                          setShowDetailModal(false);
+                          
+                          // Attendre un peu pour que le modal se ferme
+                          setTimeout(() => {
+                            router.push(`/(tabs)/chat?openChat=${selectedTransaction.annonce.id}&otherId=${otherId}`);
+                          }, 300);
+                        }}
+                        className="bg-emerald-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
+                      >
+                        <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+                        <Text className="text-white font-bold">Discuter</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => {
+                          setShowDetailModal(false);
+                          router.push(`/(annonces)/${selectedTransaction.annonce.id}`);
+                        }}
+                        className="bg-white border border-outline-variant rounded-xl py-3.5 items-center justify-center flex-row gap-2"
+                      >
+                        <Ionicons name="eye-outline" size={18} color="#1B4332" />
+                        <Text className="text-primary font-bold">Voir Annonce</Text>
+                      </Pressable>
+                    </>
                   ) : null}
                       </>
                     );

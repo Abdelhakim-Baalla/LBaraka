@@ -262,6 +262,16 @@ export default function AnnonceDetailsScreen() {
         {!isOwner ? (
           <View>
             <Pressable
+              onPress={() => {
+                router.push(`/(tabs)/chat?openChat=${annonce.id}&otherId=${annonce.createurId}`);
+              }}
+              className="rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 bg-emerald-600"
+            >
+              <Ionicons name="chatbubble-outline" size={18} color="#fff" />
+              <Text className="text-white font-bold">Discuter avec le propriétaire</Text>
+            </Pressable>
+
+            <Pressable
               onPress={reserveAnnonce}
               disabled={isReserving}
               className={`rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 ${isReserving ? 'bg-primary/60' : 'bg-primary'}`}
