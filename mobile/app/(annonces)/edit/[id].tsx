@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert, Image } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../../../services/api';
+import SmartAnnonceImage from '../../../components/smart-annonce-image';
 
 const CATEGORIES = ['POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 const MODES = ['DON_GRATUIT', 'PRET_TEMPORAIRE', 'LOCATION_SOLIDAIRE'];
@@ -26,6 +27,7 @@ export default function EditAnnonceScreen() {
   const [montantCaution, setMontantCaution] = useState('');
   const [latitude, setLatitude] = useState('33.58');
   const [longitude, setLongitude] = useState('-7.60');
+  const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
 
   const loadAnnonce = async () => {
     try {
@@ -47,6 +49,7 @@ export default function EditAnnonceScreen() {
       setMontantCaution(annonce.montantCaution !== null && annonce.montantCaution !== undefined ? String(annonce.montantCaution) : '');
       setLatitude(String(annonce.geolocalisation?.[0] ?? 33.58));
       setLongitude(String(annonce.geolocalisation?.[1] ?? -7.60));
+      setExistingPhotos(annonce.photos || []);
     } catch (error: any) {
       Alert.alert('Erreur', error?.message || 'Impossible de charger cette annonce.');
     } finally {
@@ -126,6 +129,22 @@ export default function EditAnnonceScreen() {
           <Text className="text-lg font-extrabold text-primary">Modifier annonce</Text>
           <Text className="text-sm text-on-surface-variant mt-1">Mettez à jour les informations de votre annonce.</Text>
         </View>
+
+        {existingPhotos && existingPhotos.length > 0 && (
+          <View className="mb-4">
+            <Text className="text-xs font-bold text-on-surface-variant mb-2">Photos actuelles</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {existingPhotos.map((photo, index) => (
+                <SmartAnnonceImage
+                  key={`photo-${index}`}
+                  uri={photo}
+                  className="w-28 h-28 rounded-xl overflow-hidden"
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         <Text className="text-xs font-bold text-on-surface-variant mb-1">Titre</Text>
         <TextInput value={titre} onChangeText={setTitre} className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3" />

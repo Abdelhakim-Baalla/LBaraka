@@ -79,7 +79,7 @@ services:
       - MINIO_ACCESS_KEY=lbaraka
       - MINIO_SECRET_KEY=lbaraka123
       - MINIO_BUCKET=lbaraka-annonces
-      - MINIO_PUBLIC_URL=http://localhost:9000
+      - MINIO_PUBLIC_URL=http://10.90.27.250:9000
     volumes:
       - ./backend:/app
       - /app/node_modules
