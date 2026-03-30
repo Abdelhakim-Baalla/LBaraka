@@ -1,0 +1,9 @@
+reviews:
+  auto_review:
+    enabled: true
+    base_branches:
+      - "^main$"
+      - "^master$"
+      - "^develop$"
+      - "^[A-Za-z0-9._/-]+$"
+      

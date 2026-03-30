@@ -29,7 +29,7 @@ export class AnnonceController {
     // Récupérer toutes les annonces
     @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Récupérer toutes les annonces' })
-    @ApiQuery({ name: 'categorie', required: false, enum: ['ALIMENTAIRE', 'ELECTRONIQUE', 'VETEMENT', 'DOCUMENT', 'AUTRE'] })
+    @ApiQuery({ name: 'categorie', required: false, enum: ['POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'] })
     @ApiResponse({ status: 200, description: 'Liste des annonces' })
     @Get()
     @UseGuards(JwtAuthGuard)
@@ -43,7 +43,7 @@ export class AnnonceController {
     @ApiQuery({ name: 'lat', required: true, description: 'Latitude' })
     @ApiQuery({ name: 'lng', required: true, description: 'Longitude' })
     @ApiQuery({ name: 'rayon', required: false, description: 'Rayon en km (défaut: 10)' })
-    @ApiQuery({ name: 'categorie', required: false, enum: ['ALIMENTAIRE', 'ELECTRONIQUE', 'VETEMENT', 'DOCUMENT', 'AUTRE'] })
+    @ApiQuery({ name: 'categorie', required: false, enum: ['POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'] })
     @ApiResponse({ status: 200, description: 'Annonces proches' })
     @ApiResponse({ status: 400, description: 'Paramètres invalides' })
     @Get('carte')

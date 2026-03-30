@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
 import { ContratService } from '../contrat/contrat.service';
+import { StorageService } from '../storage/storage.service';
 import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 
@@ -19,7 +20,17 @@ export class TransactionService {
     private readonly utilisateurService: UtilisateurService,
     private readonly notificationService: NotificationService,
     private readonly jwtService: JwtService,
+    private readonly storageService: StorageService,
   ) { }
+
+  private buildShortCode(value: string): string {
+    return crypto
+      .createHash('sha256')
+      .update(value)
+      .digest('hex')
+      .toUpperCase()
+      .slice(0, 6);
+  }
 
   // Réserver une annonce
   async reserve(userId: string, annonceId: string) {
@@ -104,7 +115,7 @@ export class TransactionService {
   }
 
   // Générer un QR code sécurisé pour la réception avec JWT
-  async generateReceptionQR(userId: string, transactionId: string): Promise<string> {
+  async generateReceptionQR(userId: string, transactionId: string) {
     // Récupérer la transaction depuis la base
     const transaction = await this.prisma.transaction.findUnique({
       where: { id: transactionId },
@@ -147,24 +158,17 @@ export class TransactionService {
       },
     });
 
-    // Retourner le QR code encodé en base64
-    return QRCode.toDataURL(token);
+    // Retourner le QR code encodé en base64 + le token brut (fallback sans caméra)
+    const qrCode = await QRCode.toDataURL(token);
+    return {
+      qrCode,
+      code: this.buildShortCode(token),
+    };
   }
 
   // Valider le QR code de réception sécurisé avec JWT
   async validateReceptionQR(userId: string, transactionId: string, token: string) {
     try {
-      // Vérifier et décoder le token JWT avec le secret QR_JWT_SECRET
-      const decoded = this.jwtService.verify(token, {
-        secret: process.env.QR_JWT_SECRET || 'lbaraka_qr_super_secret_2026',
-      });
-
-      // Récupérer le transactionId du payload
-      if (decoded.transactionId !== transactionId) {
-        throw new BadRequestException('Token QR invalide pour cette transaction');
-      }
-
-      // Charger la transaction correspondante depuis la base
       const transaction = await this.prisma.transaction.findUnique({
         where: { id: transactionId },
       });
@@ -173,14 +177,39 @@ export class TransactionService {
         throw new NotFoundException('Transaction introuvable');
       }
 
-      // Vérifier que le QR n'a pas déjà été utilisé en consultant le champ isQrUsed
       if (transaction.isQrUsed) {
         throw new BadRequestException('Ce QR Code a déjà été utilisé');
       }
 
-      // Vérifier que c'est bien le prêteur qui scanne le QR en comparant scannerId avec preteurId
       if (userId !== transaction.preteurId) {
         throw new UnauthorizedException('Seul le prêteur peut scanner ce QR Code');
+      }
+
+      let tokenToVerify = String(token || '').trim();
+      const normalizedInput = tokenToVerify.toUpperCase();
+      const isShortCode = /^[A-Z0-9]{4,8}$/.test(normalizedInput);
+
+      if (isShortCode) {
+        if (!transaction.qrCodeToken) {
+          throw new BadRequestException('QR Code introuvable pour cette transaction');
+        }
+
+        const expectedShortCode = this.buildShortCode(transaction.qrCodeToken);
+        if (expectedShortCode !== normalizedInput) {
+          throw new BadRequestException('Code court invalide');
+        }
+
+        tokenToVerify = transaction.qrCodeToken;
+      }
+
+      // Vérifier et décoder le token JWT avec le secret QR_JWT_SECRET
+      const decoded = this.jwtService.verify(tokenToVerify, {
+        secret: process.env.QR_JWT_SECRET || 'lbaraka_qr_super_secret_2026',
+      });
+
+      // Récupérer le transactionId du payload
+      if (decoded.transactionId !== transactionId) {
+        throw new BadRequestException('Token QR invalide pour cette transaction');
       }
 
       // Utiliser une transaction Prisma pour:
@@ -227,7 +256,7 @@ export class TransactionService {
   }
 
   // Générer un QR code pour le retour
-  async generateRetourQR(userId: string, transactionId: string): Promise<string> {
+  async generateRetourQR(userId: string, transactionId: string) {
     const transaction = await this.prisma.transaction.findUnique({
       where: { id: transactionId },
     });
@@ -243,7 +272,13 @@ export class TransactionService {
       data: { qrCodeRetour: secret },
     });
 
-    return QRCode.toDataURL(JSON.stringify({ transactionId, type: 'RETOUR', secret }));
+    const payload = JSON.stringify({ transactionId, type: 'RETOUR', secret });
+    const qrCode = await QRCode.toDataURL(payload);
+
+    return {
+      qrCode,
+      code: this.buildShortCode(secret),
+    };
   }
 
   // Valider le QR code de retour
@@ -257,7 +292,22 @@ export class TransactionService {
 
         if (!transaction) throw new NotFoundException('Transaction introuvable');
         if (transaction.emprunteurId !== userId) throw new UnauthorizedException('Seul l\'emprunteur peut scanner ce code pour confirmer le retour');
-        if (transaction.qrCodeRetour !== secret) throw new BadRequestException('Code QR de retour invalide');
+        if (!transaction.qrCodeRetour) throw new BadRequestException('QR retour introuvable');
+
+        const incomingValue = String(secret || '').trim();
+        const normalizedInput = incomingValue.toUpperCase();
+        const isShortCode = /^[A-Z0-9]{4,8}$/.test(normalizedInput);
+
+        let secretToCompare = incomingValue;
+        if (isShortCode) {
+          const expectedShortCode = this.buildShortCode(transaction.qrCodeRetour);
+          if (expectedShortCode !== normalizedInput) {
+            throw new BadRequestException('Code court invalide');
+          }
+          secretToCompare = transaction.qrCodeRetour;
+        }
+
+        if (transaction.qrCodeRetour !== secretToCompare) throw new BadRequestException('Code QR de retour invalide');
         if (transaction.statut !== 'EN_COURS') throw new BadRequestException('Transaction doit être EN_COURS');
         if (transaction.scannedRetour) throw new BadRequestException('Le retour a déjà été confirmé');
 
@@ -265,6 +315,7 @@ export class TransactionService {
           where: { id: transactionId },
           data: {
             scannedRetour: true,
+            statut: 'EN_ATTENTE_RETOUR',
           },
         });
 
@@ -288,6 +339,12 @@ export class TransactionService {
         if (!currentTx) throw new NotFoundException('Transaction introuvable');
         if (currentTx.preteurId !== userId) throw new BadRequestException('Seul le prêteur peut valider le retour');
         if (currentTx.statut === 'TERMINEE') throw new BadRequestException('Cette transaction est déjà terminée');
+        if (!currentTx.scannedRetour) {
+          throw new BadRequestException('Le retour doit être confirmé par scan QR avant finalisation');
+        }
+        if (currentTx.statut !== 'EN_ATTENTE_RETOUR') {
+          throw new BadRequestException('La transaction doit être EN_ATTENTE_RETOUR pour être finalisée');
+        }
 
         // Calcul du malus de retard
         const maintenant = new Date();
@@ -301,7 +358,7 @@ export class TransactionService {
           if (joursRetard > 0) {
             const malusPoints = joursRetard * 30;
             await this.utilisateurService.updateScore(currentTx.emprunteurId, -malusPoints, tx);
-            
+
             // Enregistrer le retard en base
             await tx.transaction.update({
               where: { id: transactionId },
@@ -320,9 +377,9 @@ export class TransactionService {
         }
 
         // Payer le prix symbolique au propriétaire
+        // Le montant a déjà été retiré de l'emprunteur pendant la réservation.
         const prixSymbolique = Number(currentTx.annonce.prixSymbolique || 0);
         if (currentTx.annonce.mode === 'LOCATION_SOLIDAIRE' && prixSymbolique > 0) {
-          await this.walletService.retrait(currentTx.emprunteurId, prixSymbolique, tx);
           await this.walletService.depot(currentTx.preteurId, prixSymbolique, tx);
         }
 
@@ -372,16 +429,50 @@ export class TransactionService {
         },
         include: {
           annonce: true,
+          contrat: true,
           emprunteur: { select: { email: true } },
           preteur: { select: { email: true } },
         },
         orderBy: { id: 'desc' },
       });
 
-      return { transactions };
+      // Convertir les URLs MinIO en URLs proxy pour les contrats
+      const transactionsWithProxyUrls = transactions.map((tx) => {
+        if (tx.contrat && tx.contrat.urlPdfBilingue) {
+          const proxyUrl = this.convertToProxyUrl(tx.contrat.urlPdfBilingue);
+          return {
+            ...tx,
+            contrat: {
+              ...tx.contrat,
+              urlPdfBilingue: proxyUrl,
+            },
+          };
+        }
+        return tx;
+      });
+
+      return { transactions: transactionsWithProxyUrls };
     } catch (error) {
+      console.error('Erreur récupération transactions:', error);
       throw new InternalServerErrorException('Erreur lors de la récupération des transactions');
     }
+  }
+
+  // Convertir une URL MinIO en URL proxy backend
+  private convertToProxyUrl(minioUrl: string): string {
+    if (!minioUrl || !minioUrl.includes('/lbaraka-annonces/')) {
+      return minioUrl;
+    }
+
+    const marker = '/lbaraka-annonces/';
+    const markerIndex = minioUrl.indexOf(marker);
+    if (markerIndex === -1) {
+      return minioUrl;
+    }
+
+    const objectPath = `lbaraka-annonces/${minioUrl.slice(markerIndex + marker.length)}`;
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+    return `${backendUrl}/storage/pdf?path=${encodeURIComponent(objectPath)}`;
   }
 
   // Signaler une dégradation

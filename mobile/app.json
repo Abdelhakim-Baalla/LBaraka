@@ -1,35 +1,53 @@
 {
   "expo": {
-    "name": "LBaraka",
-    "slug": "lbaraka",
+    "name": "LBaraka - Partage Solidaire",
+    "slug": "lbaraka-mobile",
     "version": "1.0.0",
-    "sdkVersion": "54.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "icon": "./assets/images/lbaraka-light.png",
+    "scheme": "lbaraka",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.lbaraka.app"
+      "supportsTablet": true
     },
     "android": {
-      "package": "com.lbaraka.app",
-      "usesCleartextTraffic": true,
-      "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#16a34a"
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/lbaraka-light.png",
+        "backgroundImage": "./assets/images/lbaraka-light.png",
+        "monochromeImage": "./assets/images/lbaraka-light.png"
       },
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
     },
-    "web": { "favicon": "./assets/favicon.png" },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/lbaraka-light.png"
+    },
+    "updates": {
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "fallbackToCacheTimeout": 0
+    },
     "plugins": [
-      ["expo-location", { "locationWhenInUsePermission": "LBaraka a besoin de votre position." }],
-      ["expo-image-picker", { "photosPermission": "LBaraka a besoin d'accéder à vos photos." }]
-    ]
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/lbaraka-light.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "expo-localization"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
   }
 }

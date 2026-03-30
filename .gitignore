@@ -11,6 +11,8 @@ agent/
 .github/copilot-instructions.md
 .agents/rules/copilot.md
 .github/rules/
+.kilo/
+.idea/
 
 # OS
 .DS_Store

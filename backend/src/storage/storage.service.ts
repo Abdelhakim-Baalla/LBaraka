@@ -116,6 +116,32 @@ export class StorageService implements OnModuleInit {
         return `${this.publicBaseUrl}/${this.bucketName}/${objectName}`;
     }
 
+    // Générer une URL signée temporaire pour un objet MinIO/S3
+    public async getPresignedUrl(objectPath: string, expirySeconds = 900): Promise<string> {
+        try {
+            if (!objectPath) return '';
+
+            // objectPath peut être une URL complète ou juste le chemin relatif
+            let objectName = objectPath;
+            if (objectPath.startsWith('http')) {
+                // Extraire le chemin après le bucket
+                const idx = objectPath.indexOf(this.bucketName + '/');
+                if (idx !== -1) {
+                    objectName = objectPath.substring(idx + this.bucketName.length + 1);
+                }
+            }
+
+            return await this.minioClient.presignedGetObject(
+                this.bucketName,
+                objectName,
+                expirySeconds
+            );
+        } catch (error) {
+            console.error('Erreur génération URL signée:', error);
+            return objectPath; // Retourner l'URL originale en cas d'erreur
+        }
+    }
+
     // Générer un nom de fichier unique et sûr
     private buildObjectName(originalName: string): string {
         const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '-');
