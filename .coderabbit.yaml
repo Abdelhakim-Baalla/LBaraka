@@ -1,0 +1,13 @@
+reviews:
+  auto_review:
+    enabled: true
+    base_branches:
+      - "main"
+      - "master"
+      - "develop"
+      - "*"
+      # all branches
+      - "*/*"
+      # all branches with a slash (e.g., feature/branch)
+      - "*/**"
+      
