@@ -469,6 +469,62 @@ export class ApiService {
     return await response.json();
   }
 
+  // Genere le QR code de retour
+  static async getQRRetour(token: string, transactionId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/transactions/${transactionId}/qr-retour`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to generate QR retour');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Valide le retour avec le QR code
+  static async validateRetour(token: string, transactionId: string, secret: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/transactions/${transactionId}/validate-retour`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ secret })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to validate retour');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Finalise le retour et debloque la caution
+  static async finalizeRetour(token: string, transactionId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/transactions/${transactionId}/valider-retour`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to finalize retour');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Signale une degradation
+  static async signalerDegradation(token: string, transactionId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/transactions/${transactionId}/signaler-degradation`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to signal degradation');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
   // Exporte les mouvements wallet au format CSV (retourné en texte)
   static async exportWalletCsv(
     token: string,
