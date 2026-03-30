@@ -407,6 +407,36 @@ export class ApiService {
     return await response.json();
   }
 
+  // Bloque une caution dans le portefeuille
+  static async blockCaution(token: string, montant: number) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/wallet/blocage`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ montant })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to block caution');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Débloque une caution dans le portefeuille
+  static async unblockCaution(token: string, montant: number) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/wallet/deblocage`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ montant })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to unblock caution');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
   // Récupère toutes les conversations
   static async getConversations(token: string) {
     const baseUrl = this.getBaseUrl();
