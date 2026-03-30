@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import Animated, { FadeInDown, SlideInUp } from 'react-native-reanimated';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -80,89 +81,75 @@ export default function SignUp() {
         <View className="w-10" />
       </View>
 
-      <ScrollView className="flex-1 px-6 pt-7 pb-10" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 px-6 pt-6 pb-8" showsVerticalScrollIndicator={false}>
         {/* Header Section */}
-        <View className="mb-7">
-          <View className="bg-primary/10 self-start px-3 py-1.5 rounded-full mb-3">
-            <Text className="text-primary font-bold text-[11px] tracking-wider">NOUVEL UTILISATEUR</Text>
-          </View>
-          <Text className="text-[34px] leading-[38px] font-extrabold text-primary mb-2">
-            Créer un compte
-          </Text>
-          <Text className="text-sm text-on-surface-variant/90 leading-6">
-            Rejoignez la communauté LBaraka pour prêter, réserver et suivre votre impact local.
+        <View className="mb-6">
+          <Text className="text-2xl font-extrabold text-primary mb-1">S'inscrire</Text>
+          <Text className="text-sm text-on-surface-variant leading-5">
+            Rejoignez LBaraka et commencez vos échanges locaux.
           </Text>
         </View>
 
         {/* Form */}
-        <View className="bg-white rounded-2xl border border-outline-variant/60 p-4 gap-4">
+        <Animated.View entering={FadeInDown.delay(300).duration(600)} className="gap-4 mb-6">
           {/* Email */}
           <View>
-            <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Adresse e-mail *
-            </Text>
+            <Text className="text-xs font-bold text-on-surface-variant/70 mb-2">E-MAIL *</Text>
             <TextInput
-              className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
+              className="w-full bg-surface-container-high rounded-xl px-4 py-3.5 h-12 text-on-surface text-base border border-outline-variant/40"
               autoCapitalize="none"
               value={email}
-              placeholder="name@domain.com"
-              placeholderTextColor="#717973"
+              placeholder="votre@email.com"
+              placeholderTextColor="#a5a6aa"
               onChangeText={setEmail}
               keyboardType="email-address"
               editable={!isLoading}
             />
           </View>
 
-          {/* Phone & CIN */}
-          <View className="gap-4">
-            <View>
-              <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-                Téléphone (MAR) *
-              </Text>
-              <View className="flex-row gap-2">
-                <View className="bg-surface-container-high rounded-xl px-3 py-4 items-center justify-center min-w-[64px]">
-                  <Text className="text-on-surface font-medium">+212</Text>
-                </View>
-                <TextInput
-                  className="flex-1 bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
-                  value={telephone}
-                  placeholder="600 000000"
-                  placeholderTextColor="#717973"
-                  onChangeText={setTelephone}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                  editable={!isLoading}
-                />
+          {/* Phone */}
+          <View>
+            <Text className="text-xs font-bold text-on-surface-variant/70 mb-2">TÉLÉPHONE (MAR) *</Text>
+            <View className="flex-row gap-2">
+              <View className="bg-surface-container-high rounded-xl px-3 h-12 items-center justify-center min-w-fit border border-outline-variant/40">
+                <Text className="text-on-surface font-semibold text-sm">+212</Text>
               </View>
-            </View>
-
-            <View>
-              <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-                Numéro CIN
-              </Text>
               <TextInput
-                className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
-                value={cin}
-                placeholder="AB123456"
-                placeholderTextColor="#717973"
-                onChangeText={setCin}
-                autoCapitalize="characters"
+                className="flex-1 bg-surface-container-high rounded-xl px-4 py-3.5 h-12 text-on-surface text-base border border-outline-variant/40"
+                value={telephone}
+                placeholder="600 000000"
+                placeholderTextColor="#a5a6aa"
+                onChangeText={setTelephone}
+                keyboardType="phone-pad"
+                maxLength={10}
                 editable={!isLoading}
               />
             </View>
           </View>
 
+          {/* CIN */}
+          <View>
+            <Text className="text-xs font-bold text-on-surface-variant/70 mb-2">NUMÉRO CIN</Text>
+            <TextInput
+              className="w-full bg-surface-container-high rounded-xl px-4 py-3.5 h-12 text-on-surface text-base border border-outline-variant/40"
+              value={cin}
+              placeholder="AB123456"
+              placeholderTextColor="#a5a6aa"
+              onChangeText={setCin}
+              autoCapitalize="characters"
+              editable={!isLoading}
+            />
+          </View>
+
           {/* Password */}
           <View>
-            <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Mot de passe *
-            </Text>
+            <Text className="text-xs font-bold text-on-surface-variant/70 mb-2">MOT DE PASSE *</Text>
             <View className="relative">
               <TextInput
-                className="w-full bg-surface-container-high rounded-xl px-5 py-4 pr-14 text-on-surface text-base"
+                className="w-full bg-surface-container-high rounded-xl px-4 py-3.5 h-12 pr-12 text-on-surface text-base border border-outline-variant/40"
                 value={password}
                 placeholder="••••••••••••"
-                placeholderTextColor="#717973"
+                placeholderTextColor="#a5a6aa"
                 secureTextEntry={!showPassword}
                 onChangeText={setPassword}
                 editable={!isLoading}
@@ -174,71 +161,46 @@ export default function SignUp() {
               >
                 <Ionicons 
                   name={showPassword ? "eye-off" : "eye"} 
-                  size={20} 
-                  color="#717973" 
+                  size={18} 
+                  color="#414844" 
                 />
               </Pressable>
             </View>
-            <Text className="text-xs text-on-surface-variant/60 mt-2 ml-1">
-              Minimum 8 caractères, avec au moins une lettre et un chiffre.
-            </Text>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Submit Button */}
         <Pressable
           onPress={handleSubmit}
           disabled={!email || !password || !telephone || isLoading}
-          className={`w-full bg-primary rounded-2xl py-4 px-5 flex-row items-center justify-between shadow-lg mt-7 ${
-            (!email || !password || !telephone || isLoading) ? 'opacity-50' : ''
+          className={`w-full bg-primary rounded-xl py-3.5 h-12 px-5 flex-row items-center justify-center gap-2 mt-6 ${
+            (!email || !password || !telephone || isLoading) ? 'opacity-60' : ''
           }`}
         >
-          <Text className="text-white font-bold text-base tracking-wide">
-            {isLoading ? 'Inscription...' : 'Créer mon compte'}
-          </Text>
           {isLoading ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
-            <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+            <>
+              <Text className="text-white font-bold text-base">Créer mon compte</Text>
+              <Ionicons name="arrow-forward" size={18} color="#ffffff" />
+            </>
           )}
         </Pressable>
 
-        {/* Divider */}
-        <View className="relative flex-row items-center justify-center my-8">
-          <View className="absolute w-full border-t border-outline-variant/30" />
-          <Text className="bg-surface px-4 text-[10px] font-bold uppercase tracking-widest text-outline">
-            Ou s'inscrire avec
-          </Text>
-        </View>
-
-        {/* Social Login Buttons */}
-        <View className="gap-3 mb-9">
-          <Pressable className="w-full flex-row items-center justify-center gap-3 bg-white border border-outline-variant/20 rounded-xl py-4 shadow-sm active:bg-surface-container-low">
-            <Ionicons name="logo-google" size={20} color="#191c1d" />
-            <Text className="text-sm font-semibold text-on-surface">Google</Text>
-          </Pressable>
-          <Pressable className="w-full flex-row items-center justify-center gap-3 bg-white border border-outline-variant/20 rounded-xl py-4 shadow-sm active:bg-surface-container-low">
-            <Ionicons name="logo-apple" size={20} color="#191c1d" />
-            <Text className="text-sm font-semibold text-on-surface">Apple</Text>
-          </Pressable>
-        </View>
-
-        {/* Footer */}
-        <View className="items-center pb-6">
-          <View className="flex-row items-center">
-            <Text className="text-on-surface-variant font-medium">Déjà membre ? </Text>
+        {/* Sign In Link */}
+        <View className="items-center mt-8">
+          <View className="flex-row items-center gap-1">
+            <Text className="text-on-surface-variant text-sm">Déjà membre ? </Text>
             <Link href="/(auth)/sign-in" asChild>
               <Pressable>
-                <Text className="text-primary font-bold ml-1">Se connecter</Text>
+                <Text className="text-primary font-bold text-sm">Se connecter</Text>
               </Pressable>
             </Link>
           </View>
         </View>
       </ScrollView>
 
-      {/* Decorative Elements */}
-      <View className="absolute -bottom-32 -left-32 w-96 h-96 bg-primary/5 rounded-full blur-3xl" style={{ opacity: 0.3 }} />
-      <View className="absolute top-20 -right-20 w-64 h-64 bg-secondary/5 rounded-full blur-3xl" style={{ opacity: 0.3 }} />
+
     </KeyboardAvoidingView>
   );
 }

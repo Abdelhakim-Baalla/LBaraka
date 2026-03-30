@@ -1,4 +1,5 @@
-import { View, Text, Image, Pressable } from 'react-native'
+import { View, Text, Image, Pressable } from 'react-native';
+import Animated, { FadeInUp, SlideInLeft } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,16 +21,16 @@ const Onboarding = () => {
 
   return (
     <View className="flex-1 bg-surface px-5 pb-7" style={{ paddingTop: insets.top + 14 }}>
-      <View className="flex-row items-center justify-between mb-5">
+      <Animated.View entering={FadeInUp.delay(100).duration(600)} className="flex-row items-center justify-between mb-5">
         <View className="bg-primary/10 self-start px-3 py-1.5 rounded-full">
           <Text className="text-primary font-extrabold text-[11px] tracking-wide">LBARAKA</Text>
         </View>
         <Pressable onPress={goToSignIn} className="px-2 py-1.5">
           <Text className="text-primary font-bold text-xs">Passer</Text>
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View className="mb-5">
+      <Animated.View entering={SlideInLeft.delay(200).duration(600)} className="mb-5">
         <Text className="text-[32px] leading-[38px] font-extrabold text-primary">
           Prêtez et partagez
           {'\n'}dans votre quartier.
@@ -37,9 +38,9 @@ const Onboarding = () => {
         <Text className="text-sm text-on-surface-variant mt-3 leading-6">
           Réduisez le gaspillage, gagnez des points et créez un vrai impact local avec une expérience simple et moderne.
         </Text>
-      </View>
+      </Animated.View>
 
-      <View className="relative rounded-[28px] overflow-hidden border border-outline-variant/50">
+      <Animated.View entering={FadeInUp.delay(400).duration(600)} className="relative rounded-[28px] overflow-hidden border border-outline-variant/50">
         <Image
           source={{ uri: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1000&q=80' }}
           className="w-full h-72"
@@ -54,9 +55,9 @@ const Onboarding = () => {
             Objets, entraide, food rescue, points relais et suivi transparent de vos échanges.
           </Text>
         </View>
-      </View>
+      </Animated.View>
 
-      <View className="mt-auto pt-6 gap-3">
+      <View className="mt-auto pt-6 gap-3.5">
         <Pressable
           onPress={goToSignUp}
           className="bg-primary rounded-2xl py-4 px-4 flex-row items-center justify-between"
