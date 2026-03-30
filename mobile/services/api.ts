@@ -1,9 +1,6 @@
 // API Service for LBaraka Backend Integration
-// Place this in: mobile/services/api.ts
 
-import { useAuth } from '@clerk/expo';
-
-const API_BASE_URL = 'http://localhost:3000'; // Change to your backend URL
+const API_BASE_URL = 'http://localhost:3000';
 
 export class ApiService {
   private static async getAuthHeaders(token?: string) {
