@@ -1,86 +1,77 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, TextInput, ScrollView } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { ApiService } from '../../services/api';
-
-const MAP_CATEGORIES = ['Toutes', 'POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 
 export default function MapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [latitude, setLatitude] = useState('33.58');
-  const [longitude, setLongitude] = useState('-7.60');
-  const [rayon, setRayon] = useState('10');
   const [isLoading, setIsLoading] = useState(true);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [annonces, setAnnonces] = useState<any[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('Toutes');
+  const [userLocation, setUserLocation] = useState({ latitude: 33.58, longitude: -7.60 });
 
-  const useCurrentLocation = async () => {
+  const loadUserLocation = async () => {
     try {
-      setIsGettingLocation(true);
-
       const permission = await Location.requestForegroundPermissionsAsync();
-      if (permission.status !== 'granted') {
-        return;
+      if (permission.status === 'granted') {
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        setUserLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
       }
-
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      setLatitude(String(position.coords.latitude));
-      setLongitude(String(position.coords.longitude));
     } catch {
-      console.error('Unable to get current location');
-    } finally {
-      setIsGettingLocation(false);
+      console.error('Unable to get location');
     }
   };
 
   const fetchNearby = async () => {
     try {
-      const lat = Number(latitude);
-      const lng = Number(longitude);
-      const rayonKm = Number(rayon);
-
-      if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(rayonKm)) {
-        return;
-      }
-
       const token = await AsyncStorage.getItem('accessToken');
-
       if (!token) {
         router.replace('/(auth)/sign-in');
         return;
       }
 
-      const categorie = selectedCategory === 'Toutes' ? undefined : selectedCategory;
-      const data = await ApiService.getAnnoncesNearby(token, lat, lng, rayonKm, categorie);
+      const data = await ApiService.getAnnoncesNearby(
+        token,
+        userLocation.latitude,
+        userLocation.longitude,
+        10
+      );
       setAnnonces(data.annonces || []);
     } catch (error) {
       console.error('Nearby annonces error:', error);
     } finally {
       setIsLoading(false);
-      setIsSearching(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
       setIsLoading(true);
+      loadUserLocation();
       fetchNearby();
     }, [])
   );
 
-  const handleSearch = async () => {
-    setIsSearching(true);
-    await fetchNearby();
+  const getMarkerColor = (categorie: string) => {
+    const colors: Record<string, string> = {
+      POUSSETTE: '#C7F9CC',
+      BRICOLAGE: '#FFD6A5',
+      MEDICAL: '#D7E3FC',
+      EVENEMENTIEL: '#FDE2E4',
+      NOURRITURE: '#FFE8D6',
+      AUTRE: '#E5E5E5',
+    };
+    return colors[categorie] || '#1B4332';
   };
 
   if (isLoading) {
@@ -92,115 +83,53 @@ export default function MapScreen() {
   }
 
   return (
-    <View className="flex-1 bg-surface px-4" style={{ paddingTop: insets.top + 10 }}>
-      <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-        <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-base font-extrabold text-primary">Carte Communautaire</Text>
-          <Ionicons name="map-outline" size={20} color="#1B4332" />
-        </View>
-        <Text className="text-sm text-on-surface-variant">
-          Visualisez les annonces proches et les points relais autour de vous.
-        </Text>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12 }}>
-        {MAP_CATEGORIES.map((cat) => {
-          const active = selectedCategory === cat;
+    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top }}>
+      <MapView
+        provider={PROVIDER_GOOGLE}
+        style={styles.map}
+        initialRegion={{
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          latitudeDelta: 0.1,
+          longitudeDelta: 0.1,
+        }}
+        showsUserLocation
+        showsMyLocationButton
+      >
+        {annonces.map((annonce) => {
+          if (!annonce.geolocalisation || annonce.geolocalisation.length < 2) return null;
           return (
-            <Pressable
-              key={cat}
-              onPress={() => setSelectedCategory(cat)}
-              className={`px-3 py-2 rounded-lg border ${active ? 'bg-primary border-primary' : 'bg-white border-outline-variant'}`}
-            >
-              <Text className={`${active ? 'text-white' : 'text-on-surface'} text-xs font-bold`}>{cat}</Text>
-            </Pressable>
+            <Marker
+              key={annonce.id}
+              coordinate={{
+                latitude: annonce.geolocalisation[0],
+                longitude: annonce.geolocalisation[1],
+              }}
+              title={annonce.titre}
+              description={`${annonce.categorie} - ${annonce.distance}km`}
+              pinColor={getMarkerColor(annonce.categorie)}
+              onCalloutPress={() => router.push(`/(annonces)/${annonce.id}`)}
+            />
           );
         })}
-      </ScrollView>
+      </MapView>
 
-      <View className="bg-white border border-outline-variant rounded-2xl p-3 mb-3">
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Latitude</Text>
-        <TextInput
-          value={latitude}
-          onChangeText={setLatitude}
-          keyboardType="decimal-pad"
-          className="bg-surface border border-outline-variant rounded-xl px-3 py-2.5 mb-2"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Longitude</Text>
-        <TextInput
-          value={longitude}
-          onChangeText={setLongitude}
-          keyboardType="decimal-pad"
-          className="bg-surface border border-outline-variant rounded-xl px-3 py-2.5 mb-2"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Rayon (km)</Text>
-        <TextInput
-          value={rayon}
-          onChangeText={setRayon}
-          keyboardType="numeric"
-          className="bg-surface border border-outline-variant rounded-xl px-3 py-2.5"
-        />
-
-        <Pressable
-          onPress={useCurrentLocation}
-          disabled={isGettingLocation}
-          className={`rounded-xl py-3 items-center justify-center flex-row gap-2 mt-3 ${isGettingLocation ? 'bg-surface-container' : 'bg-primary/10'}`}
-        >
-          {isGettingLocation ? <ActivityIndicator color="#1B4332" /> : <Ionicons name="locate-outline" size={18} color="#1B4332" />}
-          <Text className="text-primary font-bold">{isGettingLocation ? 'Localisation...' : 'Utiliser ma position réelle'}</Text>
-        </Pressable>
+      <View className="absolute bottom-5 left-4 right-4">
+        <View className="bg-white rounded-2xl p-3 border border-outline-variant shadow-lg">
+          <Text className="text-xs font-bold text-primary mb-1">
+            {annonces.length} annonce{annonces.length > 1 ? 's' : ''} autour de vous
+          </Text>
+          <Text className="text-xs text-on-surface-variant">
+            Cliquez sur un marqueur pour voir les détails
+          </Text>
+        </View>
       </View>
-
-      <Pressable
-        onPress={handleSearch}
-        disabled={isSearching}
-        className={`rounded-xl py-3.5 px-4 flex-row items-center justify-center gap-2 mb-3 ${isSearching ? 'bg-primary/60' : 'bg-primary'}`}
-      >
-        {isSearching ? <ActivityIndicator color="#fff" /> : <Ionicons name="search-outline" size={18} color="#fff" />}
-        <Text className="text-white font-bold">{isSearching ? 'Recherche...' : 'Rechercher autour de moi'}</Text>
-      </Pressable>
-
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 20 }}>
-        {annonces.length === 0 ? (
-          <View className="bg-white border border-outline-variant rounded-2xl p-5 items-center">
-            <Ionicons name="map-outline" size={28} color="#A5A6AA" />
-            <Text className="text-on-surface-variant mt-2">Aucune annonce dans ce rayon.</Text>
-          </View>
-        ) : (
-          annonces.map((annonce) => (
-            <Pressable
-              key={annonce.id}
-              onPress={() => router.push(`/(annonces)/${annonce.id}`)}
-              className="bg-white border border-outline-variant rounded-2xl p-3 mb-3"
-            >
-              <Text className="text-base font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
-              <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={2}>{annonce.description}</Text>
-                  <View className="flex-row flex-wrap gap-2 mt-2">
-                    <View className="bg-primary/10 px-2 py-1 rounded-lg">
-                      <Text className="text-[10px] font-semibold text-primary">{annonce.categorie}</Text>
-                    </View>
-                    <View className="bg-surface-container px-2 py-1 rounded-lg">
-                      <Text className="text-[10px] text-on-surface-variant">{String(annonce.mode || '').replaceAll('_', ' ')}</Text>
-                    </View>
-                  </View>
-              <View className="flex-row items-center justify-between mt-3">
-                <Text className="text-xs text-on-surface-variant">Distance: {String(annonce.distance ?? '-')} km</Text>
-                <Ionicons name="chevron-forward" size={18} color="#1B4332" />
-              </View>
-            </Pressable>
-          ))
-        )}
-      </ScrollView>
-
-      <Pressable
-        onPress={() => router.push('/(points-relais)')}
-        className="bg-white border border-outline-variant rounded-xl py-3.5 px-4 flex-row items-center justify-center gap-2 mb-3"
-      >
-        <Ionicons name="storefront-outline" size={18} color="#1B4332" />
-        <Text className="text-primary font-bold">Voir les points relais</Text>
-      </Pressable>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  map: {
+    flex: 1,
+  },
+});
