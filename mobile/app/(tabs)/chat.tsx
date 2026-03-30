@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, TextInput, Modal, KeyboardAvoidingView, Platform, Alert, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { ApiService } from '../../services/api';
@@ -10,6 +10,7 @@ import { ApiService } from '../../services/api';
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState<'conversations' | 'reservations'>('conversations');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -27,6 +28,34 @@ export default function ChatScreen() {
       loadData();
     }, [])
   );
+
+  // Gérer l'ouverture automatique d'une conversation via les paramètres
+  useEffect(() => {
+    const autoOpenChat = async () => {
+      if (params?.openChat && params?.otherId && currentUserId) {
+        const token = await AsyncStorage.getItem('accessToken');
+        if (!token) return;
+
+        try {
+          console.log('Auto-opening chat:', params.openChat, params.otherId);
+          const data = await ApiService.getChatHistory(token, String(params.otherId), String(params.openChat));
+          setMessages(data || []);
+          setSelectedConvo({
+            _id: { annonceId: String(params.openChat), participants: [currentUserId, String(params.otherId)] },
+            lastMessage: data[data.length - 1] || {},
+          });
+          setShowChatModal(true);
+        } catch (error) {
+          console.error('Error auto-opening chat:', error);
+          Alert.alert('Erreur', 'Impossible d\'ouvrir la conversation');
+        }
+      }
+    };
+
+    if (currentUserId) {
+      autoOpenChat();
+    }
+  }, [params?.openChat, params?.otherId, currentUserId]);
 
   const loadData = async () => {
     try {
@@ -297,7 +326,7 @@ export default function ChatScreen() {
                 <Text className="text-sm font-bold text-amber-800">Astuce messagerie</Text>
               </View>
               <Text className="text-xs text-amber-800">
-                Les conversations sont liées aux annonces. Réservez un objet pour démarrer une discussion avec le propriétaire.
+                Cliquez sur "Discuter" dans les détails d'une annonce ou transaction pour démarrer une conversation.
               </Text>
             </Animated.View>
           </>
