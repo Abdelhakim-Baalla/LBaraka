@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
 import { ContratService } from '../contrat/contrat.service';
+import { StorageService } from '../storage/storage.service';
 import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 
@@ -19,6 +20,7 @@ export class TransactionService {
     private readonly utilisateurService: UtilisateurService,
     private readonly notificationService: NotificationService,
     private readonly jwtService: JwtService,
+    private readonly storageService: StorageService,
   ) { }
 
   private buildShortCode(value: string): string {
@@ -418,7 +420,6 @@ export class TransactionService {
   // Récupérer les transactions de l'utilisateur
   async getMyTransactions(userId: string) {
     try {
-
       const transactions = await this.prisma.transaction.findMany({
         where: {
           OR: [
@@ -435,10 +436,43 @@ export class TransactionService {
         orderBy: { id: 'desc' },
       });
 
-      return { transactions };
+      // Convertir les URLs MinIO en URLs proxy pour les contrats
+      const transactionsWithProxyUrls = transactions.map((tx) => {
+        if (tx.contrat && tx.contrat.urlPdfBilingue) {
+          const proxyUrl = this.convertToProxyUrl(tx.contrat.urlPdfBilingue);
+          return {
+            ...tx,
+            contrat: {
+              ...tx.contrat,
+              urlPdfBilingue: proxyUrl,
+            },
+          };
+        }
+        return tx;
+      });
+
+      return { transactions: transactionsWithProxyUrls };
     } catch (error) {
+      console.error('Erreur récupération transactions:', error);
       throw new InternalServerErrorException('Erreur lors de la récupération des transactions');
     }
+  }
+
+  // Convertir une URL MinIO en URL proxy backend
+  private convertToProxyUrl(minioUrl: string): string {
+    if (!minioUrl || !minioUrl.includes('/lbaraka-annonces/')) {
+      return minioUrl;
+    }
+
+    const marker = '/lbaraka-annonces/';
+    const markerIndex = minioUrl.indexOf(marker);
+    if (markerIndex === -1) {
+      return minioUrl;
+    }
+
+    const objectPath = `lbaraka-annonces/${minioUrl.slice(markerIndex + marker.length)}`;
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+    return `${backendUrl}/storage/pdf?path=${encodeURIComponent(objectPath)}`;
   }
 
   // Signaler une dégradation

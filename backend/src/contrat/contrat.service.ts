@@ -16,6 +16,23 @@ export class ContratService {
     private readonly storageService: StorageService,
   ) {}
 
+  // Convertir une URL MinIO en URL proxy backend
+  private convertToProxyUrl(minioUrl: string): string {
+    if (!minioUrl || !minioUrl.includes('/lbaraka-annonces/')) {
+      return minioUrl;
+    }
+
+    const marker = '/lbaraka-annonces/';
+    const markerIndex = minioUrl.indexOf(marker);
+    if (markerIndex === -1) {
+      return minioUrl;
+    }
+
+    const objectPath = `lbaraka-annonces/${minioUrl.slice(markerIndex + marker.length)}`;
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+    return `${backendUrl}/storage/pdf?path=${encodeURIComponent(objectPath)}`;
+  }
+
   // Générer un hash pour sécuriser le contrat
   private generateHash(data: any): string {
     return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex').toUpperCase();
@@ -24,6 +41,7 @@ export class ContratService {
   // Convertir une image en Base64
   private async getBase64Image(url: string): Promise<string> {
     try {
+      if (!url) return '';
       const buffer = await this.storageService.getFileBuffer(url);
       const b64 = buffer.toString('base64');
       const ext = url.split('.').pop()?.toLowerCase() || 'jpeg';
@@ -51,15 +69,21 @@ export class ContratService {
 
       // Préparer les photos de l'annonce
       const photosRaw = transaction.annonce.photos || [];
-      const defaultImage = "http://localhost:9000/lbaraka-annonces/annonces/1773757925920-722706832-photo_1773757912301.jpg";
+      const photosBase64: string[] = [];
       
-      const photosBase64 = await Promise.all(
-        [0, 1, 2].map(async (i) => {
-          const url = photosRaw[i] || defaultImage;
-          const b64 = await this.getBase64Image(url);
-          return b64 || 'https://via.placeholder.com/300x300.png?text=LBaraka+Photo';
-        })
-      );
+      for (let i = 0; i < 3; i++) {
+        if (photosRaw[i]) {
+          const b64 = await this.getBase64Image(photosRaw[i]);
+          if (b64) {
+            photosBase64.push(b64);
+          }
+        }
+      }
+      
+      // Si pas de photos, ajouter une image par défaut
+      if (photosBase64.length === 0) {
+        photosBase64.push('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE4IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+TGJhcmFrYTwvdGV4dD48L3N2Zz4=');
+      }
 
       // Lire le template Handlebars
       const templatePath = path.join(process.cwd(), 'src', 'contrat', 'templates', 'contrat-bilingue.hbs');
@@ -128,7 +152,12 @@ export class ContratService {
         },
       });
 
-      return contrat;
+      // Retourner avec URL proxy
+      const proxyUrl = this.convertToProxyUrl(urlPdf);
+      return {
+        ...contrat,
+        urlPdfBilingue: proxyUrl,
+      };
     } catch (error) {
       console.error('Erreur Generation PDF:', error);
       throw new InternalServerErrorException('Impossible de générer le contrat bilingue');
@@ -141,11 +170,17 @@ export class ContratService {
       where: { transactionId },
     });
     if (!contrat) throw new NotFoundException('Contrat introuvable pour cette transaction');
-    return contrat;
+    
+    // Retourner avec URL proxy
+    const proxyUrl = this.convertToProxyUrl(contrat.urlPdfBilingue);
+    return {
+      ...contrat,
+      urlPdfBilingue: proxyUrl,
+    };
   }
 
-  // Récupérer le PDF du contrat pour téléchargement
-  async getContratPdfBuffer(transactionId: string): Promise<{ buffer: Buffer; fileName: string }> {
+  // Récupérer l'URL proxy du PDF
+  async getContratPdfUrl(transactionId: string): Promise<string> {
     let contrat = await this.prisma.contrat.findUnique({
       where: { transactionId },
     });
@@ -155,19 +190,11 @@ export class ContratService {
       contrat = await this.generateContrat(transactionId);
     }
 
-    if (!contrat) {
+    if (!contrat || !contrat.urlPdfBilingue) {
       throw new InternalServerErrorException('Échec de la génération du contrat');
     }
 
-    // Extraire le nom du fichier depuis l'URL
-    const url = contrat.urlPdfBilingue;
-    const fileName = url.split('/').pop() || `contrat-${transactionId}.pdf`;
-
-    try {
-      const buffer = await this.storageService.getFileBuffer(url);
-      return { buffer, fileName };
-    } catch (error) {
-      throw new InternalServerErrorException('Erreur lors de la récupération du fichier PDF');
-    }
+    // Retourner l'URL proxy
+    return this.convertToProxyUrl(contrat.urlPdfBilingue);
   }
 }

@@ -40,14 +40,7 @@ export class ContratController {
     @Param('transactionId') transactionId: string,
     @Res() res: Response,
   ) {
-    const { buffer, fileName } = await this.contratService.getContratPdfBuffer(transactionId);
-
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${fileName}"`,
-      'Content-Length': buffer.length,
-    });
-
-    res.end(buffer);
+    const signedUrl = await this.contratService.getContratPdfUrl(transactionId);
+    res.redirect(signedUrl);
   }
 }
