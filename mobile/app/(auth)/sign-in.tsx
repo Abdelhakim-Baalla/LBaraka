@@ -24,12 +24,10 @@ export default function SignIn() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
-  // Responsive breakpoints
   const isSmallScreen = width < 375;
   const isMediumScreen = width >= 375 && width < 600;
   const isLargeScreen = width >= 600;
 
-  // Adaptive spacing
   const horizontalPadding = isSmallScreen ? 16 : isMediumScreen ? 20 : 28;
   const verticalGap = isSmallScreen ? 16 : isMediumScreen ? 18 : 20;
   const inputHeight = isSmallScreen ? 44 : isMediumScreen ? 48 : 52;
@@ -40,6 +38,7 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Gère la connexion utilisateur
   const handleLogin = async () => {
     if (!email || !password) {
       setError('Veuillez remplir tous les champs');
@@ -93,7 +92,18 @@ export default function SignIn() {
           }}
           bounces={false}
         >
-          {/* Brand Header with Gradient Accent */}
+          <View style={{ paddingHorizontal: horizontalPadding, paddingTop: insets.top + 6, marginBottom: 6 }}>
+            <Pressable
+              onPress={() => router.back()}
+              style={{ alignSelf: 'flex-start' }}
+              className="bg-white border border-outline-variant rounded-xl py-2 px-3 flex-row items-center gap-2"
+            >
+              <Ionicons name="arrow-back" size={18} color="#1B4332" />
+              <Text className="text-primary font-bold text-xs">Retour</Text>
+            </Pressable>
+          </View>
+
+
           <Animated.View entering={FadeInDown.duration(400)} style={{ paddingTop: insets.top + 12 }}>
             <View
               style={{ paddingHorizontal: horizontalPadding, marginBottom: verticalGap + 8 }}
@@ -117,25 +127,25 @@ export default function SignIn() {
             </View>
           </Animated.View>
 
-          {/* Main Content Container */}
+
           <View
             style={{
               paddingHorizontal: horizontalPadding,
               paddingVertical: isSmallScreen ? 16 : 24,
             }}
           >
-            {/* Headline Section */}
+
             <Animated.View
               entering={FadeInDown.delay(100).duration(400)}
               style={{ marginBottom: verticalGap + 6 }}
             >
               <Text
                 style={{
-                  fontSize: isSmallScreen ? 28 : isMediumScreen ? 32 : 36,
+                  fontSize: isSmallScreen ? 26 : isMediumScreen ? 30 : 34,
                   fontFamily: 'Outfit',
                   fontWeight: '700',
                   color: '#012d1d',
-                  lineHeight: isSmallScreen ? 32 : isMediumScreen ? 38 : 42,
+                  lineHeight: isSmallScreen ? 30 : isMediumScreen ? 36 : 40,
                   marginBottom: 8,
                   letterSpacing: -0.5,
                 }}
@@ -156,7 +166,7 @@ export default function SignIn() {
               </Text>
             </Animated.View>
 
-            {/* Error Alert Card */}
+
             {error ? (
               <Animated.View
                 entering={FadeInUp.duration(300)}
@@ -192,7 +202,7 @@ export default function SignIn() {
               </Animated.View>
             ) : null}
 
-            {/* Form Card Container */}
+
             <Animated.View
               entering={FadeInDown.delay(150).duration(500)}
               style={{
@@ -209,7 +219,7 @@ export default function SignIn() {
                 borderColor: 'rgba(1, 45, 29, 0.08)',
               }}
             >
-              {/* Email Input */}
+
               <View style={{ marginBottom: verticalGap }}>
                 <Text
                   style={{
@@ -265,7 +275,7 @@ export default function SignIn() {
                 </View>
               </View>
 
-              {/* Password Input */}
+
               <View>
                 <Text
                   style={{
@@ -333,7 +343,7 @@ export default function SignIn() {
               </View>
             </Animated.View>
 
-            {/* CTA Button with Premium Styling */}
+
             <Animated.View entering={FadeInDown.delay(300).duration(500)}>
               <Pressable
                 onPress={handleLogin}
@@ -384,7 +394,7 @@ export default function SignIn() {
               </Pressable>
             </Animated.View>
 
-            {/* Divider with Context */}
+
             <View
               style={{
                 flexDirection: 'row',
@@ -421,7 +431,7 @@ export default function SignIn() {
               />
             </View>
 
-            {/* Sign-up CTA */}
+
             <Animated.View entering={FadeInDown.delay(350).duration(500)}>
               <Pressable
                 onPress={() => router.push('/(auth)/sign-up')}
@@ -454,7 +464,7 @@ export default function SignIn() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Decorative Elements - Positioned absolutely for depth */}
+
       <View
         style={{
           position: 'absolute',
