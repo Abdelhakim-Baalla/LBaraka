@@ -3,8 +3,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useCallback } from 'react';
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+import { ApiService } from '../../services/api';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -28,15 +27,11 @@ export default function ProfileScreen() {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/utilisateurs/profil`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      try {
+        const data = await ApiService.getUserProfile(token);
         setUser(data.utilisateur);
         await AsyncStorage.setItem('user', JSON.stringify(data.utilisateur));
-      } else {
+      } catch {
         const userData = await AsyncStorage.getItem('user');
         if (userData) {
           setUser(JSON.parse(userData));
@@ -68,10 +63,7 @@ export default function ProfileScreen() {
             try {
               const token = await AsyncStorage.getItem('accessToken');
               if (token) {
-                await fetch(`${API_BASE_URL}/auth/logout`, {
-                  method: 'POST',
-                  headers: { 'Authorization': `Bearer ${token}` }
-                });
+                await ApiService.logout(token);
               }
               await AsyncStorage.removeItem('accessToken');
               await AsyncStorage.removeItem('user');

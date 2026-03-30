@@ -3,8 +3,7 @@ import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert,
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+import { ApiService } from '../services/api';
 
 export default function EditProfile() {
   const router = useRouter();
@@ -55,25 +54,19 @@ export default function EditProfile() {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      const response = await fetch(`${API_BASE_URL}/utilisateurs/profil`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          nom: nom || undefined, 
-          prenom: prenom || undefined,
-          adresseComplete: adresseComplete || undefined,
-          ville: ville || undefined,
-          dateNaissance: dateNaissance || undefined,
-          langueInterface: langueInterface || undefined
-        })
+      if (!token) {
+        throw new Error('Session expirée. Reconnectez-vous.');
+      }
+
+      const data = await ApiService.updateUserProfile(token, {
+        nom: nom || undefined,
+        prenom: prenom || undefined,
+        adresseComplete: adresseComplete || undefined,
+        ville: ville || undefined,
+        dateNaissance: dateNaissance || undefined,
+        langueInterface: langueInterface || undefined,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
         const userData = await AsyncStorage.getItem('user');
         const user = JSON.parse(userData || '{}');
         user.profil = data.profil;
@@ -82,9 +75,6 @@ export default function EditProfile() {
         Alert.alert('Succès', 'Profil mis à jour', [
           { text: 'OK', onPress: () => router.back() }
         ]);
-      } else {
-        throw new Error(data.message || 'Erreur lors de la mise à jour');
-      }
     } catch (error: any) {
       console.error('Update error:', error);
       Alert.alert('Erreur', error.message);

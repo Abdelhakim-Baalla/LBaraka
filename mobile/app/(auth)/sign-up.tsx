@@ -3,8 +3,7 @@ import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Keyboa
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+import { ApiService } from '../../services/api';
 
 export default function SignUp() {
   const router = useRouter();
@@ -35,22 +34,7 @@ export default function SignUp() {
         cin: cin || undefined,
       };
 
-      console.log('📤 Sending registration data:', requestData);
-
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      const data = await response.json();
-      console.log('📥 Response:', data);
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Erreur lors de l\'inscription');
-      }
+      const data = await ApiService.registerWithBackend(requestData);
 
       // Save token
       await AsyncStorage.setItem('accessToken', data.accessToken);

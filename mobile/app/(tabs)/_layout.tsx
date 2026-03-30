@@ -1,9 +1,40 @@
-import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Tabs, Redirect } from 'expo-router';
+import { Text, View, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [hasToken, setHasToken] = useState(false);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      setHasToken(!!token);
+    } catch {
+      setHasToken(false);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
+
+  if (isCheckingAuth) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+        <ActivityIndicator size="large" color="#1b4332" />
+      </View>
+    );
+  }
+
+  if (!hasToken) {
+    return <Redirect href="/(auth)/sign-in" />;
+  }
   
   return (
     <Tabs
