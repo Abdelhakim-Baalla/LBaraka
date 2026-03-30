@@ -379,10 +379,27 @@ export class ApiService {
     return await response.json();
   }
 
-  // Récupère le portefeuille utilisateur
-  static async getWallet(token: string) {
+  // Récupère le portefeuille utilisateur avec filtres optionnels sur les mouvements
+  static async getWallet(
+    token: string,
+    filters?: {
+      type?: 'DEPOT' | 'RETRAIT' | 'BLOCAGE' | 'DEBLOCAGE';
+      dateFrom?: string;
+      dateTo?: string;
+      limit?: number;
+    }
+  ) {
     const baseUrl = this.getBaseUrl();
-    const response = await fetch(`${baseUrl}/wallet/me`, {
+    const params = new URLSearchParams();
+    if (filters?.type) params.append('type', filters.type);
+    if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+    if (filters?.limit) params.append('limit', String(filters.limit));
+
+    const query = params.toString();
+    const url = query ? `${baseUrl}/wallet/me?${query}` : `${baseUrl}/wallet/me`;
+
+    const response = await fetch(url, {
       headers: await this.getAuthHeaders(token)
     });
     if (!response.ok) {
@@ -402,6 +419,105 @@ export class ApiService {
     });
     if (!response.ok) {
       const message = await this.getErrorMessage(response, 'Failed to deposit');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Retire de l'argent du portefeuille
+  static async withdrawMoney(token: string, montant: number) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/wallet/retrait`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ montant })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to withdraw');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Bloque une caution dans le portefeuille
+  static async blockCaution(token: string, montant: number) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/wallet/blocage`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ montant })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to block caution');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Débloque une caution dans le portefeuille
+  static async unblockCaution(token: string, montant: number) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/wallet/deblocage`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ montant })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to unblock caution');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Exporte les mouvements wallet au format CSV (retourné en texte)
+  static async exportWalletCsv(
+    token: string,
+    filters?: {
+      type?: 'DEPOT' | 'RETRAIT' | 'BLOCAGE' | 'DEBLOCAGE';
+      dateFrom?: string;
+      dateTo?: string;
+    }
+  ) {
+    const baseUrl = this.getBaseUrl();
+    const params = new URLSearchParams();
+    if (filters?.type) params.append('type', filters.type);
+    if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+
+    const query = params.toString();
+    const url = query ? `${baseUrl}/wallet/export?${query}` : `${baseUrl}/wallet/export`;
+
+    const response = await fetch(url, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to export wallet CSV');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Récupère le reçu d'un mouvement wallet (JSON)
+  static async getWalletMouvementReceipt(token: string, mouvementId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/wallet/mouvements/${mouvementId}/recu`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch wallet receipt');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Récupère le reçu PDF d'un mouvement wallet (base64)
+  static async getWalletMouvementReceiptPdf(token: string, mouvementId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/wallet/mouvements/${mouvementId}/recu-pdf`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch wallet PDF receipt');
       throw new Error(message);
     }
     return await response.json();
