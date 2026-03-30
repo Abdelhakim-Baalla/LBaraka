@@ -1,9 +1,35 @@
 // API Service for LBaraka Backend Integration
+import Constants from 'expo-constants';
 
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || '').trim();
 
 export class ApiService {
+  private static getExpoHostApiUrl() {
+    const expoConfig = Constants.expoConfig as any;
+    const hostUri = expoConfig?.hostUri as string | undefined;
+
+    if (!hostUri || typeof hostUri !== 'string') {
+      return '';
+    }
+
+    const host = hostUri.split(':')[0];
+
+    if (!host) {
+      return '';
+    }
+
+    return `http://${host}:3000`;
+  }
+
   private static getBaseUrl() {
+    // En mode dev Expo Go, on prefere l'IP du host Expo pour suivre automatiquement le changement de Wi-Fi.
+    if (__DEV__) {
+      const expoHostUrl = this.getExpoHostApiUrl();
+      if (expoHostUrl) {
+        return expoHostUrl;
+      }
+    }
+
     if (!API_BASE_URL) {
       throw new Error('EXPO_PUBLIC_API_URL est manquante. Configure-la dans mobile/.env');
     }
