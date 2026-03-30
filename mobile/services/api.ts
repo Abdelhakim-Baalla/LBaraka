@@ -407,6 +407,21 @@ export class ApiService {
     return await response.json();
   }
 
+  // Retire de l'argent du portefeuille
+  static async withdrawMoney(token: string, montant: number) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/wallet/retrait`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ montant })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to withdraw');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
   // Bloque une caution dans le portefeuille
   static async blockCaution(token: string, montant: number) {
     const baseUrl = this.getBaseUrl();

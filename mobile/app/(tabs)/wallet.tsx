@@ -1,21 +1,27 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, TextInput, Modal } from 'react-native';
+import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, TextInput, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../../services/api';
 
 // Ecran portefeuille avec solde et historique
 export default function WalletScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [wallet, setWallet] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showDepotModal, setShowDepotModal] = useState(false);
+  const [showRetraitModal, setShowRetraitModal] = useState(false);
   const [montant, setMontant] = useState('');
+  const [montantRetrait, setMontantRetrait] = useState('');
   const [isDepositing, setIsDepositing] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [error, setError] = useState('');
+  const [errorRetrait, setErrorRetrait] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -27,7 +33,10 @@ export default function WalletScreen() {
   const loadWallet = async () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      if (!token) return;
+      if (!token) {
+        router.replace('/(auth)/sign-in');
+        return;
+      }
 
       const data = await ApiService.getWallet(token);
       setWallet(data);
@@ -62,12 +71,54 @@ export default function WalletScreen() {
       await ApiService.depositMoney(token, Number(montant));
       setShowDepotModal(false);
       setMontant('');
+      Alert.alert('Succès', 'Dépôt effectué avec succès.');
       loadWallet();
     } catch (error: any) {
       setError(error?.message || 'Erreur lors du depot');
     } finally {
       setIsDepositing(false);
     }
+  };
+
+  // Retirer des fonds
+  const handleRetrait = async () => {
+    if (!montantRetrait || isNaN(Number(montantRetrait)) || Number(montantRetrait) <= 0) {
+      setErrorRetrait('Montant invalide');
+      return;
+    }
+
+    setIsWithdrawing(true);
+    setErrorRetrait('');
+
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        router.replace('/(auth)/sign-in');
+        return;
+      }
+
+      await ApiService.withdrawMoney(token, Number(montantRetrait));
+      setShowRetraitModal(false);
+      setMontantRetrait('');
+      Alert.alert('Succès', 'Retrait effectué avec succès.');
+      loadWallet();
+    } catch (error: any) {
+      setErrorRetrait(error?.message || 'Erreur lors du retrait');
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
+  const getMouvementLabel = (type: string) => {
+    if (type === 'DEPOT') return 'Dépôt';
+    if (type === 'RETRAIT') return 'Retrait';
+    if (type === 'BLOCAGE') return 'Blocage caution';
+    if (type === 'DEBLOCAGE') return 'Déblocage caution';
+    return type;
+  };
+
+  const isPositiveMouvement = (type: string) => {
+    return type === 'DEPOT' || type === 'DEBLOCAGE';
   };
 
   // Formater la date
@@ -97,26 +148,54 @@ export default function WalletScreen() {
       >
         {/* Carte Solde */}
         <View className="bg-primary rounded-2xl p-4 mb-4">
-          <Text className="text-white/80 text-xs font-semibold uppercase">Solde disponible</Text>
+          <Text className="text-white/80 text-xs font-semibold uppercase">Mon portefeuille</Text>
           <Text className="text-white text-2xl font-black mt-1">
-            {wallet?.soldeDisponible?.toFixed(2) || '0.00'} MAD
+            {wallet?.wallet?.soldeReel?.toFixed(2) || '0.00'} MAD
           </Text>
           <Text className="text-white/80 text-xs mt-1">
-            Caution bloquee: {wallet?.cautionBloquee?.toFixed(2) || '0.00'} MAD
+            Caution bloquée: {wallet?.wallet?.soldeBloque?.toFixed(2) || '0.00'} MAD
+          </Text>
+          <Text className="text-white/70 text-[11px] mt-2">
+            Version démo: le dépôt est autorisé pour l'utilisateur connecté.
           </Text>
         </View>
 
-        {/* Actions */}
-        <Pressable
-          onPress={() => setShowDepotModal(true)}
-          className="bg-white rounded-2xl p-4 border border-outline-variant mb-3 flex-row items-center justify-between"
-        >
-          <View className="flex-row items-center gap-3">
-            <Ionicons name="arrow-down-circle-outline" size={20} color="#1B4332" />
-            <Text className="text-on-surface font-semibold">Deposer des fonds</Text>
+        {/* Mini stats */}
+        <View className="flex-row gap-2 mb-4">
+          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
+            <Text className="text-[11px] text-on-surface-variant">Devise</Text>
+            <Text className="text-sm font-bold text-primary mt-1">{wallet?.wallet?.devise || 'MAD'}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#6c757d" />
-        </Pressable>
+          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
+            <Text className="text-[11px] text-on-surface-variant">Mouvements</Text>
+            <Text className="text-sm font-bold text-primary mt-1">{wallet?.mouvements?.length || 0}</Text>
+          </View>
+        </View>
+
+        {/* Actions */}
+        <View className="flex-row gap-2 mb-3">
+          <Pressable
+            onPress={() => setShowDepotModal(true)}
+            className="flex-1 bg-white rounded-2xl p-4 border border-outline-variant flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="arrow-down-circle-outline" size={18} color="#1B4332" />
+              <Text className="text-on-surface font-semibold text-xs">Dépôt</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#6c757d" />
+          </Pressable>
+
+          <Pressable
+            onPress={() => setShowRetraitModal(true)}
+            className="flex-1 bg-white rounded-2xl p-4 border border-outline-variant flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="arrow-up-circle-outline" size={18} color="#1B4332" />
+              <Text className="text-on-surface font-semibold text-xs">Retrait</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#6c757d" />
+          </Pressable>
+        </View>
 
         {/* Historique */}
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-3">
@@ -132,19 +211,19 @@ export default function WalletScreen() {
                 className="py-3 border-b border-outline-variant/30 flex-row items-center justify-between"
               >
                 <View className="flex-1">
-                  <Text className="text-sm font-semibold text-on-surface">{mouvement.type}</Text>
+                  <Text className="text-sm font-semibold text-on-surface">{getMouvementLabel(mouvement.type)}</Text>
                   <Text className="text-xs text-on-surface-variant mt-1">
-                    {formatDate(mouvement.dateCreation)}
+                    {formatDate(mouvement.date)}
                   </Text>
                 </View>
                 <Text
                   className={`text-sm font-bold ${
-                    mouvement.type === 'DEPOT' || mouvement.type === 'DEBLOCAGE'
+                    isPositiveMouvement(mouvement.type)
                       ? 'text-green-600'
                       : 'text-red-600'
                   }`}
                 >
-                  {mouvement.type === 'DEPOT' || mouvement.type === 'DEBLOCAGE' ? '+' : '-'}
+                  {isPositiveMouvement(mouvement.type) ? '+' : '-'}
                   {mouvement.montant?.toFixed(2)} MAD
                 </Text>
               </View>
@@ -194,6 +273,55 @@ export default function WalletScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text className="text-white font-bold">Confirmer le depot</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Retrait */}
+      <Modal visible={showRetraitModal} transparent animationType="slide">
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: insets.bottom + 24 }}>
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-lg font-bold text-primary">Retirer des fonds</Text>
+              <Pressable onPress={() => setShowRetraitModal(false)}>
+                <Ionicons name="close" size={24} color="#1B4332" />
+              </Pressable>
+            </View>
+
+            {errorRetrait ? (
+              <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+                <Text className="text-sm text-red-600">{errorRetrait}</Text>
+              </View>
+            ) : null}
+
+            <View className="mb-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <Text className="text-[12px] text-amber-800">
+                Solde disponible: {wallet?.wallet?.soldeReel?.toFixed(2) || '0.00'} MAD
+              </Text>
+            </View>
+
+            <View className="mb-4">
+              <Text className="text-sm font-semibold text-on-surface mb-2">Montant (MAD)</Text>
+              <TextInput
+                value={montantRetrait}
+                onChangeText={setMontantRetrait}
+                placeholder="50"
+                keyboardType="numeric"
+                className="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-on-surface"
+              />
+            </View>
+
+            <Pressable
+              onPress={handleRetrait}
+              disabled={isWithdrawing}
+              className="bg-primary rounded-xl py-3.5 items-center justify-center"
+            >
+              {isWithdrawing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-white font-bold">Confirmer le retrait</Text>
               )}
             </Pressable>
           </View>
