@@ -678,6 +678,19 @@ export class ApiService {
     return await response.json();
   }
 
+  // Récupère le contrat d'une transaction
+  static async getContractByTransaction(token: string, transactionId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/contrats/transaction/${transactionId}`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch contract');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
   // Récupère tous les points relais
   static async getPointsRelais(token: string) {
     const baseUrl = this.getBaseUrl();
