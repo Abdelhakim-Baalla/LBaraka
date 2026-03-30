@@ -597,15 +597,96 @@ export default function TransactionsScreen() {
                     const type = getTransactionType(selectedTransaction);
                     const caution = getTransactionCaution(selectedTransaction);
                     const dateValue = getTransactionDate(selectedTransaction);
+                    const annonce = selectedTransaction.annonce || {};
+                    const emprunteur = selectedTransaction.emprunteur || {};
+                    const preteur = selectedTransaction.preteur || {};
+                    const pointRelais = selectedTransaction.pointRelais || null;
+                    const contrat = selectedTransaction.contrat || null;
+                    const otherUser = type === 'EMPRUNT' ? preteur : emprunteur;
 
                     return (
                       <>
+                  {/* Photo annonce */}
+                  {annonce.photos && annonce.photos.length > 0 ? (
+                    <Image
+                      source={{ uri: annonce.photos[0] }}
+                      style={{ width: '100%', height: 160 }}
+                      className="rounded-xl mb-3"
+                      resizeMode="cover"
+                    />
+                  ) : null}
+
                   <View className="bg-surface rounded-xl p-3 mb-3">
                     <Text className="text-xs text-on-surface-variant">Annonce</Text>
                     <Text className="text-sm font-bold text-primary mt-1">
-                      {selectedTransaction.annonce?.titre || 'N/A'}
+                      {annonce.titre || 'N/A'}
                     </Text>
+                    {annonce.description ? (
+                      <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={2}>
+                        {annonce.description}
+                      </Text>
+                    ) : null}
                   </View>
+
+                  {/* Infos annonce */}
+                  <View className="flex-row gap-2 mb-3">
+                    {annonce.categorie ? (
+                      <View className="flex-1 bg-surface rounded-xl p-3">
+                        <Text className="text-xs text-on-surface-variant">Categorie</Text>
+                        <Text className="text-xs font-bold text-primary mt-1">
+                          {annonce.categorie}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {annonce.mode ? (
+                      <View className="flex-1 bg-surface rounded-xl p-3">
+                        <Text className="text-xs text-on-surface-variant">Mode</Text>
+                        <Text className="text-xs font-bold text-primary mt-1">
+                          {annonce.mode}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {annonce.condition ? (
+                      <View className="flex-1 bg-surface rounded-xl p-3">
+                        <Text className="text-xs text-on-surface-variant">Etat</Text>
+                        <Text className="text-xs font-bold text-primary mt-1">
+                          {annonce.condition}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Autre utilisateur */}
+                  {otherUser && (otherUser.profil || otherUser.email) ? (
+                    <View className="bg-surface rounded-xl p-3 mb-3">
+                      <Text className="text-xs text-on-surface-variant mb-2">
+                        {type === 'EMPRUNT' ? 'Preteur' : 'Emprunteur'}
+                      </Text>
+                      <View className="flex-row items-center gap-3">
+                        {otherUser.profil?.photoProfil ? (
+                          <Image
+                            source={{ uri: otherUser.profil.photoProfil }}
+                            style={{ width: 40, height: 40 }}
+                            className="rounded-full"
+                          />
+                        ) : (
+                          <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
+                            <Ionicons name="person-outline" size={20} color="#1B4332" />
+                          </View>
+                        )}
+                        <View className="flex-1">
+                          <Text className="text-sm font-bold text-primary">
+                            {otherUser.profil?.prenom || ''} {otherUser.profil?.nom || ''}
+                          </Text>
+                          {otherUser.profil?.lBarakaScore ? (
+                            <Text className="text-xs text-on-surface-variant mt-1">
+                              Score: {otherUser.profil.lBarakaScore} pts
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    </View>
+                  ) : null}
 
                   <View className="flex-row gap-2 mb-3">
                     <View className="flex-1 bg-surface rounded-xl p-3">
@@ -622,6 +703,97 @@ export default function TransactionsScreen() {
                     </View>
                   </View>
 
+                  {/* Dates */}
+                  {selectedTransaction.dateDebut || selectedTransaction.dateFinPrevue || selectedTransaction.dateFinReelle ? (
+                    <View className="bg-surface rounded-xl p-3 mb-3">
+                      <Text className="text-xs text-on-surface-variant mb-2">Dates</Text>
+                      {selectedTransaction.dateDebut ? (
+                        <Text className="text-xs text-on-surface mt-1">
+                          Debut: {formatDate(selectedTransaction.dateDebut)}
+                        </Text>
+                      ) : null}
+                      {selectedTransaction.dateFinPrevue ? (
+                        <Text className="text-xs text-on-surface mt-1">
+                          Fin prevue: {formatDate(selectedTransaction.dateFinPrevue)}
+                        </Text>
+                      ) : null}
+                      {selectedTransaction.dateFinReelle ? (
+                        <Text className="text-xs text-on-surface mt-1">
+                          Fin reelle: {formatDate(selectedTransaction.dateFinReelle)}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+
+                  {/* Retard */}
+                  {selectedTransaction.retard && selectedTransaction.retard > 0 ? (
+                    <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
+                      <Text className="text-xs text-red-800 font-bold">
+                        Retard: {selectedTransaction.retard} jour(s)
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {/* Degats */}
+                  {selectedTransaction.degats ? (
+                    <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
+                      <Text className="text-xs text-red-800 font-bold">
+                        Degradation signalee
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {/* Point relais */}
+                  {pointRelais ? (
+                    <View className="bg-surface rounded-xl p-3 mb-3">
+                      <Text className="text-xs text-on-surface-variant mb-2">Point Relais</Text>
+                      <Text className="text-sm font-bold text-primary">{pointRelais.nom}</Text>
+                      {pointRelais.adresse ? (
+                        <Text className="text-xs text-on-surface-variant mt-1">
+                          {pointRelais.adresse}
+                        </Text>
+                      ) : null}
+                      {pointRelais.telephone ? (
+                        <Text className="text-xs text-on-surface-variant mt-1">
+                          Tel: {pointRelais.telephone}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+
+                  {/* Contrat */}
+                  {contrat ? (
+                    <View className="bg-surface rounded-xl p-3 mb-3">
+                      <Text className="text-xs text-on-surface-variant mb-2">Contrat</Text>
+                      <Text className="text-xs text-on-surface">
+                        Numero: {contrat.numContrat}
+                      </Text>
+                      {contrat.urlPdfBilingue ? (
+                        <Pressable
+                          onPress={() => {
+                            Alert.alert('Info', 'Telechargement PDF: ' + contrat.urlPdfBilingue);
+                          }}
+                          className="mt-2 bg-white border border-outline-variant rounded-lg py-2 items-center"
+                        >
+                          <Text className="text-primary font-semibold text-xs">Telecharger PDF</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ) : null}
+
+                  {/* Scans */}
+                  {(selectedTransaction.scannedReception || selectedTransaction.scannedRetour) ? (
+                    <View className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-3">
+                      <Text className="text-xs text-emerald-800 font-bold mb-1">Validations</Text>
+                      {selectedTransaction.scannedReception ? (
+                        <Text className="text-xs text-emerald-800">✓ Reception validee</Text>
+                      ) : null}
+                      {selectedTransaction.scannedRetour ? (
+                        <Text className="text-xs text-emerald-800">✓ Retour valide</Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+
                   {caution > 0 ? (
                     <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
                       <Text className="text-xs text-amber-800">
@@ -629,13 +801,6 @@ export default function TransactionsScreen() {
                       </Text>
                     </View>
                   ) : null}
-
-                  <View className="bg-surface rounded-xl p-3 mb-3">
-                    <Text className="text-xs text-on-surface-variant">Date creation</Text>
-                    <Text className="text-sm font-semibold text-on-surface mt-1">
-                      {formatDate(dateValue)}
-                    </Text>
-                  </View>
 
                   {/* Actions selon le statut */}
                   {type === 'EMPRUNT' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
