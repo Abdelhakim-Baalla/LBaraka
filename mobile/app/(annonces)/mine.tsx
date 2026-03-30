@@ -85,6 +85,14 @@ export default function MyAnnoncesScreen() {
   return (
     <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
       <View className="px-4 mb-4">
+        <Pressable
+          onPress={() => router.back()}
+          className="bg-white border border-outline-variant rounded-xl py-3 px-3 flex-row items-center gap-2 mb-3"
+        >
+          <Ionicons name="arrow-back" size={18} color="#1B4332" />
+          <Text className="text-primary font-bold">Retour</Text>
+        </Pressable>
+
         <View className="bg-white rounded-2xl p-4 border border-outline-variant">
           <View className="flex-row items-center justify-between">
             <View>

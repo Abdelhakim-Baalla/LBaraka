@@ -238,6 +238,14 @@ export default function CreateAnnonceScreen() {
   return (
     <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 24 }}>
+        <Pressable
+          onPress={() => router.back()}
+          className="bg-white border border-outline-variant rounded-xl py-3 px-3 flex-row items-center gap-2 mb-3"
+        >
+          <Ionicons name="arrow-back" size={18} color="#1B4332" />
+          <Text className="text-primary font-bold">Retour</Text>
+        </Pressable>
+
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
           <Text className="text-lg font-extrabold text-primary">Nouvelle annonce</Text>
           <Text className="text-sm text-on-surface-variant mt-1">Formulaire simple pour tester rapidement le backend annonces.</Text>

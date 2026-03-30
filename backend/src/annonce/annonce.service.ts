@@ -330,17 +330,48 @@ export class AnnonceService {
                 throw new BadRequestException('Impossible de modifier une annonce qui n\'est pas disponible');
             }
 
+            let photosToSave = [...annonce.photos];
+
+            if (dto.photos && dto.photos.length > 0) {
+                photosToSave = dto.photos.slice(0, 3);
+            }
+
+            if (dto.photosBase64 && dto.photosBase64.length > 0) {
+                const uploadedPhotos = await this.storageService.uploadAnnoncePhotosBase64(dto.photosBase64);
+
+                for (let i = 0; i < uploadedPhotos.length; i++) {
+                    const targetIndex = Number(dto.photosBase64[i]?.index);
+
+                    if (Number.isInteger(targetIndex) && targetIndex >= 0 && targetIndex < 3) {
+                        photosToSave[targetIndex] = uploadedPhotos[i];
+                    } else {
+                        photosToSave[i] = uploadedPhotos[i];
+                    }
+                }
+
+                photosToSave = photosToSave.slice(0, 3);
+            }
+
+            photosToSave = photosToSave
+                .filter((photo) => typeof photo === 'string' && photo.trim().length > 0)
+                .slice(0, 3);
+
+            if (photosToSave.length === 0) {
+                photosToSave = [...annonce.photos].slice(0, 3);
+            }
+
             const updatedAnnonce = await this.prisma.annonce.update({
                 where: { id: annonceId },
                 data: {
                     titre: dto.titre !== undefined ? dto.titre : annonce.titre,
                     description: dto.description !== undefined ? dto.description : annonce.description,
-                    categorie: dto.categorie ? dto.categorie as any : annonce.categorie,
-                    mode: dto.mode ? dto.mode as any : annonce.mode,
-                    condition: dto.condition ? dto.condition as any : annonce.condition,
+                    categorie: dto.categorie !== undefined ? dto.categorie : annonce.categorie,
+                    mode: dto.mode !== undefined ? dto.mode : annonce.mode,
+                    condition: dto.condition !== undefined ? dto.condition : annonce.condition,
                     prixSymbolique: dto.prixSymbolique !== undefined ? new Prisma.Decimal(dto.prixSymbolique) : annonce.prixSymbolique,
                     montantCaution: dto.montantCaution !== undefined ? new Prisma.Decimal(dto.montantCaution) : annonce.montantCaution,
                     geolocalisation: dto.geolocalisation !== undefined ? dto.geolocalisation : annonce.geolocalisation,
+                    photos: photosToSave,
                 },
             });
 

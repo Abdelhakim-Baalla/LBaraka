@@ -4,12 +4,14 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import { ApiService } from '../../../services/api';
 import SmartAnnonceImage from '../../../components/smart-annonce-image';
 
 const CATEGORIES = ['POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 const MODES = ['DON_GRATUIT', 'PRET_TEMPORAIRE', 'LOCATION_SOLIDAIRE'];
 const CONDITIONS = ['NEUF', 'BON_ETAT', 'USE'];
+const PHOTO_SLOTS_COUNT = 3;
 
 export default function EditAnnonceScreen() {
   const router = useRouter();
@@ -28,6 +30,74 @@ export default function EditAnnonceScreen() {
   const [latitude, setLatitude] = useState('33.58');
   const [longitude, setLongitude] = useState('-7.60');
   const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
+  const [newPhotosByIndex, setNewPhotosByIndex] = useState<Record<number, { name: string; type: string; base64: string; index: number }>>({});
+
+  const getPhotoSlots = () => {
+    const slots: string[] = [];
+    for (let i = 0; i < PHOTO_SLOTS_COUNT; i++) {
+      slots.push(existingPhotos[i] || '');
+    }
+    return slots;
+  };
+
+  const estimateBase64Bytes = (base64: string) => {
+    const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+    return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
+  };
+
+  const pickPhotoForIndex = async (index: number, source: 'camera' | 'gallery') => {
+    try {
+      const permission = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission refusée', source === 'camera' ? 'Autorisez la caméra.' : 'Autorisez la galerie.');
+        return;
+      }
+
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({
+            allowsEditing: false,
+            quality: 0.5,
+            base64: true,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsMultipleSelection: false,
+            quality: 0.5,
+            base64: true,
+            selectionLimit: 1,
+          });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const asset = result.assets?.[0];
+      if (!asset?.base64) {
+        Alert.alert('Validation', 'Aucune photo valide sélectionnée.');
+        return;
+      }
+
+      if (estimateBase64Bytes(asset.base64) > 6 * 1024 * 1024) {
+        Alert.alert('Photo trop grande', 'Cette photo dépasse 6MB.');
+        return;
+      }
+
+      setNewPhotosByIndex((prev) => ({
+        ...prev,
+        [index]: {
+          name: asset.fileName || `edit-${source}-${Date.now()}-${index + 1}.jpg`,
+          type: asset.mimeType || 'image/jpeg',
+          base64: asset.base64 as string,
+          index,
+        },
+      }));
+    } catch {
+      Alert.alert('Erreur', source === 'camera' ? 'Impossible d\'ouvrir la caméra.' : 'Impossible d\'ouvrir la galerie.');
+    }
+  };
 
   const loadAnnonce = async () => {
     try {
@@ -95,6 +165,12 @@ export default function EditAnnonceScreen() {
       payload.montantCaution = Number(montantCaution);
     }
 
+    const replacedPhotos = Object.values(newPhotosByIndex);
+    if (replacedPhotos.length > 0) {
+      payload.photos = getPhotoSlots();
+      payload.photosBase64 = replacedPhotos;
+    }
+
     try {
       setIsSaving(true);
       const token = await AsyncStorage.getItem('accessToken');
@@ -125,6 +201,14 @@ export default function EditAnnonceScreen() {
   return (
     <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 24 }}>
+        <Pressable
+          onPress={() => router.back()}
+          className="bg-white border border-outline-variant rounded-xl py-3 px-3 flex-row items-center gap-2 mb-3"
+        >
+          <Ionicons name="arrow-back" size={18} color="#1B4332" />
+          <Text className="text-primary font-bold">Retour</Text>
+        </Pressable>
+
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
           <Text className="text-lg font-extrabold text-primary">Modifier annonce</Text>
           <Text className="text-sm text-on-surface-variant mt-1">Mettez à jour les informations de votre annonce.</Text>
@@ -145,6 +229,57 @@ export default function EditAnnonceScreen() {
             </ScrollView>
           </View>
         )}
+
+        <View className="mb-4">
+          <Text className="text-xs font-bold text-on-surface-variant mb-2">Remplacer les photos une par une</Text>
+          <View className="gap-3">
+            {getPhotoSlots().map((photo, index) => {
+              const newPhoto = newPhotosByIndex[index];
+
+              return (
+                <View key={`replace-photo-${index}`} className="bg-white border border-outline-variant rounded-xl p-3">
+                  <Text className="text-[11px] text-on-surface-variant mb-2">Photo {index + 1}</Text>
+
+                  <View className="w-full h-32 rounded-xl overflow-hidden border border-outline-variant mb-2">
+                    {newPhoto ? (
+                      <Image
+                        source={{ uri: `data:${newPhoto.type};base64,${newPhoto.base64}` }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      photo ? (
+                        <SmartAnnonceImage uri={photo} className="w-full h-full" resizeMode="cover" />
+                      ) : (
+                        <View className="w-full h-full bg-surface items-center justify-center">
+                          <Text className="text-xs text-on-surface-variant">Aucune photo</Text>
+                        </View>
+                      )
+                    )}
+                  </View>
+
+                  <View className="flex-row gap-2">
+                    <Pressable
+                      onPress={() => pickPhotoForIndex(index, 'gallery')}
+                      className="flex-1 bg-primary/10 rounded-lg py-2 flex-row items-center justify-center gap-1"
+                    >
+                      <Ionicons name="images-outline" size={14} color="#1B4332" />
+                      <Text className="text-primary text-xs font-bold">Galerie</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => pickPhotoForIndex(index, 'camera')}
+                      className="flex-1 bg-primary/10 rounded-lg py-2 flex-row items-center justify-center gap-1"
+                    >
+                      <Ionicons name="camera-outline" size={14} color="#1B4332" />
+                      <Text className="text-primary text-xs font-bold">Caméra</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
 
         <Text className="text-xs font-bold text-on-surface-variant mb-1">Titre</Text>
         <TextInput value={titre} onChangeText={setTitre} className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3" />

@@ -119,6 +119,14 @@ export default function AnnonceDetailsScreen() {
   return (
     <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 24 }}>
+        <Pressable
+          onPress={() => router.back()}
+          className="bg-white border border-outline-variant rounded-xl py-3 px-3 flex-row items-center gap-2 mb-3"
+        >
+          <Ionicons name="arrow-back" size={18} color="#1B4332" />
+          <Text className="text-primary font-bold">Retour</Text>
+        </Pressable>
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 6 }} className="mb-3">
           {(annonce.photos?.length ? annonce.photos : ['']).map((photo: string, index: number) => (
             <SmartAnnonceImage
