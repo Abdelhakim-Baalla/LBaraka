@@ -93,6 +93,17 @@ export default function SignIn() {
           }}
           bounces={false}
         >
+          <View style={{ paddingHorizontal: horizontalPadding, paddingTop: insets.top + 6, marginBottom: 6 }}>
+            <Pressable
+              onPress={() => router.back()}
+              style={{ alignSelf: 'flex-start' }}
+              className="bg-white border border-outline-variant rounded-xl py-2 px-3 flex-row items-center gap-2"
+            >
+              <Ionicons name="arrow-back" size={18} color="#1B4332" />
+              <Text className="text-primary font-bold text-xs">Retour</Text>
+            </Pressable>
+          </View>
+
           {/* Brand Header with Gradient Accent */}
           <Animated.View entering={FadeInDown.duration(400)} style={{ paddingTop: insets.top + 12 }}>
             <View

@@ -18,6 +18,22 @@ export default function AnnonceDetailsScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
 
+  const formatDate = (value?: string) => {
+    if (!value) {
+      return 'N/A';
+    }
+
+    return new Date(value).toLocaleDateString('fr-FR');
+  };
+
+  const formatDateTime = (value?: string) => {
+    if (!value) {
+      return 'N/A';
+    }
+
+    return new Date(value).toLocaleString('fr-FR');
+  };
+
   const loadAnnonce = async () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
@@ -152,6 +168,14 @@ export default function AnnonceDetailsScreen() {
             <View className="bg-surface-container rounded-lg px-2 py-1">
               <Text className="text-xs text-on-surface-variant">{annonce.condition}</Text>
             </View>
+            <View className="bg-surface-container rounded-lg px-2 py-1">
+              <Text className="text-xs text-on-surface-variant">Statut: {annonce.statut || 'N/A'}</Text>
+            </View>
+            {annonce.estFoodRescue ? (
+              <View className="bg-amber-100 rounded-lg px-2 py-1">
+                <Text className="text-xs text-amber-800 font-semibold">Food Rescue</Text>
+              </View>
+            ) : null}
           </View>
 
           {annonce.prixSymbolique !== null && annonce.prixSymbolique !== undefined ? (
@@ -171,6 +195,20 @@ export default function AnnonceDetailsScreen() {
             </View>
 
             <View className="flex-row items-center gap-2">
+              <Ionicons name="medal-outline" size={14} color="#717973" />
+              <Text className="text-xs text-on-surface-variant">
+                Score: {annonce.createur?.profil?.lBarakaScore ?? 0} • Palier: {annonce.createur?.profil?.palier || 'N/A'}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="business-outline" size={14} color="#717973" />
+              <Text className="text-xs text-on-surface-variant">
+                Ville: {annonce.createur?.profil?.ville || 'N/A'}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
               <Ionicons name="location-outline" size={14} color="#717973" />
               <Text className="text-xs text-on-surface-variant">
                 Position: {annonce.geolocalisation?.[0] ? `${annonce.geolocalisation[0]}, ${annonce.geolocalisation[1]}` : 'Non disponible'}
@@ -180,13 +218,30 @@ export default function AnnonceDetailsScreen() {
             <View className="flex-row items-center gap-2">
               <Ionicons name="calendar-outline" size={14} color="#717973" />
               <Text className="text-xs text-on-surface-variant">
-                Publié le: {annonce.dateCreation ? new Date(annonce.dateCreation).toLocaleDateString('fr-FR') : 'N/A'}
+                Publié le: {formatDate(annonce.dateCreation)}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="time-outline" size={14} color="#717973" />
+              <Text className="text-xs text-on-surface-variant">
+                Expiration: {annonce.dateExpiration ? formatDateTime(annonce.dateExpiration) : 'Aucune'}
               </Text>
             </View>
 
             <View className="flex-row items-center gap-2">
               <Ionicons name="eye-outline" size={14} color="#717973" />
               <Text className="text-xs text-on-surface-variant">Vues: {annonce.nombreVues || 0}</Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="images-outline" size={14} color="#717973" />
+              <Text className="text-xs text-on-surface-variant">Nombre de photos: {annonce.photos?.length || 0}</Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="key-outline" size={14} color="#717973" />
+              <Text className="text-xs text-on-surface-variant">ID annonce: {annonce.id}</Text>
             </View>
           </View>
         </View>
@@ -205,6 +260,16 @@ export default function AnnonceDetailsScreen() {
             <Text className="text-amber-800 text-xs">Cette annonce vous appartient. Vous pouvez la supprimer depuis cet écran.</Text>
           </View>
         )}
+
+        {isOwner ? (
+          <Pressable
+            onPress={() => router.push(`/(annonces)/edit/${annonce.id}`)}
+            className="rounded-xl py-4 items-center justify-center flex-row gap-2 mb-3 bg-primary"
+          >
+            <Ionicons name="create-outline" size={18} color="#fff" />
+            <Text className="text-white font-bold">Modifier l'annonce</Text>
+          </Pressable>
+        ) : null}
 
         {isOwner ? (
           <Pressable
