@@ -1,26 +1,53 @@
 import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    loadUser();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadUser();
+    }, [])
+  );
 
   const loadUser = async () => {
     try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/utilisateurs/profil`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.utilisateur);
+        await AsyncStorage.setItem('user', JSON.stringify(data.utilisateur));
+      } else {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
       const userData = await AsyncStorage.getItem('user');
       if (userData) {
         setUser(JSON.parse(userData));
       }
-    } catch (error) {
-      console.error('Error loading user:', error);
     }
   };
 
@@ -39,6 +66,13 @@ export default function ProfileScreen() {
           onPress: async () => {
             setIsLoading(true);
             try {
+              const token = await AsyncStorage.getItem('accessToken');
+              if (token) {
+                await fetch(`${API_BASE_URL}/auth/logout`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${token}` }
+                });
+              }
               await AsyncStorage.removeItem('accessToken');
               await AsyncStorage.removeItem('user');
               router.replace('/(auth)/sign-in');
@@ -73,11 +107,17 @@ export default function ProfileScreen() {
                 </Text>
               </View>
               <Text className="text-xl font-bold text-primary mb-1">
-                {user.profil?.nom || user.profil?.prenom 
+                {user.profil?.prenom || user.profil?.nom 
                   ? `${user.profil?.prenom || ''} ${user.profil?.nom || ''}`.trim()
-                  : 'Nom et prénom non renseignés'}
+                  : 'Utilisateur'}
               </Text>
-              <Text className="text-sm text-on-surface-variant">{user.email}</Text>
+              <Text className="text-sm text-on-surface-variant mb-1">{user.email}</Text>
+              <Text className="text-xs text-on-surface-variant">{user.telephone}</Text>
+              {user.profil?.ville && (
+                <Text className="text-xs text-on-surface-variant mt-1">
+                  <Ionicons name="location-outline" size={12} /> {user.profil.ville}
+                </Text>
+              )}
             </View>
 
             {/* Stats */}
@@ -107,12 +147,87 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* Additional Info - All Fields */}
+            <View className="mt-4 pt-4 border-t border-outline-variant/20 space-y-2">
+              {user.profil?.cin && (
+                <View className="flex-row items-center py-1">
+                  <Ionicons name="card-outline" size={16} color="#717973" />
+                  <Text className="text-sm text-on-surface-variant ml-2">CIN: {user.profil.cin}</Text>
+                </View>
+              )}
+              
+              {user.profil?.dateNaissance && (
+                <View className="flex-row items-center py-1">
+                  <Ionicons name="calendar-outline" size={16} color="#717973" />
+                  <Text className="text-sm text-on-surface-variant ml-2">
+                    Né(e) le: {new Date(user.profil.dateNaissance).toLocaleDateString('fr-FR')}
+                  </Text>
+                </View>
+              )}
+              
+              {user.profil?.adresseComplete && (
+                <View className="flex-row items-center py-1">
+                  <Ionicons name="home-outline" size={16} color="#717973" />
+                  <Text className="text-sm text-on-surface-variant ml-2" numberOfLines={2}>
+                    {user.profil.adresseComplete}
+                  </Text>
+                </View>
+              )}
+              
+              {user.profil?.langueInterface && (
+                <View className="flex-row items-center py-1">
+                  <Ionicons name="language-outline" size={16} color="#717973" />
+                  <Text className="text-sm text-on-surface-variant ml-2">
+                    Langue: {user.profil.langueInterface}
+                  </Text>
+                </View>
+              )}
+              
+              {user.dateInscription && (
+                <View className="flex-row items-center py-1">
+                  <Ionicons name="time-outline" size={16} color="#717973" />
+                  <Text className="text-sm text-on-surface-variant ml-2">
+                    Membre depuis: {new Date(user.dateInscription).toLocaleDateString('fr-FR')}
+                  </Text>
+                </View>
+              )}
+              
+              {user.emailVerified !== undefined && (
+                <View className="flex-row items-center py-1">
+                  <Ionicons 
+                    name={user.emailVerified ? "checkmark-circle" : "close-circle"} 
+                    size={16} 
+                    color={user.emailVerified ? "#4caf50" : "#f44336"} 
+                  />
+                  <Text className="text-sm text-on-surface-variant ml-2">
+                    Email {user.emailVerified ? 'vérifié' : 'non vérifié'}
+                  </Text>
+                </View>
+              )}
+              
+              {user.telephoneVerified !== undefined && (
+                <View className="flex-row items-center py-1">
+                  <Ionicons 
+                    name={user.telephoneVerified ? "checkmark-circle" : "close-circle"} 
+                    size={16} 
+                    color={user.telephoneVerified ? "#4caf50" : "#f44336"} 
+                  />
+                  <Text className="text-sm text-on-surface-variant ml-2">
+                    Téléphone {user.telephoneVerified ? 'vérifié' : 'non vérifié'}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
 
         {/* Menu Items */}
         <View className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
-          <Pressable className="flex-row items-center justify-between px-6 py-4 border-b border-outline-variant/10 active:bg-surface-container-low">
+          <Pressable 
+            onPress={() => router.push('/edit-profile')}
+            className="flex-row items-center justify-between px-6 py-4 border-b border-outline-variant/10 active:bg-surface-container-low"
+          >
             <View className="flex-row items-center gap-3">
               <Ionicons name="person-outline" size={24} color="#012d1d" />
               <Text className="text-base font-semibold text-on-surface">
@@ -122,7 +237,10 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#717973" />
           </Pressable>
 
-          <Pressable className="flex-row items-center justify-between px-6 py-4 border-b border-outline-variant/10 active:bg-surface-container-low">
+          <Pressable 
+            onPress={() => router.push('/(tabs)/wallet')}
+            className="flex-row items-center justify-between px-6 py-4 border-b border-outline-variant/10 active:bg-surface-container-low"
+          >
             <View className="flex-row items-center gap-3">
               <Ionicons name="wallet-outline" size={24} color="#012d1d" />
               <Text className="text-base font-semibold text-on-surface">

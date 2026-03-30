@@ -14,41 +14,7 @@ export class ApiService {
   }
 
   /**
-   * Sync Clerk user with LBaraka backend after successful sign-up
-   */
-  static async syncUserWithBackend(clerkUser: any, additionalData: {
-    telephone: string;
-    cin?: string;
-  }) {
-    try {
-      const token = await clerkUser.getToken();
-      
-      const response = await fetch(`${API_BASE_URL}/auth/clerk-sync`, {
-        method: 'POST',
-        headers: await this.getAuthHeaders(token),
-        body: JSON.stringify({
-          email: clerkUser.emailAddresses[0].emailAddress,
-          clerkId: clerkUser.id,
-          telephone: additionalData.telephone,
-          cin: additionalData.cin,
-          nom: clerkUser.firstName || '',
-          prenom: clerkUser.lastName || ''
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to sync user with backend');
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Backend sync error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Login with backend (if using backend auth instead of Clerk)
+   * Login with backend
    */
   static async loginWithBackend(email: string, motDePasse: string) {
     try {
@@ -71,15 +37,13 @@ export class ApiService {
   }
 
   /**
-   * Register with backend (if using backend auth instead of Clerk)
+   * Register with backend
    */
   static async registerWithBackend(data: {
     email: string;
     motDePasse: string;
     telephone: string;
     cin?: string;
-    nom?: string;
-    prenom?: string;
   }) {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
@@ -105,7 +69,7 @@ export class ApiService {
    */
   static async getUserProfile(token: string) {
     try {
-      const response = await fetch(`${API_BASE_URL}/utilisateur/me`, {
+      const response = await fetch(`${API_BASE_URL}/utilisateurs/profil`, {
         method: 'GET',
         headers: await this.getAuthHeaders(token)
       });
@@ -126,8 +90,8 @@ export class ApiService {
    */
   static async updateUserProfile(token: string, data: any) {
     try {
-      const response = await fetch(`${API_BASE_URL}/utilisateur/me`, {
-        method: 'PATCH',
+      const response = await fetch(`${API_BASE_URL}/utilisateurs/profil`, {
+        method: 'PUT',
         headers: await this.getAuthHeaders(token),
         body: JSON.stringify(data)
       });
@@ -142,62 +106,46 @@ export class ApiService {
       throw error;
     }
   }
-}
 
-/**
- * React Hook for API calls with Clerk authentication
- */
-export function useApi() {
-  const { getToken } = useAuth();
-
-  const callApi = async (
-    endpoint: string,
-    options: RequestInit = {}
-  ) => {
+  /**
+   * Get public user profile
+   */
+  static async getPublicProfile(token: string, userId: string) {
     try {
-      const token = await getToken();
-      
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
-          ...options.headers
-        }
+      const response = await fetch(`${API_BASE_URL}/utilisateurs/${userId}`, {
+        method: 'GET',
+        headers: await this.getAuthHeaders(token)
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'API call failed');
+        throw new Error('Failed to fetch public profile');
       }
 
       return await response.json();
     } catch (error) {
-      console.error('API call error:', error);
+      console.error('Public profile fetch error:', error);
       throw error;
     }
-  };
+  }
 
-  return { callApi };
+  /**
+   * Logout
+   */
+  static async logout(token: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers: await this.getAuthHeaders(token)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to logout');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
+  }
 }
-
-/**
- * Example usage in a component:
- * 
- * import { useApi } from '@/services/api';
- * 
- * const MyComponent = () => {
- *   const { callApi } = useApi();
- * 
- *   const fetchAnnonces = async () => {
- *     try {
- *       const data = await callApi('/annonces');
- *       console.log(data);
- *     } catch (error) {
- *       console.error(error);
- *     }
- *   };
- * 
- *   return <View>...</View>;
- * };
- */
