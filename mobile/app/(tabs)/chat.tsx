@@ -462,13 +462,13 @@ export default function ChatScreen() {
         >
           <View className="flex-1" style={{ paddingTop: insets.top + 10 }}>
             {/* Header Chat */}
-            <View className="bg-white border-b border-outline-variant px-4 pb-3">
-              <View className="flex-row items-center justify-between">
-                <Pressable onPress={() => setShowChatModal(false)} className="mr-3">
-                  <Ionicons name="arrow-back" size={24} color="#1B4332" />
+            <Animated.View entering={FadeInUp.duration(400)} className="bg-white rounded-b-2xl border-b border-outline-variant px-4 pb-4 shadow-sm">
+              <View className="flex-row items-center gap-3 mb-3">
+                <Pressable onPress={() => setShowChatModal(false)} className="w-10 h-10 rounded-xl bg-surface items-center justify-center">
+                  <Ionicons name="arrow-back" size={20} color="#1B4332" />
                 </Pressable>
                 <View className="flex-1">
-                  <Text className="text-sm font-bold text-primary" numberOfLines={1}>
+                  <Text className="text-sm font-extrabold text-primary" numberOfLines={1}>
                     Conversation
                   </Text>
                   <Text className="text-xs text-on-surface-variant">
@@ -479,9 +479,9 @@ export default function ChatScreen() {
                   {selectedConvo?.reservation && (
                     <Pressable
                       onPress={() => downloadContract(selectedConvo.reservation.id)}
-                      className="bg-primary/10 rounded-lg px-3 py-2"
+                      className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center"
                     >
-                      <Ionicons name="document-text-outline" size={16} color="#1B4332" />
+                      <Ionicons name="document-text-outline" size={18} color="#1B4332" />
                     </Pressable>
                   )}
                   <Pressable onPress={() => {
@@ -490,61 +490,71 @@ export default function ChatScreen() {
                       setShowChatModal(false);
                       router.push(`/(annonces)/${annonceId}`);
                     }
-                  }} className="bg-primary/10 rounded-lg px-3 py-2">
-                    <Text className="text-xs font-bold text-primary">Voir annonce</Text>
+                  }} className="bg-primary rounded-xl px-3 py-2">
+                    <Text className="text-xs font-bold text-white">Voir annonce</Text>
                   </Pressable>
                 </View>
               </View>
-            </View>
+            </Animated.View>
 
             {/* Messages */}
             <ScrollView className="flex-1 px-4 py-4" contentContainerStyle={{ paddingBottom: 20 }}>
               {messages.length === 0 ? (
-                <View className="flex-1 items-center justify-center py-20">
-                  <Ionicons name="chatbubbles-outline" size={32} color="#A5A6AA" />
-                  <Text className="text-sm text-on-surface-variant mt-3">Aucun message</Text>
-                </View>
+                <Animated.View entering={FadeInUp.delay(200).duration(500)} className="flex-1 items-center justify-center py-20">
+                  <View className="w-20 h-20 rounded-full bg-primary/10 items-center justify-center mb-4">
+                    <Ionicons name="chatbubbles-outline" size={40} color="#1B4332" />
+                  </View>
+                  <Text className="text-base font-bold text-primary">Aucun message</Text>
+                  <Text className="text-sm text-on-surface-variant mt-2 text-center px-6">
+                    Commencez la conversation en envoyant un message
+                  </Text>
+                </Animated.View>
               ) : (
                 messages.map((msg, index) => {
                   const isFromMe = msg.senderId === currentUserId;
                   return (
-                    <View
+                    <Animated.View
                       key={`msg-${index}`}
+                      entering={FadeInUp.delay(index * 50).duration(400)}
                       className={`mb-3 ${isFromMe ? 'items-end' : 'items-start'}`}
                     >
                       <View
-                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                        className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
                           isFromMe ? 'bg-primary' : 'bg-white border border-outline-variant'
                         }`}
                       >
-                        <Text className={`text-sm ${isFromMe ? 'text-white' : 'text-on-surface'}`}>
+                        <Text className={`text-sm leading-5 ${isFromMe ? 'text-white' : 'text-on-surface'}`}>
                           {msg.content}
                         </Text>
-                        <Text className={`text-[10px] mt-1 ${isFromMe ? 'text-white/70' : 'text-on-surface-variant'}`}>
+                        <Text className={`text-[10px] mt-2 ${isFromMe ? 'text-white/70' : 'text-on-surface-variant'}`}>
                           {formatDate(msg.createdAt)}
                         </Text>
                       </View>
-                    </View>
+                    </Animated.View>
                   );
                 })
               )}
             </ScrollView>
 
             {/* Input Message */}
-            <View className="bg-white border-t border-outline-variant px-4 py-3" style={{ paddingBottom: insets.bottom + 12 }}>
-              <View className="flex-row items-center gap-2">
-                <TextInput
-                  value={messageText}
-                  onChangeText={setMessageText}
-                  placeholder="Votre message..."
-                  multiline
-                  className="flex-1 bg-surface border border-outline-variant rounded-xl px-4 py-3 max-h-24"
-                />
+            <View className="bg-white border-t border-outline-variant px-4 py-3 shadow-lg" style={{ paddingBottom: insets.bottom + 12 }}>
+              <View className="flex-row items-end gap-2">
+                <View className="flex-1 bg-surface border border-outline-variant rounded-2xl px-4 py-3">
+                  <TextInput
+                    value={messageText}
+                    onChangeText={setMessageText}
+                    placeholder="Votre message..."
+                    placeholderTextColor="#A5A6AA"
+                    multiline
+                    className="text-on-surface max-h-24 text-sm"
+                    style={{ minHeight: 20 }}
+                  />
+                </View>
                 <Pressable
                   onPress={sendMessage}
                   disabled={isSending || !messageText.trim()}
-                  className={`rounded-xl p-3 ${
-                    isSending || !messageText.trim() ? 'bg-primary/40' : 'bg-primary'
+                  className={`w-12 h-12 rounded-2xl items-center justify-center ${
+                    isSending || !messageText.trim() ? 'bg-primary/40' : 'bg-primary shadow-md'
                   }`}
                 >
                   {isSending ? (
