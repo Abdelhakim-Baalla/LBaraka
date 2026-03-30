@@ -96,8 +96,11 @@ export default function HomeScreen() {
             <View className="bg-primary/10 px-3 py-1 rounded-lg">
               <Text className="text-xs font-bold text-primary">{user?.profil?.lBarakaScore || 0} pts</Text>
             </View>
-            <Pressable className="w-9 h-9 rounded-lg bg-surface-container items-center justify-center">
-              <Ionicons name="notifications-outline" size={18} color="#414844" />
+            <Pressable
+              onPress={() => router.push('/(annonces)/mine')}
+              className="w-9 h-9 rounded-lg bg-surface-container items-center justify-center"
+            >
+              <Ionicons name="albums-outline" size={18} color="#414844" />
             </Pressable>
           </View>
         </View>
@@ -199,7 +202,7 @@ export default function HomeScreen() {
                           <Text className="text-xs font-semibold text-primary">{annonce.categorie}</Text>
                         </View>
                       </View>
-                      <Text className="text-xs text-on-surface-variant">{annonce.mode?.replace('_', ' ')}</Text>
+                      <Text className="text-xs text-on-surface-variant">{String(annonce.mode || '').replaceAll('_', ' ')}</Text>
                     </View>
                   </View>
                 </Pressable>

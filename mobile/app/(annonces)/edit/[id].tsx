@@ -1,23 +1,22 @@
-import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, Alert, ActivityIndicator, Switch } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Location from 'expo-location';
-import { ApiService } from '../../services/api';
+import { ApiService } from '../../../services/api';
 
 const CATEGORIES = ['POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 const MODES = ['DON_GRATUIT', 'PRET_TEMPORAIRE', 'LOCATION_SOLIDAIRE'];
 const CONDITIONS = ['NEUF', 'BON_ETAT', 'USE'];
 
-const DEMO_BASE64_IMAGE =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl7w7QAAAAASUVORK5CYII=';
-
-export default function CreateAnnonceScreen() {
+export default function EditAnnonceScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ id: string }>();
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [titre, setTitre] = useState('');
   const [description, setDescription] = useState('');
   const [categorie, setCategorie] = useState('POUSSETTE');
@@ -27,34 +26,42 @@ export default function CreateAnnonceScreen() {
   const [montantCaution, setMontantCaution] = useState('');
   const [latitude, setLatitude] = useState('33.58');
   const [longitude, setLongitude] = useState('-7.60');
-  const [isFoodRescue, setIsFoodRescue] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  const useCurrentLocation = async () => {
+  const loadAnnonce = async () => {
     try {
-      setIsGettingLocation(true);
-
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (permission.status !== 'granted') {
-        Alert.alert('Permission refusée', 'Activez la localisation pour utiliser votre position réelle.');
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        router.replace('/(auth)/sign-in');
         return;
       }
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const data = await ApiService.getAnnonceById(token, String(params.id || ''));
+      const annonce = data.annonce;
 
-      setLatitude(String(position.coords.latitude));
-      setLongitude(String(position.coords.longitude));
-    } catch {
-      Alert.alert('Erreur', 'Impossible de récupérer votre localisation.');
+      setTitre(String(annonce.titre || ''));
+      setDescription(String(annonce.description || ''));
+      setCategorie(String(annonce.categorie || 'POUSSETTE'));
+      setMode(String(annonce.mode || 'DON_GRATUIT'));
+      setCondition(String(annonce.condition || 'BON_ETAT'));
+      setPrixSymbolique(annonce.prixSymbolique !== null && annonce.prixSymbolique !== undefined ? String(annonce.prixSymbolique) : '');
+      setMontantCaution(annonce.montantCaution !== null && annonce.montantCaution !== undefined ? String(annonce.montantCaution) : '');
+      setLatitude(String(annonce.geolocalisation?.[0] ?? 33.58));
+      setLongitude(String(annonce.geolocalisation?.[1] ?? -7.60));
+    } catch (error: any) {
+      Alert.alert('Erreur', error?.message || 'Impossible de charger cette annonce.');
     } finally {
-      setIsGettingLocation(false);
+      setIsLoading(false);
     }
   };
 
-  const handleSubmit = async () => {
+  useFocusEffect(
+    useCallback(() => {
+      setIsLoading(true);
+      loadAnnonce();
+    }, [params.id])
+  );
+
+  const saveAnnonce = async () => {
     if (!titre.trim() || !description.trim()) {
       Alert.alert('Validation', 'Titre et description sont obligatoires.');
       return;
@@ -64,24 +71,7 @@ export default function CreateAnnonceScreen() {
     const lng = Number(longitude);
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      Alert.alert('Validation', 'Latitude et longitude doivent être des nombres valides.');
-      return;
-    }
-
-    const token = await AsyncStorage.getItem('accessToken');
-    const userRaw = await AsyncStorage.getItem('user');
-
-    if (!token) {
-      Alert.alert('Session', 'Vous devez vous connecter.');
-      router.replace('/(auth)/sign-in');
-      return;
-    }
-
-    const user = userRaw ? JSON.parse(userRaw) : null;
-    const isPartenaire = user?.role === 'PARTENAIRE';
-
-    if (isFoodRescue && !isPartenaire) {
-      Alert.alert('Autorisation', 'Seul un compte PARTENAIRE peut publier un Food Rescue.');
+      Alert.alert('Validation', 'Latitude et longitude invalides.');
       return;
     }
 
@@ -92,12 +82,6 @@ export default function CreateAnnonceScreen() {
       mode,
       condition,
       geolocalisation: [lat, lng],
-      photosBase64: [
-        { name: 'photo-1.png', type: 'image/png', base64: DEMO_BASE64_IMAGE },
-        { name: 'photo-2.png', type: 'image/png', base64: DEMO_BASE64_IMAGE },
-        { name: 'photo-3.png', type: 'image/png', base64: DEMO_BASE64_IMAGE },
-      ],
-      isFoodRescue,
     };
 
     if (prixSymbolique.trim()) {
@@ -108,49 +92,48 @@ export default function CreateAnnonceScreen() {
       payload.montantCaution = Number(montantCaution);
     }
 
-    setIsSubmitting(true);
-
     try {
-      if (isFoodRescue) {
-        await ApiService.createFoodRescueAnnonce(token, payload);
-      } else {
-        await ApiService.createAnnonce(token, payload);
+      setIsSaving(true);
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        router.replace('/(auth)/sign-in');
+        return;
       }
 
-      Alert.alert('Succès', 'Annonce créée avec succès.', [
-        {
-          text: 'Voir mes annonces',
-          onPress: () => router.replace('/(annonces)/mine'),
-        },
+      await ApiService.updateAnnonce(token, String(params.id || ''), payload);
+      Alert.alert('Succès', 'Annonce modifiée avec succès.', [
+        { text: 'OK', onPress: () => router.replace('/(annonces)/mine') },
       ]);
     } catch (error: any) {
-      Alert.alert('Erreur', error?.message || 'Impossible de créer l\'annonce.');
+      Alert.alert('Erreur', error?.message || 'Impossible de modifier l\'annonce.');
     } finally {
-      setIsSubmitting(false);
+      setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-surface items-center justify-center">
+        <ActivityIndicator size="large" color="#1B4332" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 24 }}>
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-          <Text className="text-lg font-extrabold text-primary">Nouvelle annonce</Text>
-          <Text className="text-sm text-on-surface-variant mt-1">Formulaire simple pour tester rapidement le backend annonces.</Text>
+          <Text className="text-lg font-extrabold text-primary">Modifier annonce</Text>
+          <Text className="text-sm text-on-surface-variant mt-1">Mettez à jour les informations de votre annonce.</Text>
         </View>
 
         <Text className="text-xs font-bold text-on-surface-variant mb-1">Titre</Text>
-        <TextInput
-          value={titre}
-          onChangeText={setTitre}
-          placeholder="Ex: Poussette en bon état"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
+        <TextInput value={titre} onChangeText={setTitre} className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3" />
 
         <Text className="text-xs font-bold text-on-surface-variant mb-1">Description</Text>
         <TextInput
           value={description}
           onChangeText={setDescription}
-          placeholder="Décrivez votre annonce"
           multiline
           numberOfLines={4}
           textAlignVertical="top"
@@ -196,20 +179,18 @@ export default function CreateAnnonceScreen() {
           ))}
         </View>
 
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Prix symbolique (optionnel)</Text>
+        <Text className="text-xs font-bold text-on-surface-variant mb-1">Prix symbolique</Text>
         <TextInput
           value={prixSymbolique}
           onChangeText={setPrixSymbolique}
-          placeholder="0"
           keyboardType="numeric"
           className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
         />
 
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Montant caution (optionnel)</Text>
+        <Text className="text-xs font-bold text-on-surface-variant mb-1">Montant caution</Text>
         <TextInput
           value={montantCaution}
           onChangeText={setMontantCaution}
-          placeholder="0"
           keyboardType="numeric"
           className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
         />
@@ -218,7 +199,6 @@ export default function CreateAnnonceScreen() {
         <TextInput
           value={latitude}
           onChangeText={setLatitude}
-          placeholder="33.58"
           keyboardType="decimal-pad"
           className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
         />
@@ -227,49 +207,25 @@ export default function CreateAnnonceScreen() {
         <TextInput
           value={longitude}
           onChangeText={setLongitude}
-          placeholder="-7.60"
           keyboardType="decimal-pad"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
+          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-4"
         />
 
         <Pressable
-          onPress={useCurrentLocation}
-          disabled={isGettingLocation}
-          className={`rounded-xl py-3 items-center justify-center flex-row gap-2 mb-3 ${isGettingLocation ? 'bg-surface-container' : 'bg-white border border-outline-variant'}`}
+          onPress={saveAnnonce}
+          disabled={isSaving}
+          className={`rounded-xl py-4 items-center justify-center flex-row gap-2 mb-3 ${isSaving ? 'bg-primary/60' : 'bg-primary'}`}
         >
-          {isGettingLocation ? <ActivityIndicator color="#1B4332" /> : <Ionicons name="locate-outline" size={18} color="#1B4332" />}
-          <Text className="text-primary font-bold">{isGettingLocation ? 'Récupération position...' : 'Utiliser ma position réelle'}</Text>
-        </Pressable>
-
-        <View className="bg-white border border-outline-variant rounded-xl p-3 mb-4 flex-row items-center justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-sm font-bold text-primary">Publier en Food Rescue</Text>
-            <Text className="text-xs text-on-surface-variant mt-1">Réservé aux comptes PARTENAIRE.</Text>
-          </View>
-          <Switch value={isFoodRescue} onValueChange={setIsFoodRescue} />
-        </View>
-
-        <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
-          <Text className="text-amber-800 text-xs">
-            Pour simplifier les tests, 3 photos de démonstration sont envoyées automatiquement.
-          </Text>
-        </View>
-
-        <Pressable
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          className={`rounded-xl py-4 items-center justify-center flex-row gap-2 mb-3 ${isSubmitting ? 'bg-primary/60' : 'bg-primary'}`}
-        >
-          {isSubmitting ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />}
-          <Text className="text-white font-bold">{isSubmitting ? 'Publication...' : 'Publier l\'annonce'}</Text>
+          {isSaving ? <ActivityIndicator color="#fff" /> : <Ionicons name="save-outline" size={18} color="#fff" />}
+          <Text className="text-white font-bold">{isSaving ? 'Enregistrement...' : 'Enregistrer les changements'}</Text>
         </Pressable>
 
         <Pressable
-          onPress={() => router.push('/(tabs)/home')}
+          onPress={() => router.back()}
           className="bg-white border border-outline-variant rounded-xl py-4 items-center justify-center flex-row gap-2"
         >
           <Ionicons name="arrow-back" size={18} color="#1B4332" />
-          <Text className="text-primary font-bold">Retour à l'accueil</Text>
+          <Text className="text-primary font-bold">Retour</Text>
         </Pressable>
       </ScrollView>
     </View>

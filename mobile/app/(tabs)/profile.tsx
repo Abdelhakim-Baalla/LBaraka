@@ -174,6 +174,19 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#717973" />
           </Pressable>
 
+          <Pressable
+            onPress={() => router.push('/(annonces)/mine')}
+            className="flex-row items-center justify-between px-5 py-3.5 border-b border-outline-variant/10 active:bg-surface-container-low"
+          >
+            <View className="flex-row items-center gap-3">
+              <Ionicons name="albums-outline" size={21} color="#012d1d" />
+              <Text className="text-sm font-semibold text-on-surface">
+                Mes annonces
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#717973" />
+          </Pressable>
+
           <Pressable className="flex-row items-center justify-between px-5 py-3.5 border-b border-outline-variant/10 active:bg-surface-container-low">
             <View className="flex-row items-center gap-3">
               <Ionicons name="notifications-outline" size={21} color="#012d1d" />

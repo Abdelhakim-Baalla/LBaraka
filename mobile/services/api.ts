@@ -248,6 +248,59 @@ export class ApiService {
     return await response.json();
   }
 
+  static async createFoodRescueAnnonce(token: string, data: any) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/annonces/food-rescue`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to create food rescue annonce');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async getMyAnnonces(token: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/annonces/mes-annonces`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch my annonces');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async updateAnnonce(token: string, annonceId: string, data: any) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/annonces/${annonceId}`, {
+      method: 'PUT',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to update annonce');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  static async deleteAnnonce(token: string, annonceId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/annonces/${annonceId}`, {
+      method: 'DELETE',
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to delete annonce');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
   static async getFoodRescue(token: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/annonces/food-rescue`, {
