@@ -2,8 +2,7 @@ import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// GET /wallet/me - Mon wallet + historique
-// POST /wallet/depot - Déposer de l'argent
+// Écran portefeuille avec solde et historique
 export default function WalletScreen() {
   const insets = useSafeAreaInsets();
 

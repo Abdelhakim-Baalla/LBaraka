@@ -2,13 +2,7 @@ import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// GET /transactions/me - Mes transactions (emprunts et prêts)
-// POST /transactions/reserve/:annonceId - Réserver une annonce
-// GET /transactions/:id/qr-reception - Générer QR Code pour la REMISE
-// POST /transactions/:id/validate-reception - Valider la REMISE
-// GET /transactions/:id/qr-retour - Générer QR Code pour le RETOUR
-// POST /transactions/:id/validate-retour - Confirmer le RETOUR
-// POST /transactions/:id/valider-retour - Finaliser le retour (débloquer caution)
+// Écran transactions avec réservations et QR codes
 export default function TransactionsScreen() {
   const insets = useSafeAreaInsets();
 

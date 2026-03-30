@@ -2,12 +2,7 @@ import { View, Text, Image, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// GET /chat/conversations - Liste des conversations
-// GET /chat/:otherId/:annonceId - Historique d'une conversation
-// POST /chat - Envoyer un message HTTP (fallback)
-// Socket.IO: ws://localhost:3000/chat
-// Events: joinRoom, leaveRoom, sendMessage, typing, registerNotifications
-// Listen: userJoined, receiveMessage, userTyping, newMessageNotification
+// Écran messagerie avec conversations et Socket.IO
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
 

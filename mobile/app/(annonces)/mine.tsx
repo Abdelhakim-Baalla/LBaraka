@@ -15,6 +15,7 @@ export default function MyAnnoncesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState('');
 
+  // Charge les annonces de l'utilisateur
   const loadMyAnnonces = async () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
@@ -41,11 +42,13 @@ export default function MyAnnoncesScreen() {
     }, [])
   );
 
+  // Rafraîchit la liste
   const onRefresh = () => {
     setRefreshing(true);
     loadMyAnnonces();
   };
 
+  // Supprime une annonce avec confirmation
   const deleteAnnonce = async (annonceId: string) => {
     Alert.alert('Supprimer', 'Voulez-vous supprimer cette annonce ?', [
       { text: 'Annuler', style: 'cancel' },

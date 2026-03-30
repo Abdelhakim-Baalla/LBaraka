@@ -14,6 +14,7 @@ export default function FoodRescueScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Charge les annonces Food Rescue
   const loadFoodRescue = async () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
@@ -40,6 +41,7 @@ export default function FoodRescueScreen() {
     }, [])
   );
 
+  // Rafraîchit la liste
   const onRefresh = () => {
     setRefreshing(true);
     loadFoodRescue();

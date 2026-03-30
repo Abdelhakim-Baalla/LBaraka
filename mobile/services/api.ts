@@ -1,9 +1,9 @@
-// API Service for LBaraka Backend Integration
 import Constants from 'expo-constants';
 
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || '').trim();
 
 export class ApiService {
+  // Récupère l'URL de l'API depuis l'hôte Expo en mode dev
   private static getExpoHostApiUrl() {
     const expoConfig = Constants.expoConfig as any;
     const hostUri = expoConfig?.hostUri as string | undefined;
@@ -21,8 +21,8 @@ export class ApiService {
     return `http://${host}:3000`;
   }
 
+  // Détermine l'URL de base de l'API (dev ou prod)
   private static getBaseUrl() {
-    // En mode dev Expo Go, on prefere l'IP du host Expo pour suivre automatiquement le changement de Wi-Fi.
     if (__DEV__) {
       const expoHostUrl = this.getExpoHostApiUrl();
       if (expoHostUrl) {
@@ -37,6 +37,7 @@ export class ApiService {
     return API_BASE_URL;
   }
 
+  // Construit les headers avec le token JWT si fourni
   private static async getAuthHeaders(token?: string) {
     return {
       'Content-Type': 'application/json',
@@ -44,6 +45,7 @@ export class ApiService {
     };
   }
 
+  // Extrait le message d'erreur de la réponse API
   private static async getErrorMessage(response: Response, fallbackMessage: string) {
     try {
       const data = await response.json();
@@ -62,9 +64,7 @@ export class ApiService {
     }
   }
 
-  /**
-   * Login with backend
-   */
+  // Connexion utilisateur
   static async loginWithBackend(email: string, motDePasse: string) {
     try {
       const baseUrl = this.getBaseUrl();
@@ -86,9 +86,7 @@ export class ApiService {
     }
   }
 
-  /**
-   * Register with backend
-   */
+  // Inscription utilisateur
   static async registerWithBackend(data: {
     email: string;
     motDePasse: string;
@@ -115,9 +113,7 @@ export class ApiService {
     }
   }
 
-  /**
-   * Get user profile
-   */
+  // Récupère le profil utilisateur
   static async getUserProfile(token: string) {
     try {
       const baseUrl = this.getBaseUrl();
@@ -138,9 +134,7 @@ export class ApiService {
     }
   }
 
-  /**
-   * Update user profile
-   */
+  // Met à jour le profil utilisateur
   static async updateUserProfile(token: string, data: any) {
     try {
       const baseUrl = this.getBaseUrl();
@@ -162,9 +156,7 @@ export class ApiService {
     }
   }
 
-  /**
-   * Get public user profile
-   */
+  // Récupère le profil public d'un utilisateur
   static async getPublicProfile(token: string, userId: string) {
     try {
       const baseUrl = this.getBaseUrl();
@@ -185,9 +177,7 @@ export class ApiService {
     }
   }
 
-  /**
-   * Logout
-   */
+  // Déconnexion utilisateur
   static async logout(token: string) {
     try {
       const baseUrl = this.getBaseUrl();
@@ -208,7 +198,7 @@ export class ApiService {
     }
   }
 
-  // ANNONCES
+  // Récupère toutes les annonces avec filtre optionnel par catégorie
   static async getAnnonces(token: string, categorie?: string) {
     const baseUrl = this.getBaseUrl();
     const url = categorie ? `${baseUrl}/annonces?categorie=${categorie}` : `${baseUrl}/annonces`;
@@ -222,6 +212,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Récupère une annonce par son ID
   static async getAnnonceById(token: string, id: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/annonces/${id}`, {
@@ -234,6 +225,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Crée une nouvelle annonce
   static async createAnnonce(token: string, data: any) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/annonces`, {
@@ -248,6 +240,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Crée une annonce Food Rescue (PARTENAIRE uniquement)
   static async createFoodRescueAnnonce(token: string, data: any) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/annonces/food-rescue`, {
@@ -262,6 +255,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Récupère mes annonces
   static async getMyAnnonces(token: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/annonces/mes-annonces`, {
@@ -274,6 +268,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Met à jour une annonce
   static async updateAnnonce(token: string, annonceId: string, data: any) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/annonces/${annonceId}`, {
@@ -288,6 +283,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Supprime une annonce
   static async deleteAnnonce(token: string, annonceId: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/annonces/${annonceId}`, {
@@ -301,6 +297,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Récupère les annonces Food Rescue actives
   static async getFoodRescue(token: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/annonces/food-rescue`, {
@@ -313,6 +310,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Récupère les annonces à proximité d'une position
   static async getAnnoncesNearby(token: string, lat: number, lng: number, rayon?: number, categorie?: string) {
     const baseUrl = this.getBaseUrl();
     const url = `${baseUrl}/annonces/carte?lat=${lat}&lng=${lng}${rayon ? `&rayon=${rayon}` : ''}${categorie ? `&categorie=${categorie}` : ''}`;
@@ -326,7 +324,7 @@ export class ApiService {
     return await response.json();
   }
 
-  // TRANSACTIONS
+  // Récupère mes transactions
   static async getMyTransactions(token: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/transactions/me`, {
@@ -339,6 +337,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Réserve une annonce
   static async reserveAnnonce(token: string, annonceId: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/transactions/reserve/${annonceId}`, {
@@ -352,6 +351,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Génère le QR code de réception
   static async getQRReception(token: string, transactionId: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/transactions/${transactionId}/qr-reception`, {
@@ -364,6 +364,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Valide la réception avec le QR code
   static async validateReception(token: string, transactionId: string, secret: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/transactions/${transactionId}/validate-reception`, {
@@ -378,7 +379,7 @@ export class ApiService {
     return await response.json();
   }
 
-  // WALLET
+  // Récupère le portefeuille utilisateur
   static async getWallet(token: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/wallet/me`, {
@@ -391,6 +392,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Dépose de l'argent dans le portefeuille
   static async depositMoney(token: string, montant: number) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/wallet/depot`, {
@@ -405,7 +407,7 @@ export class ApiService {
     return await response.json();
   }
 
-  // CHAT
+  // Récupère toutes les conversations
   static async getConversations(token: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/chat/conversations`, {
@@ -418,6 +420,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Récupère l'historique d'une conversation
   static async getChatHistory(token: string, otherId: string, annonceId: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/chat/${otherId}/${annonceId}`, {
@@ -430,7 +433,7 @@ export class ApiService {
     return await response.json();
   }
 
-  // POINTS RELAIS
+  // Récupère tous les points relais
   static async getPointsRelais(token: string) {
     const baseUrl = this.getBaseUrl();
     const response = await fetch(`${baseUrl}/points-relais`, {
@@ -443,6 +446,7 @@ export class ApiService {
     return await response.json();
   }
 
+  // Récupère les points relais à proximité
   static async getNearbyPointsRelais(token: string, lat: number, lng: number, rayon?: number) {
     const baseUrl = this.getBaseUrl();
     const url = `${baseUrl}/points-relais/nearby?lat=${lat}&lng=${lng}${rayon ? `&rayon=${rayon}` : ''}`;

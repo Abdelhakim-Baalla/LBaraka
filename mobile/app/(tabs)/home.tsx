@@ -102,6 +102,7 @@ export default function HomeScreen() {
   const [showAllList, setShowAllList] = useState(false);
   const [openedFaqIndex, setOpenedFaqIndex] = useState<number | null>(null);
 
+  // Formater une date en français
   const formatDate = (value?: string) => {
     if (!value) {
       return 'N/A';
@@ -116,6 +117,7 @@ export default function HomeScreen() {
     }, [selectedCategory])
   );
 
+  // Charger les annonces et les données utilisateur
   const loadData = async () => {
     try {
       const [token, userData] = await Promise.all([
@@ -143,6 +145,7 @@ export default function HomeScreen() {
     }
   };
 
+  // Rafraîchir les données
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
   const filteredAnnonces = annonces.filter((annonce) => {

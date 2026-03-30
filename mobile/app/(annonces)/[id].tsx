@@ -19,6 +19,7 @@ export default function AnnonceDetailsScreen() {
   const [isOwner, setIsOwner] = useState(false);
   const [reservationError, setReservationError] = useState('');
 
+  // Formate une date
   const formatDate = (value?: string) => {
     if (!value) {
       return 'N/A';
@@ -27,6 +28,7 @@ export default function AnnonceDetailsScreen() {
     return new Date(value).toLocaleDateString('fr-FR');
   };
 
+  // Formate une date avec l'heure
   const formatDateTime = (value?: string) => {
     if (!value) {
       return 'N/A';
@@ -35,6 +37,7 @@ export default function AnnonceDetailsScreen() {
     return new Date(value).toLocaleString('fr-FR');
   };
 
+  // Charge les détails de l'annonce
   const loadAnnonce = async () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
@@ -64,6 +67,7 @@ export default function AnnonceDetailsScreen() {
     }, [params.id])
   );
 
+  // Réserve l'annonce
   const reserveAnnonce = async () => {
     try {
       setIsReserving(true);
@@ -92,6 +96,7 @@ export default function AnnonceDetailsScreen() {
     }
   };
 
+  // Supprime l'annonce avec confirmation
   const deleteAnnonce = async () => {
     Alert.alert('Supprimer', 'Voulez-vous supprimer cette annonce ?', [
       { text: 'Annuler', style: 'cancel' },

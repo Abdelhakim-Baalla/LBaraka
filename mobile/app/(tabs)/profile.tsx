@@ -18,6 +18,7 @@ export default function ProfileScreen() {
     }, [])
   );
 
+  // Charge les données utilisateur
   const loadUser = async () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
@@ -48,6 +49,7 @@ export default function ProfileScreen() {
     }
   };
 
+  // Gère la déconnexion
   const handleLogout = () => {
     Alert.alert(
       'Déconnexion',
@@ -101,7 +103,7 @@ export default function ProfileScreen() {
 
       <View className="flex-1 px-6 pt-5 pb-5 justify-between">
         <View>
-          {/* User Info Card */}
+
           {user && (
             <View className="bg-white rounded-2xl p-4 border border-outline-variant/70 mb-5">
               <View className="flex-row items-center gap-3 mb-3">
@@ -146,7 +148,7 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Menu Items */}
+
           <View className="bg-white rounded-2xl border border-outline-variant/70 overflow-hidden">
           <Pressable 
             onPress={() => router.push('/edit-profile')}
@@ -229,7 +231,7 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Decorative Elements */}
+
       <View className="absolute -bottom-32 -left-32 w-96 h-96 bg-primary/5 rounded-full blur-3xl" style={{ opacity: 0.3 }} />
       <View className="absolute top-20 -right-20 w-64 h-64 bg-secondary/5 rounded-full blur-3xl" style={{ opacity: 0.3 }} />
     </View>

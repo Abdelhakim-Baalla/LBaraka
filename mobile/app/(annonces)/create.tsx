@@ -30,11 +30,13 @@ export default function CreateAnnonceScreen() {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [photosBase64, setPhotosBase64] = useState<Array<{ name: string; type: string; base64: string }>>([]);
 
+  // Estime la taille en octets d'une chaîne Base64
   const estimateBase64Bytes = (base64: string) => {
     const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
     return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
   };
 
+  // Sélectionne des photos depuis la galerie
   const pickFromLibrary = async () => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -76,6 +78,7 @@ export default function CreateAnnonceScreen() {
     }
   };
 
+  // Prend une photo avec la caméra
   const pickFromCamera = async () => {
     try {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -124,6 +127,7 @@ export default function CreateAnnonceScreen() {
     }
   };
 
+  // Utilise la position GPS actuelle
   const useCurrentLocation = async () => {
     try {
       setIsGettingLocation(true);
@@ -147,6 +151,7 @@ export default function CreateAnnonceScreen() {
     }
   };
 
+  // Soumet le formulaire de création d'annonce
   const handleSubmit = async () => {
     if (!titre.trim() || !description.trim()) {
       Alert.alert('Validation', 'Titre et description sont obligatoires.');
