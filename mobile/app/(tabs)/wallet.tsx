@@ -12,6 +12,8 @@ export default function WalletScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [wallet, setWallet] = useState<any>(null);
+  const [userPoints, setUserPoints] = useState(0);
+  const [userPalier, setUserPalier] = useState('BRONZE');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showDepotModal, setShowDepotModal] = useState(false);
@@ -33,10 +35,20 @@ export default function WalletScreen() {
   // Charger le wallet
   const loadWallet = async () => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const [token, userRaw] = await Promise.all([
+        AsyncStorage.getItem('accessToken'),
+        AsyncStorage.getItem('user'),
+      ]);
+
       if (!token) {
         router.replace('/(auth)/sign-in');
         return;
+      }
+
+      if (userRaw) {
+        const user = JSON.parse(userRaw);
+        setUserPoints(Number(user?.profil?.lBarakaScore || 0));
+        setUserPalier(String(user?.profil?.palier || 'BRONZE'));
       }
 
       const data = await ApiService.getWallet(token);
@@ -179,6 +191,14 @@ export default function WalletScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1B4332" />}
         contentContainerStyle={{ paddingBottom: 24 }}
       >
+        <Pressable
+          onPress={() => router.back()}
+          className="bg-white border border-outline-variant rounded-xl py-3 px-3 flex-row items-center gap-2 mb-3"
+        >
+          <Ionicons name="arrow-back" size={18} color="#1B4332" />
+          <Text className="text-primary font-bold">Retour</Text>
+        </Pressable>
+
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
           <View className="flex-row items-center justify-between mb-2">
             <View>
@@ -191,6 +211,30 @@ export default function WalletScreen() {
           </View>
           <Text className="text-xs text-on-surface-variant">
             Démo simple: dépôt et retrait direct utilisateur. En production, paiement externe recommandé.
+          </Text>
+        </View>
+
+        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-sm font-extrabold text-primary">Comprendre vos valeurs</Text>
+            <Ionicons name="help-circle-outline" size={18} color="#1B4332" />
+          </View>
+
+          <View className="flex-row gap-2">
+            <View className="flex-1 bg-primary/10 rounded-xl p-3">
+              <Text className="text-[11px] text-on-surface-variant">Points LBaraka</Text>
+              <Text className="text-base font-bold text-primary mt-1">{userPoints} pts</Text>
+              <Text className="text-[10px] text-on-surface-variant mt-1">Palier: {userPalier}</Text>
+            </View>
+            <View className="flex-1 bg-emerald-50 rounded-xl p-3">
+              <Text className="text-[11px] text-on-surface-variant">Argent wallet</Text>
+              <Text className="text-base font-bold text-emerald-700 mt-1">{soldeReel.toFixed(2)} MAD</Text>
+              <Text className="text-[10px] text-on-surface-variant mt-1">Caution: {soldeBloque.toFixed(2)} MAD</Text>
+            </View>
+          </View>
+
+          <Text className="text-xs text-on-surface-variant mt-3">
+            Les points et l'argent sont différents: les points mesurent votre impact/réputation, le wallet MAD sert aux cautions et paiements.
           </Text>
         </View>
 
@@ -343,9 +387,10 @@ export default function WalletScreen() {
               </View>
             ))
           ) : (
-            <Text className="text-sm text-on-surface-variant text-center py-4">
-              Aucun mouvement pour ce filtre
-            </Text>
+            <View className="items-center py-5">
+              <Ionicons name="wallet-outline" size={24} color="#A5A6AA" />
+              <Text className="text-sm text-on-surface-variant text-center mt-2">Aucun mouvement pour ce filtre</Text>
+            </View>
           )}
         </View>
       </ScrollView>
