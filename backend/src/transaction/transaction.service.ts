@@ -265,6 +265,7 @@ export class TransactionService {
           where: { id: transactionId },
           data: {
             scannedRetour: true,
+            statut: 'EN_ATTENTE_RETOUR',
           },
         });
 
@@ -288,6 +289,12 @@ export class TransactionService {
         if (!currentTx) throw new NotFoundException('Transaction introuvable');
         if (currentTx.preteurId !== userId) throw new BadRequestException('Seul le prêteur peut valider le retour');
         if (currentTx.statut === 'TERMINEE') throw new BadRequestException('Cette transaction est déjà terminée');
+        if (!currentTx.scannedRetour) {
+          throw new BadRequestException('Le retour doit être confirmé par scan QR avant finalisation');
+        }
+        if (currentTx.statut !== 'EN_ATTENTE_RETOUR') {
+          throw new BadRequestException('La transaction doit être EN_ATTENTE_RETOUR pour être finalisée');
+        }
 
         // Calcul du malus de retard
         const maintenant = new Date();
@@ -320,9 +327,9 @@ export class TransactionService {
         }
 
         // Payer le prix symbolique au propriétaire
+        // Le montant a déjà été retiré de l'emprunteur pendant la réservation.
         const prixSymbolique = Number(currentTx.annonce.prixSymbolique || 0);
         if (currentTx.annonce.mode === 'LOCATION_SOLIDAIRE' && prixSymbolique > 0) {
-          await this.walletService.retrait(currentTx.emprunteurId, prixSymbolique, tx);
           await this.walletService.depot(currentTx.preteurId, prixSymbolique, tx);
         }
 

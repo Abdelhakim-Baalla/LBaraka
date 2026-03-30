@@ -11,6 +11,7 @@ export default function TransactionsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [currentUserId, setCurrentUserId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
@@ -29,10 +30,19 @@ export default function TransactionsScreen() {
   // Charger les transactions
   const loadTransactions = async () => {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const [token, userRaw] = await Promise.all([
+        AsyncStorage.getItem('accessToken'),
+        AsyncStorage.getItem('user'),
+      ]);
+
       if (!token) {
         router.replace('/(auth)/sign-in');
         return;
+      }
+
+      if (userRaw) {
+        const user = JSON.parse(userRaw);
+        setCurrentUserId(String(user?.id || ''));
       }
 
       const data = await ApiService.getMyTransactions(token);
@@ -58,7 +68,7 @@ export default function TransactionsScreen() {
       if (!token) return;
 
       const data = await ApiService.getQRReception(token, transactionId);
-      setQrData(data.qrCode || data.data || '');
+      setQrData(data.qrCode || '');
       setQrType('reception');
       setShowQRModal(true);
     } catch (error: any) {
@@ -73,7 +83,7 @@ export default function TransactionsScreen() {
       if (!token) return;
 
       const data = await ApiService.getQRRetour(token, transactionId);
-      setQrData(data.qrCode || data.data || '');
+      setQrData(data.qrCode || '');
       setQrType('retour');
       setShowQRModal(true);
     } catch (error: any) {
@@ -123,8 +133,40 @@ export default function TransactionsScreen() {
     );
   };
 
+  // Annuler une reservation
+  const handleAnnulerReservation = async (transactionId: string) => {
+    Alert.alert(
+      'Annuler reservation',
+      'Voulez-vous annuler cette reservation ?',
+      [
+        { text: 'Non', style: 'cancel' },
+        {
+          text: 'Oui',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('accessToken');
+              if (!token) return;
+
+              await ApiService.annulerReservation(token, transactionId);
+              Alert.alert('Succes', 'Reservation annulee');
+              setShowDetailModal(false);
+              loadTransactions();
+            } catch (error: any) {
+              Alert.alert('Erreur', error?.message || 'Impossible d\'annuler');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Formater la date
-  const formatDate = (date: string) => {
+  const formatDate = (date?: string) => {
+    if (!date) {
+      return 'Date non disponible';
+    }
+
     return new Date(date).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: 'short',
@@ -142,7 +184,7 @@ export default function TransactionsScreen() {
       EN_ATTENTE_RETOUR: 'En attente retour',
       TERMINEE: 'Terminee',
       ANNULEE: 'Annulee',
-      DEGRADATION_SIGNALEE: 'Degradation signalee'
+      LITIGE_DEGRADATION: 'Litige degradation'
     };
     return labels[status] || status;
   };
@@ -150,21 +192,48 @@ export default function TransactionsScreen() {
   // Obtenir la couleur du statut
   const getStatusColor = (status: string) => {
     if (status === 'TERMINEE') return 'text-green-600';
-    if (status === 'ANNULEE' || status === 'DEGRADATION_SIGNALEE') return 'text-red-600';
+    if (status === 'ANNULEE' || status === 'LITIGE_DEGRADATION') return 'text-red-600';
     if (status === 'EN_COURS') return 'text-blue-600';
     return 'text-amber-600';
   };
 
+  // Type de transaction selon l'utilisateur connecté
+  const getTransactionType = (transaction: any): 'EMPRUNT' | 'PRET' => {
+    if (!currentUserId) {
+      return 'PRET';
+    }
+
+    if (transaction?.emprunteurId === currentUserId) {
+      return 'EMPRUNT';
+    }
+
+    return 'PRET';
+  };
+
+  // Date principale d'affichage
+  const getTransactionDate = (transaction: any): string | undefined => {
+    if (transaction?.dateDebut) return transaction.dateDebut;
+    if (transaction?.dateFinReelle) return transaction.dateFinReelle;
+    if (transaction?.annonce?.dateCreation) return transaction.annonce.dateCreation;
+    return undefined;
+  };
+
+  const getTransactionCaution = (transaction: any): number => {
+    return Number(transaction?.montantCautionBloquee || 0);
+  };
+
   // Filtrer les transactions
   const filteredTransactions = transactions.filter((t) => {
+    const type = getTransactionType(t);
+
     if (filter === 'ALL') return true;
-    if (filter === 'EMPRUNTS') return t.type === 'EMPRUNT';
-    if (filter === 'PRETS') return t.type === 'PRET';
+    if (filter === 'EMPRUNTS') return type === 'EMPRUNT';
+    if (filter === 'PRETS') return type === 'PRET';
     return true;
   });
 
-  const empruntsCount = transactions.filter((t) => t.type === 'EMPRUNT').length;
-  const pretsCount = transactions.filter((t) => t.type === 'PRET').length;
+  const empruntsCount = transactions.filter((t) => getTransactionType(t) === 'EMPRUNT').length;
+  const pretsCount = transactions.filter((t) => getTransactionType(t) === 'PRET').length;
 
   if (isLoading) {
     return (
@@ -254,49 +323,55 @@ export default function TransactionsScreen() {
             </Text>
           </View>
         ) : (
-          filteredTransactions.map((transaction) => (
-            <Pressable
-              key={transaction.id}
-              onPress={() => {
-                setSelectedTransaction(transaction);
-                setShowDetailModal(true);
-              }}
-              className="bg-white rounded-2xl p-4 border border-outline-variant mb-3"
-            >
-              <View className="flex-row items-start justify-between mb-2">
-                <View className="flex-1">
-                  <Text className="text-sm font-bold text-primary" numberOfLines={1}>
-                    {transaction.annonce?.titre || 'Annonce'}
-                  </Text>
-                  <Text className="text-xs text-on-surface-variant mt-1">
-                    {transaction.type === 'EMPRUNT' ? 'Vous empruntez' : 'Vous pretez'}
-                  </Text>
-                </View>
-                <View className={`px-2 py-1 rounded-lg ${transaction.type === 'EMPRUNT' ? 'bg-blue-50' : 'bg-emerald-50'}`}>
-                  <Text className={`text-[10px] font-bold ${transaction.type === 'EMPRUNT' ? 'text-blue-700' : 'text-emerald-700'}`}>
-                    {transaction.type}
-                  </Text>
-                </View>
-              </View>
+          filteredTransactions.map((transaction) => {
+            const type = getTransactionType(transaction);
+            const caution = getTransactionCaution(transaction);
+            const dateValue = getTransactionDate(transaction);
 
-              <View className="flex-row items-center justify-between">
-                <Text className={`text-xs font-semibold ${getStatusColor(transaction.statut)}`}>
-                  {getStatusLabel(transaction.statut)}
-                </Text>
-                <Text className="text-xs text-on-surface-variant">
-                  {formatDate(transaction.dateCreation)}
-                </Text>
-              </View>
+            return (
+              <Pressable
+                key={transaction.id}
+                onPress={() => {
+                  setSelectedTransaction(transaction);
+                  setShowDetailModal(true);
+                }}
+                className="bg-white rounded-2xl p-4 border border-outline-variant mb-3"
+              >
+                <View className="flex-row items-start justify-between mb-2">
+                  <View className="flex-1">
+                    <Text className="text-sm font-bold text-primary" numberOfLines={1}>
+                      {transaction.annonce?.titre || 'Annonce'}
+                    </Text>
+                    <Text className="text-xs text-on-surface-variant mt-1">
+                      {type === 'EMPRUNT' ? 'Vous empruntez' : 'Vous pretez'}
+                    </Text>
+                  </View>
+                  <View className={`px-2 py-1 rounded-lg ${type === 'EMPRUNT' ? 'bg-blue-50' : 'bg-emerald-50'}`}>
+                    <Text className={`text-[10px] font-bold ${type === 'EMPRUNT' ? 'text-blue-700' : 'text-emerald-700'}`}>
+                      {type}
+                    </Text>
+                  </View>
+                </View>
 
-              {transaction.montantCaution ? (
-                <View className="mt-2 pt-2 border-t border-outline-variant/30">
+                <View className="flex-row items-center justify-between">
+                  <Text className={`text-xs font-semibold ${getStatusColor(transaction.statut)}`}>
+                    {getStatusLabel(transaction.statut)}
+                  </Text>
                   <Text className="text-xs text-on-surface-variant">
-                    Caution: {transaction.montantCaution} MAD
+                    {formatDate(dateValue)}
                   </Text>
                 </View>
-              ) : null}
-            </Pressable>
-          ))
+
+                {caution > 0 ? (
+                  <View className="mt-2 pt-2 border-t border-outline-variant/30">
+                    <Text className="text-xs text-on-surface-variant">
+                      Caution: {caution.toFixed(2)} MAD
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })
         )}
       </ScrollView>
 
@@ -314,6 +389,13 @@ export default function TransactionsScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {selectedTransaction ? (
                 <>
+                  {(() => {
+                    const type = getTransactionType(selectedTransaction);
+                    const caution = getTransactionCaution(selectedTransaction);
+                    const dateValue = getTransactionDate(selectedTransaction);
+
+                    return (
+                      <>
                   <View className="bg-surface rounded-xl p-3 mb-3">
                     <Text className="text-xs text-on-surface-variant">Annonce</Text>
                     <Text className="text-sm font-bold text-primary mt-1">
@@ -325,7 +407,7 @@ export default function TransactionsScreen() {
                     <View className="flex-1 bg-surface rounded-xl p-3">
                       <Text className="text-xs text-on-surface-variant">Type</Text>
                       <Text className="text-sm font-bold text-primary mt-1">
-                        {selectedTransaction.type}
+                        {type}
                       </Text>
                     </View>
                     <View className="flex-1 bg-surface rounded-xl p-3">
@@ -336,10 +418,10 @@ export default function TransactionsScreen() {
                     </View>
                   </View>
 
-                  {selectedTransaction.montantCaution ? (
+                  {caution > 0 ? (
                     <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
                       <Text className="text-xs text-amber-800">
-                        Caution bloquee: {selectedTransaction.montantCaution} MAD
+                        Caution bloquee: {caution.toFixed(2)} MAD
                       </Text>
                     </View>
                   ) : null}
@@ -347,12 +429,12 @@ export default function TransactionsScreen() {
                   <View className="bg-surface rounded-xl p-3 mb-3">
                     <Text className="text-xs text-on-surface-variant">Date creation</Text>
                     <Text className="text-sm font-semibold text-on-surface mt-1">
-                      {formatDate(selectedTransaction.dateCreation)}
+                      {formatDate(dateValue)}
                     </Text>
                   </View>
 
                   {/* Actions selon le statut */}
-                  {selectedTransaction.type === 'PRET' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
+                  {type === 'EMPRUNT' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
                     <Pressable
                       onPress={() => handleGenerateQRReception(selectedTransaction.id)}
                       className="bg-primary rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
@@ -362,7 +444,7 @@ export default function TransactionsScreen() {
                     </Pressable>
                   ) : null}
 
-                  {selectedTransaction.type === 'EMPRUNT' && selectedTransaction.statut === 'EN_COURS' ? (
+                  {type === 'PRET' && selectedTransaction.statut === 'EN_COURS' ? (
                     <Pressable
                       onPress={() => handleGenerateQRRetour(selectedTransaction.id)}
                       className="bg-primary rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
@@ -372,7 +454,7 @@ export default function TransactionsScreen() {
                     </Pressable>
                   ) : null}
 
-                  {selectedTransaction.type === 'PRET' && selectedTransaction.statut === 'EN_ATTENTE_RETOUR' ? (
+                  {type === 'PRET' && selectedTransaction.statut === 'EN_ATTENTE_RETOUR' ? (
                     <Pressable
                       onPress={() => handleFinalizeRetour(selectedTransaction.id)}
                       className="bg-emerald-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
@@ -382,7 +464,17 @@ export default function TransactionsScreen() {
                     </Pressable>
                   ) : null}
 
-                  {selectedTransaction.type === 'PRET' && selectedTransaction.statut === 'EN_COURS' ? (
+                  {type === 'EMPRUNT' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
+                    <Pressable
+                      onPress={() => handleAnnulerReservation(selectedTransaction.id)}
+                      className="bg-red-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
+                    >
+                      <Ionicons name="close-circle-outline" size={18} color="#fff" />
+                      <Text className="text-white font-bold">Annuler Reservation</Text>
+                    </Pressable>
+                  ) : null}
+
+                  {type === 'PRET' && selectedTransaction.statut === 'TERMINEE' ? (
                     <Pressable
                       onPress={() => handleSignalerDegradation(selectedTransaction.id)}
                       className="bg-red-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
@@ -404,6 +496,9 @@ export default function TransactionsScreen() {
                       <Text className="text-primary font-bold">Voir Annonce</Text>
                     </Pressable>
                   ) : null}
+                      </>
+                    );
+                  })()}
                 </>
               ) : null}
             </ScrollView>
@@ -433,8 +528,8 @@ export default function TransactionsScreen() {
                 />
                 <Text className="text-xs text-on-surface-variant text-center mt-3">
                   {qrType === 'reception'
-                    ? 'Montrez ce QR a l\'emprunteur pour valider la remise'
-                    : 'Montrez ce QR au preteur pour valider le retour'}
+                    ? 'Montrez ce QR au preteur pour valider la remise'
+                    : 'Montrez ce QR a l\'emprunteur pour valider le retour'}
                 </Text>
               </View>
             ) : (

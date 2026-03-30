@@ -361,7 +361,17 @@ export class ApiService {
       const message = await this.getErrorMessage(response, 'Failed to generate QR');
       throw new Error(message);
     }
-    return await response.json();
+    const data = await response.json();
+    if (typeof data === 'string') {
+      return { qrCode: data };
+    }
+    if (typeof data?.qrCode === 'string') {
+      return { qrCode: data.qrCode };
+    }
+    if (typeof data?.data === 'string') {
+      return { qrCode: data.data };
+    }
+    return { qrCode: '' };
   }
 
   // Valide la réception avec le QR code
@@ -477,6 +487,30 @@ export class ApiService {
     });
     if (!response.ok) {
       const message = await this.getErrorMessage(response, 'Failed to generate QR retour');
+      throw new Error(message);
+    }
+    const data = await response.json();
+    if (typeof data === 'string') {
+      return { qrCode: data };
+    }
+    if (typeof data?.qrCode === 'string') {
+      return { qrCode: data.qrCode };
+    }
+    if (typeof data?.data === 'string') {
+      return { qrCode: data.data };
+    }
+    return { qrCode: '' };
+  }
+
+  // Annule une reservation
+  static async annulerReservation(token: string, transactionId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/transactions/${transactionId}/annuler`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to cancel reservation');
       throw new Error(message);
     }
     return await response.json();
