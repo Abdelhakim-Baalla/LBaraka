@@ -6,6 +6,9 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Clipboard from 'expo-clipboard';
+import * as WebBrowser from 'expo-web-browser';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { ApiService } from '../../services/api';
 
 // Ecran transactions avec reservations et QR codes
@@ -49,6 +52,62 @@ export default function TransactionsScreen() {
       };
     }, [])
   );
+
+  // Télécharger et ouvrir le PDF
+  const handleDownloadPdf = async (transactionId: string) => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) return;
+
+      // Récupérer l'URL de l'API depuis les variables d'environnement
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+      if (!apiUrl) {
+        Alert.alert('Erreur', 'URL de l\'API non configurée');
+        return;
+      }
+
+      Alert.alert('Téléchargement', 'Téléchargement du contrat en cours...');
+
+      const url = `${apiUrl}/contrats/${transactionId}/pdf`;
+      const fileUri = FileSystem.documentDirectory + `contrat-${transactionId}.pdf`;
+      
+      console.log('Downloading from:', url);
+      
+      const downloadResult = await FileSystem.downloadAsync(
+        url,
+        fileUri,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log('Download result:', downloadResult);
+
+      if (downloadResult.status === 200) {
+        Alert.alert('Succès', 'Contrat téléchargé !', [
+          {
+            text: 'Ouvrir',
+            onPress: async () => {
+              const canShare = await Sharing.isAvailableAsync();
+              if (canShare) {
+                await Sharing.shareAsync(downloadResult.uri);
+              } else {
+                Alert.alert('Info', 'Fichier sauvegardé: ' + downloadResult.uri);
+              }
+            },
+          },
+          { text: 'OK' },
+        ]);
+      } else {
+        Alert.alert('Erreur', `Impossible de télécharger le PDF (status: ${downloadResult.status})`);
+      }
+    } catch (error: any) {
+      console.error('Download error:', error);
+      Alert.alert('Erreur', error?.message || 'Erreur lors du téléchargement');
+    }
+  };
 
   // Charger les transactions
   const loadTransactions = async (options?: { silent?: boolean }) => {
@@ -769,23 +828,19 @@ export default function TransactionsScreen() {
                     </View>
                   ) : null}
 
-                  {/* Contrat */}
-                  {contrat ? (
+                  {/* Contrat PDF */}
+                  {contrat && (contrat.urlPdfBilingue || contrat.urlPdf) ? (
                     <View className="bg-surface rounded-xl p-3 mb-3">
                       <Text className="text-xs text-on-surface-variant mb-2">Contrat</Text>
                       <Text className="text-xs text-on-surface">
-                        Numero: {contrat.numContrat}
+                        Numero: {contrat.numContrat || '-'}
                       </Text>
-                      {contrat.urlPdfBilingue ? (
-                        <Pressable
-                          onPress={() => {
-                            Alert.alert('Info', 'Telechargement PDF: ' + contrat.urlPdfBilingue);
-                          }}
-                          className="mt-2 bg-white border border-outline-variant rounded-lg py-2 items-center"
-                        >
-                          <Text className="text-primary font-semibold text-xs">Telecharger PDF</Text>
-                        </Pressable>
-                      ) : null}
+                      <Pressable
+                        onPress={() => handleDownloadPdf(selectedTransaction.id)}
+                        className="mt-2 bg-primary rounded-lg py-2 items-center"
+                      >
+                        <Text className="text-white font-semibold text-xs">Télécharger le contrat PDF</Text>
+                      </Pressable>
                     </View>
                   ) : null}
 
