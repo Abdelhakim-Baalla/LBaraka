@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
 import { ApiService } from '../../services/api';
 
 // Ecran portefeuille avec solde et historique
@@ -25,6 +26,8 @@ export default function WalletScreen() {
   const [error, setError] = useState('');
   const [errorRetrait, setErrorRetrait] = useState('');
   const [historyFilter, setHistoryFilter] = useState<'ALL' | 'CREDIT' | 'DEBIT'>('ALL');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -81,7 +84,9 @@ export default function WalletScreen() {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) return;
 
-      await ApiService.depositMoney(token, Number(montant));
+      const amount = Number(montant);
+
+      await ApiService.depositMoney(token, amount);
       setShowDepotModal(false);
       setMontant('');
       Alert.alert('Succès', 'Dépôt effectué avec succès.');
@@ -119,6 +124,58 @@ export default function WalletScreen() {
       setErrorRetrait(error?.message || 'Erreur lors du retrait');
     } finally {
       setIsWithdrawing(false);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        router.replace('/(auth)/sign-in');
+        return;
+      }
+
+      const data = await ApiService.exportWalletCsv(token);
+      const fileName = String(data?.fileName || `wallet-export-${Date.now()}.csv`);
+      const csvText = String(data?.csv || 'id,type,montant,date');
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+
+      await FileSystem.writeAsStringAsync(fileUri, csvText, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      Alert.alert('✅ Fichier sauvegardé', `${fileName}\n\nChemins: Documents de votre appareil`);
+    } catch (error: any) {
+      Alert.alert('Erreur', error?.message || 'Impossible d\'exporter le CSV');
+    }
+  };
+
+  const handleShowReceipt = async (mouvementId: string) => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        router.replace('/(auth)/sign-in');
+        return;
+      }
+
+      const data = await ApiService.getWalletMouvementReceiptPdf(token, mouvementId);
+      const base64 = String(data?.base64 || '');
+
+      if (!base64) {
+        Alert.alert('Info', 'Reçu PDF introuvable.');
+        return;
+      }
+
+      const fileName = String(data?.fileName || `recu-wallet-${Date.now()}.pdf`);
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+
+      await FileSystem.writeAsStringAsync(fileUri, base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      Alert.alert('📄 PDF généré', `${fileName}\\n\\nChemins: Documents de votre appareil`);
+    } catch (error: any) {
+      Alert.alert('Erreur', error?.message || 'Impossible de charger le reçu');
     }
   };
 
@@ -161,15 +218,30 @@ export default function WalletScreen() {
   const totalMouvements = mouvements.length;
 
   const filteredMouvements = mouvements.filter((item: any) => {
+    // Filtre par type (ALL, CREDIT, DEBIT)
     if (historyFilter === 'ALL') {
-      return true;
+      // continue
+    } else if (historyFilter === 'CREDIT') {
+      if (!isPositiveMouvement(item.type)) return false;
+    } else if (historyFilter === 'DEBIT') {
+      if (isPositiveMouvement(item.type)) return false;
     }
 
-    if (historyFilter === 'CREDIT') {
-      return isPositiveMouvement(item.type);
+    // Filtre par date
+    if (dateFrom || dateTo) {
+      const itemDate = new Date(item.date);
+      if (dateFrom) {
+        const fromDate = new Date(dateFrom);
+        if (itemDate < fromDate) return false;
+      }
+      if (dateTo) {
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (itemDate > toDate) return false;
+      }
     }
 
-    return !isPositiveMouvement(item.type);
+    return true;
   });
 
   const ratioBloque = soldeReel + soldeBloque > 0
@@ -330,6 +402,33 @@ export default function WalletScreen() {
           <Text className="text-xs text-amber-800 mt-1">3. Déblocage: la caution revient après validation du retour.</Text>
         </View>
 
+        <Pressable
+          onPress={handleExportCsv}
+          className="bg-white border border-outline-variant rounded-xl py-3.5 px-4 flex-row items-center justify-center gap-2 mb-3"
+        >
+          <Ionicons name="download-outline" size={18} color="#1B4332" />
+          <Text className="text-primary font-bold">Exporter mes mouvements (CSV)</Text>
+        </Pressable>
+
+        {/* Filtres avancés */}
+        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-3">
+          <Text className="text-sm font-semibold text-on-surface mb-3">Filtrer par date</Text>
+          <View className="flex-row gap-2">
+            <TextInput
+              value={dateFrom}
+              onChangeText={setDateFrom}
+              placeholder="Du (YYYY-MM-DD)"
+              className="flex-1 bg-surface border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface"
+            />
+            <TextInput
+              value={dateTo}
+              onChangeText={setDateTo}
+              placeholder="Au (YYYY-MM-DD)"
+              className="flex-1 bg-surface border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface"
+            />
+          </View>
+        </View>
+
         {/* Historique */}
         <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-3">
           <View className="flex-row items-center justify-between mb-3">
@@ -361,29 +460,37 @@ export default function WalletScreen() {
 
           {filteredMouvements.length > 0 ? (
             filteredMouvements.map((mouvement: any, index: number) => (
-              <View
-                key={mouvement.id || index}
-                className="py-3 border-b border-outline-variant/30 flex-row items-center justify-between"
-              >
-                <View className="flex-1 flex-row items-start gap-2">
-                  <Ionicons name={getMouvementIcon(mouvement.type)} size={16} color="#1B4332" style={{ marginTop: 2 }} />
-                  <View className="flex-1">
-                  <Text className="text-sm font-semibold text-on-surface">{getMouvementLabel(mouvement.type)}</Text>
-                  <Text className="text-xs text-on-surface-variant mt-1">
-                    {formatDate(mouvement.date)}
-                  </Text>
+              <View key={mouvement.id || index} className="py-3 border-b border-outline-variant/30">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1 flex-row items-start gap-2">
+                    <Ionicons name={getMouvementIcon(mouvement.type)} size={16} color="#1B4332" style={{ marginTop: 2 }} />
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold text-on-surface">{getMouvementLabel(mouvement.type)}</Text>
+                      <Text className="text-xs text-on-surface-variant mt-1">
+                        {formatDate(mouvement.date)}
+                      </Text>
+                    </View>
                   </View>
+                  <Text
+                    className={`text-sm font-bold ${
+                      isPositiveMouvement(mouvement.type)
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    {isPositiveMouvement(mouvement.type) ? '+' : '-'}
+                    {mouvement.montant?.toFixed(2)} MAD
+                  </Text>
                 </View>
-                <Text
-                  className={`text-sm font-bold ${
-                    isPositiveMouvement(mouvement.type)
-                      ? 'text-green-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  {isPositiveMouvement(mouvement.type) ? '+' : '-'}
-                  {mouvement.montant?.toFixed(2)} MAD
-                </Text>
+
+                <View className="flex-row justify-end mt-2">
+                  <Pressable
+                    onPress={() => handleShowReceipt(String(mouvement.id))}
+                    className="bg-primary/10 rounded-lg px-3 py-1.5"
+                  >
+                    <Text className="text-primary text-[11px] font-bold">Voir reçu</Text>
+                  </Pressable>
+                </View>
               </View>
             ))
           ) : (

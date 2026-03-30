@@ -1,8 +1,17 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, TypeMouvementWallet } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { UtilisateurService } from '../utilisateur/utilisateur.service';
+// @ts-ignore
+import * as html_to_pdf from 'html-pdf-node';
+
+type WalletHistoryFilters = {
+  type?: TypeMouvementWallet;
+  dateFrom?: string;
+  dateTo?: string;
+  limit?: string;
+};
 
 // Service pour gérer les wallets (portefeuilles)
 @Injectable()
@@ -23,14 +32,9 @@ export class WalletService {
   }
 
   // Récupérer le wallet avec l'historique des mouvements
-  async getMyWallet(userId: string) {
+  async getMyWallet(userId: string, filters?: WalletHistoryFilters) {
     const wallet = await this.getOrCreateWallet(userId);
-
-    const mouvements = await this.prisma.mouvementWallet.findMany({
-      where: { utilisateurId: userId },
-      orderBy: { date: 'desc' },
-      take: 20,
-    });
+    const mouvements = await this.getMouvementsWithFilters(userId, filters);
 
     return {
       wallet: this.toWalletResponse(wallet),
@@ -41,6 +45,159 @@ export class WalletService {
         date: m.date,
       })),
     };
+  }
+
+  // Exporter les mouvements en CSV
+  async exportMouvementsCsv(userId: string, filters?: WalletHistoryFilters) {
+    const mouvements = await this.getMouvementsWithFilters(userId, {
+      ...filters,
+      limit: undefined,
+    });
+
+    const header = 'id,type,montant,date';
+    const lines = mouvements.map((m) => {
+      const dateIso = new Date(m.date).toISOString();
+      return `${m.id},${m.type},${Number(m.montant).toFixed(2)},${dateIso}`;
+    });
+
+    const csv = [header, ...lines].join('\n');
+
+    return {
+      fileName: `wallet-mouvements-${Date.now()}.csv`,
+      contentType: 'text/csv',
+      total: mouvements.length,
+      csv,
+    };
+  }
+
+  // Générer un reçu d'un mouvement
+  async getMouvementReceipt(userId: string, mouvementId: string) {
+    const mouvement = await this.prisma.mouvementWallet.findFirst({
+      where: {
+        id: mouvementId,
+        utilisateurId: userId,
+      },
+      include: {
+        portefeuille: true,
+      },
+    });
+
+    if (!mouvement) {
+      throw new NotFoundException('Mouvement introuvable');
+    }
+
+    const reference = `LBW-${new Date(mouvement.date).getFullYear()}-${mouvement.id.slice(0, 8).toUpperCase()}`;
+
+    return {
+      receipt: {
+        reference,
+        mouvementId: mouvement.id,
+        type: mouvement.type,
+        montant: Number(mouvement.montant),
+        date: mouvement.date,
+        devise: mouvement.portefeuille.devise,
+        utilisateurId: mouvement.utilisateurId,
+      },
+    };
+  }
+
+  // Générer un reçu PDF d'un mouvement
+  async getMouvementReceiptPdf(userId: string, mouvementId: string) {
+    const data = await this.getMouvementReceipt(userId, mouvementId);
+    const receipt = data.receipt;
+
+    const html = `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #1f2937; }
+            .card { border: 1px solid #d1d5db; border-radius: 12px; padding: 16px; }
+            .title { font-size: 20px; font-weight: 700; color: #1B4332; margin-bottom: 12px; }
+            .line { margin: 8px 0; font-size: 14px; }
+            .label { font-weight: 700; }
+            .foot { margin-top: 16px; font-size: 12px; color: #6b7280; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="title">Reçu Wallet LBaraka</div>
+            <div class="line"><span class="label">Référence:</span> ${receipt.reference}</div>
+            <div class="line"><span class="label">Type:</span> ${receipt.type}</div>
+            <div class="line"><span class="label">Montant:</span> ${Number(receipt.montant).toFixed(2)} ${receipt.devise}</div>
+            <div class="line"><span class="label">Date:</span> ${new Date(receipt.date).toLocaleString('fr-FR')}</div>
+            <div class="line"><span class="label">Mouvement ID:</span> ${receipt.mouvementId}</div>
+            <div class="foot">Document généré automatiquement (mode démonstration).</div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const options = {
+      format: 'A4',
+      printBackground: true,
+    };
+
+    const file = { content: html };
+
+    const pdfBuffer: Buffer = await new Promise((resolve, reject) => {
+      html_to_pdf.generatePdf(file, options, (err: any, buffer: Buffer) => {
+        if (err) reject(err);
+        else resolve(buffer);
+      });
+    });
+
+    return {
+      fileName: `recu-wallet-${receipt.reference}.pdf`,
+      contentType: 'application/pdf',
+      base64: pdfBuffer.toString('base64'),
+      reference: receipt.reference,
+    };
+  }
+
+  // Récupérer les mouvements avec filtres simples
+  private async getMouvementsWithFilters(userId: string, filters?: WalletHistoryFilters) {
+    const dateFilter: any = {};
+
+    if (filters?.dateFrom) {
+      const parsedFrom = new Date(filters.dateFrom);
+      if (!isNaN(parsedFrom.getTime())) {
+        dateFilter.gte = parsedFrom;
+      }
+    }
+
+    if (filters?.dateTo) {
+      const parsedTo = new Date(filters.dateTo);
+      if (!isNaN(parsedTo.getTime())) {
+        dateFilter.lte = parsedTo;
+      }
+    }
+
+    let take = 20;
+    if (filters?.limit) {
+      const limitParsed = Number(filters.limit);
+      if (Number.isFinite(limitParsed) && limitParsed > 0) {
+        take = Math.min(limitParsed, 200);
+      }
+    }
+
+    const where: any = {
+      utilisateurId: userId,
+    };
+
+    if (filters?.type) {
+      where.type = filters.type;
+    }
+
+    if (Object.keys(dateFilter).length > 0) {
+      where.date = dateFilter;
+    }
+
+    return this.prisma.mouvementWallet.findMany({
+      where,
+      orderBy: { date: 'desc' },
+      take,
+    });
   }
 
   // Déposer de l'argent
