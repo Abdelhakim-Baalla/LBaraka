@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, TextInput, Modal, Alert, ImageBackground } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
@@ -311,21 +311,44 @@ export default function WalletScreen() {
         </View>
 
         {/* Carte Solde Hero */}
-        <View className="bg-primary rounded-2xl p-4 mb-4">
-          <Text className="text-white/80 text-xs font-semibold uppercase">Solde principal</Text>
-          <Text className="text-white text-3xl font-black mt-1">{soldeReel.toFixed(2)} MAD</Text>
-          <Text className="text-white/80 text-xs mt-1">Caution bloquée: {soldeBloque.toFixed(2)} MAD</Text>
+        <ImageBackground
+          source={{ uri: 'https://images.pexels.com/photos/10531120/pexels-photo-10531120.jpeg' }}
+          resizeMode="cover"
+          style={{
+            borderRadius: 16,
+            marginBottom: 16,
+            overflow: 'hidden',
+            minHeight: 150,
+          }}
+          imageStyle={{ borderRadius: 16 }}
+        >
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              backgroundColor: 'rgba(27, 67, 50, 0.32)',
+            }}
+          />
 
-          <View className="mt-3">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-[11px] text-white/85">Part du solde bloqué</Text>
-              <Text className="text-[11px] text-white font-bold">{ratioBloque}%</Text>
-            </View>
-            <View className="h-2 rounded-full bg-white/25 overflow-hidden">
-              <View className="h-2 rounded-full bg-white" style={{ width: `${ratioBloque}%` }} />
+          <View style={{ padding: 16 }}>
+            <Text className="text-white/80 text-xs font-semibold uppercase">Solde principal</Text>
+            <Text className="text-white text-3xl font-black mt-1">{soldeReel.toFixed(2)} MAD</Text>
+            <Text className="text-white/80 text-xs mt-1">Caution bloquée: {soldeBloque.toFixed(2)} MAD</Text>
+
+            <View className="mt-3">
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className="text-[11px] text-white/85">Part du solde bloqué</Text>
+                <Text className="text-[11px] text-white font-bold">{ratioBloque}%</Text>
+              </View>
+              <View className="h-2 rounded-full bg-white/25 overflow-hidden">
+                <View className="h-2 rounded-full bg-white" style={{ width: `${ratioBloque}%` }} />
+              </View>
             </View>
           </View>
-        </View>
+        </ImageBackground>
 
         {/* Mini stats */}
         <View className="flex-row gap-2 mb-4">
