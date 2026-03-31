@@ -717,4 +717,67 @@ export class ApiService {
     }
     return await response.json();
   }
+
+  // ========== ADMIN ENDPOINTS ==========
+
+  // Récupérer les statistiques admin
+  static async getAdminStats(token: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/admin/stats`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch admin stats');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Récupérer la liste des utilisateurs (admin)
+  static async getAdminUsers(token: string, page: number = 1, limit: number = 10, search?: string) {
+    const baseUrl = this.getBaseUrl();
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    if (search) params.append('search', search);
+
+    const response = await fetch(`${baseUrl}/admin/users?${params.toString()}`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch users');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Modifier le rôle d'un utilisateur (admin)
+  static async updateUserRole(token: string, userId: string, role: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/admin/users/${userId}/role`, {
+      method: 'PUT',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ role })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to update user role');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Bloquer/débloquer un utilisateur (admin)
+  static async updateUserStatus(token: string, userId: string, isBlocked: boolean) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/admin/users/${userId}/status`, {
+      method: 'PUT',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify({ isBlocked })
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to update user status');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
 }

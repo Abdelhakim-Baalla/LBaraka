@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInUp, FadeInRight } from 'react-native-reanimated';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -101,6 +101,7 @@ export default function HomeScreen() {
   const [userLocation, setUserLocation] = useState<string>('Ma localité');
   const [showAllList, setShowAllList] = useState(false);
   const [openedFaqIndex, setOpenedFaqIndex] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Formater une date en français
   const formatDate = (value?: string) => {
@@ -114,8 +115,21 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
+      checkAdminRole();
     }, [selectedCategory])
   );
+
+  const checkAdminRole = async () => {
+    try {
+      const userRaw = await AsyncStorage.getItem('user');
+      if (userRaw) {
+        const parsedUser = JSON.parse(userRaw);
+        setIsAdmin(parsedUser?.role === 'ADMINISTRATEUR');
+      }
+    } catch (error) {
+      console.error('Error checking admin role:', error);
+    }
+  };
 
   // Charger les annonces et les données utilisateur
   const loadData = async () => {
@@ -626,6 +640,22 @@ export default function HomeScreen() {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
+
+      {/* Admin Button */}
+      {isAdmin && (
+        <Animated.View
+          entering={FadeInRight.delay(500).duration(600)}
+          className="absolute bottom-40 right-5"
+        >
+          <Pressable
+            onPress={() => router.push('/(admin)/dashboard')}
+            className="bg-blue-900 rounded-full p-4 shadow-lg flex-row items-center gap-2"
+          >
+            <Ionicons name="shield-checkmark" size={20} color="#fff" />
+            <Text className="text-white font-bold text-xs">Admin</Text>
+          </Pressable>
+        </Animated.View>
+      )}
     </View>
   );
 }
