@@ -31,6 +31,9 @@ jobs:
       env:
         DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
 
+    - name: Run unit tests
+      run: npm run test
+
     - name: Build backend
       run: npm run build
 
