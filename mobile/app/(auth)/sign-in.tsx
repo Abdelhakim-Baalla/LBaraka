@@ -61,7 +61,13 @@ export default function SignIn() {
         await AsyncStorage.setItem('user', JSON.stringify(result.utilisateur || result.user));
         await AsyncStorage.setItem('hasSeenOnboarding', 'true');
 
-        router.replace('/(tabs)/home');
+        // Redirection selon le rôle
+        const user = result.utilisateur || result.user;
+        if (user?.role === 'ADMINISTRATEUR') {
+          router.replace('/(admin)/dashboard');
+        } else {
+          router.replace('/(tabs)/home');
+        }
       } else {
         setError('Connexion échouée: Aucun token reçu');
       }
