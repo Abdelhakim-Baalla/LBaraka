@@ -1,17 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { StorageService } from './storage.service';
+import { ConfigService } from '@nestjs/config';
+
+jest.mock('minio', () => ({
+  Client: jest.fn().mockImplementation(() => ({
+    bucketExists: jest.fn().mockResolvedValue(true),
+    putObject: jest.fn().mockResolvedValue({}),
+  })),
+}));
 
 describe('StorageService', () => {
   let service: StorageService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [StorageService],
+      providers: [
+        StorageService,
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('localhost') } },
+      ],
     }).compile();
     service = module.get<StorageService>(StorageService);
-    // Mock the upload method to prevent S3 credentials execution
     service.uploadBuffer = jest.fn().mockResolvedValue('http://localhost:9000/b/f.jpg');
-    service.deleteFile = jest.fn().mockResolvedValue(true);
   });
 
   it('should be defined', () => expect(service).toBeDefined());

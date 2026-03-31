@@ -1,13 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TransactionController } from './transaction.controller';
+import { TransactionService } from './transaction.service';
 
-// Tests pour TransactionController
 describe('TransactionController', () => {
   let controller: TransactionController;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TransactionController],
+      providers: [{ provide: TransactionService, useValue: { getMyTransactions: jest.fn(), reserve: jest.fn() } }],
     }).compile();
 
     controller = module.get<TransactionController>(TransactionController);

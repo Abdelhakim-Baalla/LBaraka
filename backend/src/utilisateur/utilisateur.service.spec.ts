@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UtilisateurService } from './utilisateur.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 
 jest.mock('bcrypt', () => ({ hash: jest.fn().mockResolvedValue('hashed') }));
 
@@ -17,7 +18,11 @@ describe('UtilisateurService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UtilisateurService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        UtilisateurService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: NotificationService, useValue: { create: jest.fn() } },
+      ],
     }).compile();
     service = module.get<UtilisateurService>(UtilisateurService);
   });
