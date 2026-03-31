@@ -18,7 +18,8 @@ This pipeline is designed to ensure the stability of the `main` and `develop` br
      2. Sets up the Node.js 20 environment.
      3. Installs package dependencies specifically in the `backend/` directory (`npm install`).
      4. Generates the Prisma Client (`npx prisma generate`).
-     5. Builds the NestJS backend application (`npm run build`).
+     5. Runs unit tests (`npm run test`).
+     6. Builds the NestJS backend application (`npm run build`).
 
 2. **`docker-build`**
    - **Environment:** Ubuntu (latest version)
