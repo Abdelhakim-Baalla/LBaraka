@@ -18,7 +18,18 @@ This pipeline is designed to ensure the stability of the `main` and `develop` br
      2. Sets up the Node.js 20 environment.
      3. Installs package dependencies specifically in the `backend/` directory (`npm install`).
      4. Generates the Prisma Client (`npx prisma generate`).
-     5. Runs unit tests (`npm run test`).
+     5. Runs full unit tests (`npm run test`) validating:
+        - **AuthService**: Password hashing, valid login flow, invalid login exceptions.
+        - **WalletService**: Wallet history retrieval, deposit movement creation, shortage logic checks on blockage.
+        - **AdminService**: Global statistic counters mapping.
+        - **AnnonceService**: Valid announcement lists fetch execution.
+        - **ChatService**: Correct conversation querying logic using MongoDB.
+        - **ContratService**: User contract parsing and retrieval.
+        - **NotificationService**: Correct counts for user alert tracking.
+        - **PointRelaisService**: Point retrieval mock operations.
+        - **StorageService**: Safe fallback implementations avoiding live S3 executions.
+        - **TransactionService**: Secure processing flows execution tracking.
+        - **UtilisateurService**: User lookup logic and secure data sanitation checks.
      6. Builds the NestJS backend application (`npm run build`).
 
 2. **`docker-build`**
