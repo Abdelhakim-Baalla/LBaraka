@@ -80,8 +80,8 @@ export default function AnnonceDetailsScreen() {
       }
 
       await ApiService.reserveAnnonce(token, String(params.id || ''));
-      Alert.alert('Succès', 'Annonce réservée. Vérifiez l\'onglet Transactions.', [
-        { text: 'Voir transactions', onPress: () => router.push('/(tabs)/transactions') },
+      Alert.alert('Succès', 'Annonce réservée avec succès.', [
+        { text: 'OK', onPress: () => router.push('/(tabs)/transactions') },
       ]);
     } catch (error: any) {
       const rawMessage = String(error?.message || 'Impossible de réserver cette annonce.');
@@ -271,14 +271,20 @@ export default function AnnonceDetailsScreen() {
               <Text className="text-white font-bold">Discuter avec le propriétaire</Text>
             </Pressable>
 
-            <Pressable
-              onPress={reserveAnnonce}
-              disabled={isReserving}
-              className={`rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 ${isReserving ? 'bg-primary/60' : 'bg-primary'}`}
-            >
-              {isReserving ? <ActivityIndicator color="#fff" /> : <Ionicons name="bag-check-outline" size={18} color="#fff" />}
-              <Text className="text-white font-bold">{isReserving ? 'Réservation...' : 'Réserver cette annonce'}</Text>
-            </Pressable>
+            {annonce.statut === 'PUBLIEE' ? (
+              <Pressable
+                onPress={reserveAnnonce}
+                disabled={isReserving}
+                className={`rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 ${isReserving ? 'bg-primary/60' : 'bg-primary'}`}
+              >
+                {isReserving ? <ActivityIndicator color="#fff" /> : <Ionicons name="bag-check-outline" size={18} color="#fff" />}
+                <Text className="text-white font-bold">{isReserving ? 'Réservation...' : 'Réserver cette annonce'}</Text>
+              </Pressable>
+            ) : (
+              <View className="bg-amber-50 border border-amber-200 rounded-xl py-3.5 items-center justify-center mb-3">
+                <Text className="text-amber-800 font-bold">Annonce indisponible (Réservée/Terminée)</Text>
+              </View>
+            )}
 
             {reservationError ? (
               <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3">

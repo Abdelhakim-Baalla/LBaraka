@@ -22,6 +22,7 @@ export default function AdminUserDetails() {
     adresseComplete: '',
     ville: '',
     dateNaissance: '',
+    role: '',
   });
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export default function AdminUserDetails() {
         adresseComplete: data.profil?.adresseComplete || '',
         ville: data.profil?.ville || '',
         dateNaissance: data.profil?.dateNaissance ? new Date(data.profil.dateNaissance).toISOString().split('T')[0] : '',
+        role: data.role || '',
       });
     } catch (error) {
       console.error('Error loading user details:', error);
@@ -60,7 +62,19 @@ export default function AdminUserDetails() {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) return;
 
-      await ApiService.updateAdminUserProfile(token, id as string, formData);
+      if (formData.role && formData.role !== user.role) {
+        await ApiService.updateUserRole(token, id as string, formData.role);
+      }
+
+      await ApiService.updateAdminUserProfile(token, id as string, {
+        nom: formData.nom,
+        prenom: formData.prenom,
+        cin: formData.cin,
+        telephone: formData.telephone,
+        adresseComplete: formData.adresseComplete,
+        ville: formData.ville,
+        dateNaissance: formData.dateNaissance
+      });
       Alert.alert('Succès', 'Profil mis à jour');
       setIsEditing(false);
       loadUserDetails();
@@ -148,8 +162,22 @@ export default function AdminUserDetails() {
 
           <View className="gap-4">
             <View>
-              <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-1">Role</Text>
-              <Text className="text-base font-medium text-[#c0c1ff]">{user.role}</Text>
+              <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-2">Role</Text>
+              {isEditing ? (
+                <View className="flex-row gap-2">
+                  {['UTILISATEUR', 'PARTENAIRE', 'ADMINISTRATEUR'].map((r) => (
+                    <Pressable
+                      key={r}
+                      onPress={() => setFormData({ ...formData, role: r })}
+                      className={`px-3 py-2 rounded-sm border ${formData.role === r ? 'bg-[#c0c1ff]/20 border-[#c0c1ff]' : 'border-[#464554]/20'}`}
+                    >
+                      <Text className={`text-[10px] font-bold ${formData.role === r ? 'text-[#c0c1ff]' : 'text-[#908fa0]'}`}>{r}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text className="text-base font-medium text-[#c0c1ff]">{user.role}</Text>
+              )}
             </View>
             <View>
               <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-1">Registered</Text>
@@ -257,6 +285,7 @@ export default function AdminUserDetails() {
                     adresseComplete: user.profil?.adresseComplete || '',
                     ville: user.profil?.ville || '',
                     dateNaissance: user.profil?.dateNaissance ? new Date(user.profil.dateNaissance).toISOString().split('T')[0] : '',
+                    role: user.role || '',
                   });
                 }}
                 className="flex-1 bg-[#353534] rounded-sm py-4 items-center"

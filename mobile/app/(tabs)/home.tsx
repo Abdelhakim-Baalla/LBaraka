@@ -163,6 +163,11 @@ export default function HomeScreen() {
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
   const filteredAnnonces = annonces.filter((annonce) => {
+    // Ne pas afficher les annonces non publiées (réservées, terminées, etc.)
+    if (annonce.statut && annonce.statut !== 'PUBLIEE') {
+      return false;
+    }
+
     if (!searchText.trim()) {
       return true;
     }
