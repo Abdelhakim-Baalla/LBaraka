@@ -24,7 +24,7 @@ jobs:
         node-version: '20'
 
     - name: Install dependencies
-      run: npm install
+      run: npm install --legacy-peer-deps
 
     - name: Generate Prisma Client
       run: npx prisma generate
@@ -67,7 +67,7 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Publish to EAS Build (Android)
         run: eas build --platform android --non-interactive
