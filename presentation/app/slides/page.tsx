@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
+import Image from 'next/image'
 import { SlideIntro } from './slide-intro'
 import { SlideSommaire } from './slide-sommaire'
 import { SlideProblematique } from './slide-problematique'
@@ -13,6 +14,7 @@ import { SlideDemo } from './slide-demo'
 import { SlideDevops } from './slide-devops'
 import { SlideSecurite } from './slide-securite'
 import { SlideConclusion } from './slide-conclusion'
+import { SlideGitflow } from './slide-gitflow'
 
 /* ====== CURSOR COMPONENT ====== */
 function Cursor() {
@@ -157,15 +159,20 @@ function Shapes() {
 
 /* ====== PARTICLES ====== */
 function Particles() {
-  const [particles] = useState(() =>
-    Array.from({ length: 30 }, (_, i) => ({
-      id: i,
-      size: Math.random() * 3 + 1,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      delay: Math.random() * 10,
-    }))
-  )
+  const [particles, setParticles] = useState<any[]>([])
+
+  useEffect(() => {
+    setParticles(
+      Array.from({ length: 30 }, (_, i) => ({
+        id: i,
+        size: Math.random() * 3 + 1,
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        delay: Math.random() * 10,
+        duration: 15 + Math.random() * 10,
+      }))
+    )
+  }, [])
 
   return (
     <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 1 }}>
@@ -179,7 +186,7 @@ function Particles() {
             left: `${p.left}%`,
             top: `${p.top}%`,
             animationDelay: `${p.delay}s`,
-            animationDuration: `${15 + Math.random() * 10}s`,
+            animationDuration: `${p.duration}s`,
           }}
         />
       ))}
@@ -202,6 +209,7 @@ export default function SlidesPage() {
     { component: <SlideProblematique />, title: 'Problématique' },
     { component: <SlideSolution />, title: 'Solution' },
     { component: <SlidePlanification />, title: 'Planification' },
+    { component: <SlideGitflow />, title: 'GitFlow & CI' },
     { component: <SlideTechnologies />, title: 'Technologies' },
     { component: <SlideArchitecture />, title: 'Architecture' },
     { component: <SlideDiagrammes />, title: 'Diagrammes UML' },
@@ -343,6 +351,21 @@ export default function SlidesPage() {
       {/* Slide container */}
       <div className={`relative z-10 ${getTransitionClass()}`}>
         {slides[currentSlide].component}
+      </div>
+
+      {/* Global Watermark (Hidden on Intro Slide) */}
+      <div 
+        className={`fixed top-8 left-8 z-[100] pointer-events-none transition-all duration-700 ${
+          currentSlide === 0 || isFullscreen ? 'opacity-0 -translate-y-4' : 'opacity-100 translate-y-0 drop-shadow-sm'
+        }`}
+      >
+        <Image 
+          src="/logo-light.png" 
+          alt="LBaraka" 
+          width={180} 
+          height={60} 
+          className="object-contain"
+        />
       </div>
 
       {/* Click zones for navigation */}

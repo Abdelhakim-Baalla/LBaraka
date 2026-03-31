@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Icons } from './icons'
+import Image from 'next/image'
 
 export function SlideIntro() {
   const [isVisible, setIsVisible] = useState(false)
@@ -19,12 +20,13 @@ export function SlideIntro() {
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
           {/* LEFT: Title */}
           <div className={`lg:col-span-1 ${isVisible ? 'animate-fadeInLeft' : 'opacity-0'}`}>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black text-white text-[10px] font-medium tracking-wider uppercase mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black text-white text-[10px] font-medium tracking-wider uppercase mb-6 shadow-md">
               <Icons.award className="w-3 h-3" />
               PROJET DE FIN D{"'"}ANNÉE
             </div>
+            
             <h1 className="text-6xl lg:text-7xl font-black tracking-[-0.04em] leading-[0.85] mb-2">
-              <span className="block">LBaraka</span>
+              <span className="block text-black">LBaraka</span>
               <span className="block text-black/20 text-5xl lg:text-6xl mt-1">Solidaire</span>
             </h1>
             <div className="divider my-5" />
@@ -43,8 +45,13 @@ export function SlideIntro() {
               <div className="absolute inset-12 rounded-full border border-black/[0.12] shape-float-reverse" />
               {/* Center icon */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-20 h-20 bg-black rounded-2xl flex items-center justify-center shadow-2xl shadow-black/30">
-                  <Icons.heart className="w-10 h-10 text-white" />
+                <div className="relative w-44 h-44 rounded-[3rem] shadow-2xl shadow-black/30 overflow-hidden transform hover:scale-105 transition-transform duration-500 ring-4 ring-white/50">
+                  <Image 
+                    src="/app-icon.png" 
+                    alt="LBaraka App Icon" 
+                    fill 
+                    className="object-cover"
+                  />
                 </div>
               </div>
               {/* Floating badges */}

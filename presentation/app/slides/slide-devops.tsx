@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Icons } from './icons'
 import { SyntaxHighlighter } from './syntax-highlighter'
+import Image from 'next/image'
 
 export function SlideDevops() {
   const [isVisible, setIsVisible] = useState(false)
@@ -112,60 +113,21 @@ services:
             </div>
           </div>
 
-          {/* RIGHT: Architecture diagram */}
+          {/* RIGHT: EAS Build Image */}
           <div className={`flex flex-col ${isVisible ? 'animate-fadeInRight stagger-3' : 'opacity-0'}`}>
             <div className="flex items-center gap-2 mb-2">
               <div className="w-6 h-6 rounded-md bg-amber-100 flex items-center justify-center">
-                <Icons.layout className="w-3 h-3 text-amber-500" />
+                <Icons.smartphone className="w-3 h-3 text-amber-500" />
               </div>
-              <h3 className="font-semibold text-sm">Architecture globale</h3>
+              <h3 className="font-semibold text-sm">Expo Application Services (EAS)</h3>
             </div>
-            <div className="bg-white rounded-xl p-4 border border-gray-100 flex-1 flex flex-col justify-center">
-              {/* Architecture layers */}
-              <div className="space-y-3">
-                {/* Client layer */}
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
-                  <p className="text-[10px] font-bold text-emerald-700">📱 Client Mobile</p>
-                  <p className="text-[8px] text-emerald-600">React Native + Expo SDK 54</p>
-                </div>
-
-                <div className="flex justify-center">
-                  <Icons.arrowRight className="w-4 h-4 text-gray-300 rotate-90" />
-                </div>
-
-                {/* API layer */}
-                <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-center">
-                  <p className="text-[10px] font-bold text-blue-700">⚡ API REST + WebSocket</p>
-                  <p className="text-[8px] text-blue-600">NestJS v11 (Port 3000)</p>
-                </div>
-
-                <div className="flex justify-center">
-                  <Icons.arrowRight className="w-4 h-4 text-gray-300 rotate-90" />
-                </div>
-
-                {/* Data layer */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 rounded-lg bg-purple-50 border border-purple-100 text-center">
-                    <p className="text-[9px] font-bold text-purple-700">🐘 PostgreSQL</p>
-                    <p className="text-[7px] text-purple-600">Prisma ORM</p>
-                  </div>
-                  <div className="p-2 rounded-lg bg-green-50 border border-green-100 text-center">
-                    <p className="text-[9px] font-bold text-green-700">🍃 MongoDB</p>
-                    <p className="text-[7px] text-green-600">Mongoose ODM</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 rounded-lg bg-red-50 border border-red-100 text-center">
-                    <p className="text-[9px] font-bold text-red-700">⚡ Redis</p>
-                    <p className="text-[7px] text-red-600">Cache</p>
-                  </div>
-                  <div className="p-2 rounded-lg bg-amber-50 border border-amber-100 text-center">
-                    <p className="text-[9px] font-bold text-amber-700">📁 MinIO</p>
-                    <p className="text-[7px] text-amber-600">S3 Storage</p>
-                  </div>
-                </div>
-              </div>
+            <div className="relative flex-1 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden group shadow-inner">
+              <Image 
+                src="/expo-eas.png" 
+                alt="EAS Build" 
+                fill 
+                className="object-contain p-2 group-hover:scale-[1.02] transition-transform duration-500"
+              />
             </div>
           </div>
         </div>
