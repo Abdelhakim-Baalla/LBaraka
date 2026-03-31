@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "LBaraka - Partage Solidaire",
-    "slug": "lbaraka-mobile",
+    "slug": "lbaraka",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/lbaraka-light.png",
@@ -48,6 +48,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d5f2bda3-ddee-4f5d-9706-d2d88942fe47"
+      }
+    },
+    "owner": "abdelhakimbaalla"
   }
 }
