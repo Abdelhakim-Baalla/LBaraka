@@ -1,0 +1,269 @@
+@startuml LBaraka-UseCases
+
+left to right direction
+scale 1.0
+
+skinparam backgroundColor #FAFAFA
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #4A90D9
+  ArrowColor #888888
+  FontSize 11
+}
+skinparam actor {
+  BackgroundColor #E8F4FD
+  BorderColor #2C7BE5
+  FontColor #1a1a1a
+  FontSize 12
+}
+skinparam rectangle {
+  BackgroundColor #F0F7FF
+  BorderColor #2C7BE5
+  FontStyle bold
+  FontSize 13
+}
+skinparam package {
+  BackgroundColor #FAFEFF
+  BorderColor #90CAF9
+  FontStyle bold
+  FontSize 11
+}
+
+' ══════════════════════════════════════════
+'  ACTEURS  (gauche)
+' ══════════════════════════════════════════
+
+actor "Citoyen"        as CITOYEN
+actor "Partenaire"     as PARTENAIRE
+actor "Administrateur" as ADMIN
+actor "Système\n(CRON)" as SYSTEM #LightGray
+
+' ══════════════════════════════════════════
+'  SYSTÈME GLOBAL
+' ══════════════════════════════════════════
+
+rectangle "  Système LBaraka  " {
+
+  ' ── COLONNE 1 ──
+  rectangle " " as COL1 #transparent;line:transparent {
+
+    package "Authentification" {
+      usecase "S'inscrire"              as UC_REGISTER
+      usecase "Se connecter"            as UC_LOGIN
+      usecase "Se déconnecter"          as UC_LOGOUT
+      usecase "Voir mon profil (me)"    as UC_ME
+    }
+
+    package "Profil" {
+      usecase "Voir mon profil complet"           as UC_GET_PROFIL
+      usecase "Modifier mon profil"               as UC_UPDATE_PROFIL
+      usecase "Voir profil public"                as UC_PUBLIC_PROFIL
+      usecase "Gagner des badges"                 as UC_BADGES
+      usecase "Monter de palier (score)"          as UC_PALIER
+    }
+
+    package "Annonces" {
+      usecase "Créer une annonce"                 as UC_CREATE_ANNONCE
+      usecase "Créer annonce Food Rescue"         as UC_CREATE_FOOD_RESCUE
+      usecase "Voir toutes les annonces"          as UC_LIST_ANNONCES
+      usecase "Voir mes annonces"                 as UC_MY_ANNONCES
+      usecase "Voir une annonce par ID"           as UC_GET_ANNONCE
+      usecase "Modifier une annonce"              as UC_UPDATE_ANNONCE
+      usecase "Supprimer une annonce"             as UC_DELETE_ANNONCE
+      usecase "Voir annonces sur la carte"        as UC_MAP_ANNONCES
+      usecase "Voir les Food Rescue actifs"       as UC_LIST_FOOD_RESCUE
+      usecase "Expirer annonces (auto)"           as UC_EXPIRE_ANNONCES
+    }
+
+    package "Transactions" {
+      usecase "Réserver une annonce"              as UC_RESERVE
+      usecase "Annuler une réservation"           as UC_ANNULER
+      usecase "Générer QR code réception"         as UC_QR_RECEPTION
+      usecase "Valider QR code réception"         as UC_VALIDATE_RECEPTION
+      usecase "Générer QR code retour"            as UC_QR_RETOUR
+      usecase "Valider QR code retour"            as UC_VALIDATE_RETOUR
+      usecase "Confirmer le retour (finaliser)"   as UC_VALIDER_RETOUR
+      usecase "Signaler une dégradation"          as UC_DEGRADATION
+      usecase "Voir mes transactions"             as UC_MY_TRANSACTIONS
+    }
+
+  }
+
+  ' ── COLONNE 2 ──
+  rectangle "  " as COL2 #transparent;line:transparent {
+
+    package "Wallet" {
+      usecase "Voir mon portefeuille"             as UC_WALLET_ME
+      usecase "Déposer de l'argent"               as UC_DEPOT
+      usecase "Retirer de l'argent"               as UC_RETRAIT
+      usecase "Bloquer une caution"               as UC_BLOCAGE
+      usecase "Débloquer une caution"             as UC_DEBLOCAGE
+      usecase "Exporter mouvements (CSV)"         as UC_EXPORT_CSV
+      usecase "Générer reçu d'un mouvement"       as UC_RECU
+      usecase "Générer reçu PDF"                  as UC_RECU_PDF
+    }
+
+    package "Contrats" {
+      usecase "Générer un contrat PDF"            as UC_GEN_CONTRAT
+      usecase "Voir contrat d'une transaction"    as UC_GET_CONTRAT
+      usecase "Télécharger le PDF du contrat"     as UC_DL_CONTRAT
+    }
+
+    package "Notifications" {
+      usecase "Voir mes notifications"            as UC_LIST_NOTIFS
+      usecase "Marquer une notif comme lue"       as UC_READ_NOTIF
+      usecase "Marquer toutes comme lues"         as UC_READ_ALL_NOTIFS
+      usecase "Voir le nombre de non-lues"        as UC_COUNT_NOTIFS
+      usecase "Recevoir alerte Food Rescue (VIP)" as UC_NOTIF_FOOD_RESCUE
+      usecase "Recevoir notification système"     as UC_NOTIF_SYSTEM
+    }
+
+    package "Chat" {
+      usecase "Envoyer un message texte"          as UC_SEND_TEXT
+      usecase "Envoyer un message vocal"          as UC_SEND_VOICE
+      usecase "Voir une conversation"             as UC_GET_CONVO
+      usecase "Voir mes conversations"            as UC_MY_CONVOS
+    }
+
+  }
+
+  ' ── COLONNE 3 ──
+  rectangle "   " as COL3 #transparent;line:transparent {
+
+    package "Points Relais" {
+      usecase "Voir tous les points relais"       as UC_LIST_RELAIS
+      usecase "Voir les points relais proches"    as UC_NEARBY_RELAIS
+      usecase "Voir les types de relais"          as UC_TYPES_RELAIS
+      usecase "Voir un point relais par ID"       as UC_GET_RELAIS
+      usecase "Créer un point relais"             as UC_CREATE_RELAIS
+      usecase "Modifier un point relais"          as UC_UPDATE_RELAIS
+      usecase "Supprimer un point relais"         as UC_DELETE_RELAIS
+    }
+
+    package "Administration" {
+      usecase "Voir les statistiques globales"    as UC_STATS
+      usecase "Lister tous les utilisateurs"      as UC_ADMIN_USERS
+      usecase "Voir un utilisateur par ID"        as UC_ADMIN_USER_DETAIL
+      usecase "Modifier profil utilisateur"       as UC_ADMIN_UPDATE_PROFIL
+      usecase "Modifier rôle utilisateur"         as UC_ADMIN_ROLE
+      usecase "Bloquer / Débloquer utilisateur"   as UC_ADMIN_BLOCK
+      usecase "Supprimer un utilisateur"          as UC_ADMIN_DELETE_USER
+      usecase "Lister toutes les transactions"    as UC_ADMIN_TRANSACTIONS
+      usecase "Voir une transaction par ID"       as UC_ADMIN_TX_DETAIL
+      usecase "Lister toutes les annonces"        as UC_ADMIN_ANNONCES
+      usecase "Supprimer une annonce (admin)"     as UC_ADMIN_DELETE_ANNONCE
+      usecase "Voir tous les points relais"       as UC_ADMIN_RELAIS
+    }
+
+    package "Stockage" {
+      usecase "Accéder à une image (proxy)"       as UC_GET_IMAGE
+      usecase "Accéder à un PDF (proxy)"          as UC_GET_PDF
+    }
+
+    package "Système CRON" {
+      usecase "Expirer annonces automatiquement"  as UC_CRON_EXPIRE
+      usecase "Générer contrat auto"              as UC_CRON_CONTRAT
+      usecase "Attribuer badges auto"             as UC_CRON_BADGES
+      usecase "Mettre à jour palier"              as UC_CRON_PALIER
+      usecase "Bloquer caution (auto)"            as UC_CRON_BLOCAGE
+      usecase "Débloquer caution (auto)"          as UC_CRON_DEBLOCAGE
+      usecase "Envoyer notification système"      as UC_CRON_NOTIF
+    }
+
+  }
+
+}
+
+' ══════════════════════════════════════════
+'  RELATIONS — CITOYEN
+' ══════════════════════════════════════════
+
+CITOYEN --> UC_REGISTER
+CITOYEN --> UC_LOGIN
+CITOYEN --> UC_LOGOUT
+CITOYEN --> UC_ME
+CITOYEN --> UC_GET_PROFIL
+CITOYEN --> UC_UPDATE_PROFIL
+CITOYEN --> UC_PUBLIC_PROFIL
+CITOYEN --> UC_CREATE_ANNONCE
+CITOYEN --> UC_LIST_ANNONCES
+CITOYEN --> UC_MY_ANNONCES
+CITOYEN --> UC_GET_ANNONCE
+CITOYEN --> UC_UPDATE_ANNONCE
+CITOYEN --> UC_DELETE_ANNONCE
+CITOYEN --> UC_MAP_ANNONCES
+CITOYEN --> UC_LIST_FOOD_RESCUE
+CITOYEN --> UC_RESERVE
+CITOYEN --> UC_ANNULER
+CITOYEN --> UC_QR_RECEPTION
+CITOYEN --> UC_VALIDATE_RECEPTION
+CITOYEN --> UC_QR_RETOUR
+CITOYEN --> UC_VALIDATE_RETOUR
+CITOYEN --> UC_VALIDER_RETOUR
+CITOYEN --> UC_DEGRADATION
+CITOYEN --> UC_MY_TRANSACTIONS
+CITOYEN --> UC_WALLET_ME
+CITOYEN --> UC_DEPOT
+CITOYEN --> UC_RETRAIT
+CITOYEN --> UC_EXPORT_CSV
+CITOYEN --> UC_RECU
+CITOYEN --> UC_RECU_PDF
+CITOYEN --> UC_GET_CONTRAT
+CITOYEN --> UC_DL_CONTRAT
+CITOYEN --> UC_LIST_NOTIFS
+CITOYEN --> UC_READ_NOTIF
+CITOYEN --> UC_READ_ALL_NOTIFS
+CITOYEN --> UC_COUNT_NOTIFS
+CITOYEN --> UC_LIST_RELAIS
+CITOYEN --> UC_NEARBY_RELAIS
+CITOYEN --> UC_TYPES_RELAIS
+CITOYEN --> UC_GET_RELAIS
+CITOYEN --> UC_SEND_TEXT
+CITOYEN --> UC_SEND_VOICE
+CITOYEN --> UC_GET_CONVO
+CITOYEN --> UC_MY_CONVOS
+CITOYEN --> UC_GET_IMAGE
+CITOYEN --> UC_GET_PDF
+
+' ══════════════════════════════════════════
+'  RELATIONS — PARTENAIRE
+' ══════════════════════════════════════════
+
+PARTENAIRE --|> CITOYEN
+PARTENAIRE --> UC_CREATE_FOOD_RESCUE
+PARTENAIRE --> UC_NOTIF_FOOD_RESCUE
+
+' ══════════════════════════════════════════
+'  RELATIONS — ADMIN
+' ══════════════════════════════════════════
+
+ADMIN --> UC_STATS
+ADMIN --> UC_ADMIN_USERS
+ADMIN --> UC_ADMIN_USER_DETAIL
+ADMIN --> UC_ADMIN_UPDATE_PROFIL
+ADMIN --> UC_ADMIN_ROLE
+ADMIN --> UC_ADMIN_BLOCK
+ADMIN --> UC_ADMIN_DELETE_USER
+ADMIN --> UC_ADMIN_TRANSACTIONS
+ADMIN --> UC_ADMIN_TX_DETAIL
+ADMIN --> UC_ADMIN_ANNONCES
+ADMIN --> UC_ADMIN_DELETE_ANNONCE
+ADMIN --> UC_ADMIN_RELAIS
+ADMIN --> UC_CREATE_RELAIS
+ADMIN --> UC_UPDATE_RELAIS
+ADMIN --> UC_DELETE_RELAIS
+
+' ══════════════════════════════════════════
+'  RELATIONS — SYSTÈME CRON
+' ══════════════════════════════════════════
+
+SYSTEM --> UC_CRON_EXPIRE
+SYSTEM --> UC_CRON_CONTRAT
+SYSTEM --> UC_CRON_BADGES
+SYSTEM --> UC_CRON_PALIER
+SYSTEM --> UC_CRON_BLOCAGE
+SYSTEM --> UC_CRON_DEBLOCAGE
+SYSTEM --> UC_CRON_NOTIF
+
+@enduml
