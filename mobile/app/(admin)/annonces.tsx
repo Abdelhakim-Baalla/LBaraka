@@ -44,87 +44,97 @@ export default function AdminAnnonces() {
     loadAnnonces();
   };
 
+  const getStatusColor = (status: string) => {
+    const colors: any = {
+      DISPONIBLE: { bg: 'bg-[#4ade80]/10', text: 'text-[#4ade80]', border: 'border-[#4ade80]/20' },
+      EMPRUNTEE: { bg: 'bg-[#adc6ff]/10', text: 'text-[#adc6ff]', border: 'border-[#adc6ff]/20' },
+      INDISPONIBLE: { bg: 'bg-[#908fa0]/10', text: 'text-[#908fa0]', border: 'border-[#908fa0]/20' },
+    };
+    return colors[status] || { bg: 'bg-[#353534]', text: 'text-[#c7c4d7]', border: 'border-[#464554]' };
+  };
+
   if (isLoading) {
     return (
-      <View className="flex-1 bg-slate-50 items-center justify-center">
-        <ActivityIndicator size="large" color="#1e3a8a" />
+      <View className="flex-1 bg-[#0e0e0e] items-center justify-center">
+        <ActivityIndicator size="large" color="#c0c1ff" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-slate-50" style={{ paddingTop: insets.top + 10 }}>
-      <ScrollView
-        className="flex-1 px-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1e3a8a" />}
-        contentContainerStyle={{ paddingBottom: 24 }}
-      >
-        {/* Header */}
-        <Animated.View entering={FadeInUp.duration(500)} className="flex-row items-center gap-3 mb-4">
-          <Pressable
-            onPress={() => router.back()}
-            className="w-10 h-10 rounded-xl bg-white items-center justify-center shadow-sm border border-slate-200"
-          >
-            <Ionicons name="arrow-back" size={20} color="#1e3a8a" />
-          </Pressable>
-          <View className="flex-1">
-            <Text className="text-xs font-semibold text-slate-500">Administration</Text>
-            <Text className="text-lg font-extrabold text-slate-900">Annonces</Text>
-          </View>
-        </Animated.View>
+    <View className="flex-1 bg-[#0e0e0e]" style={{ paddingTop: insets.top }}>
+      {/* TopAppBar */}
+      <View className="bg-[#131313] border-b border-[#464554]/20 px-6 h-16 flex-row items-center justify-between">
+        <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center hover:bg-[#353534] rounded-sm">
+          <Ionicons name="arrow-back" size={20} color="#c0c1ff" />
+        </Pressable>
+        <View className="flex-1 ml-3">
+          <Text className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c0c1ff]/80">System Oversight</Text>
+          <Text className="text-lg font-light text-[#e5e2e1]">Annonces Registry</Text>
+        </View>
+      </View>
 
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#c0c1ff" />}
+      >
         {/* Stats */}
-        <Animated.View entering={FadeInUp.delay(100).duration(600)} className="bg-white rounded-xl p-4 mb-4 shadow-sm border border-slate-200">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-xs text-slate-500">Total annonces</Text>
-              <Text className="text-2xl font-extrabold text-slate-900 mt-1">{annonces.length}</Text>
-            </View>
-            <View className="bg-slate-100 rounded-full p-3">
-              <Ionicons name="megaphone" size={24} color="#475569" />
-            </View>
+        <Animated.View entering={FadeInUp.duration(600)} className="bg-[#1c1b1b] p-8 rounded-sm mb-6 border border-[#464554]/10">
+          <View className="absolute top-0 right-0 p-4 opacity-10">
+            <Ionicons name="megaphone" size={60} color="#e5e2e1" />
+          </View>
+          <Text className="text-xs font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-6">Total Annonces</Text>
+          <View className="flex-row items-baseline gap-2">
+            <Text className="text-6xl font-light tracking-tighter text-[#e5e2e1]">{annonces.length}</Text>
+            <Text className="text-sm font-medium text-[#c0c1ff]">Published</Text>
           </View>
         </Animated.View>
 
         {/* Annonces List */}
         {annonces.length === 0 ? (
-          <Animated.View entering={FadeInUp.delay(150).duration(600)} className="bg-white rounded-xl p-6 items-center shadow-sm border border-slate-200">
-            <Ionicons name="megaphone-outline" size={32} color="#94a3b8" />
-            <Text className="text-sm text-slate-500 mt-3">Aucune annonce</Text>
-          </Animated.View>
+          <View className="bg-[#1c1b1b] rounded-sm items-center p-8 border border-[#464554]/10">
+            <Ionicons name="megaphone-outline" size={32} color="#908fa0" />
+            <Text className="text-sm text-[#c7c4d7] mt-3">No annonces found</Text>
+          </View>
         ) : (
-          annonces.map((annonce, index) => (
-            <Animated.View key={annonce.id} entering={FadeInUp.delay(150 + index * 50).duration(600)}>
-              <Pressable
-                onPress={() => router.push(`/(annonces)/${annonce.id}`)}
-                className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-slate-200"
-              >
-                <View className="flex-row gap-3">
-                  <SmartAnnonceImage
-                    uri={annonce.photos?.[0]}
-                    className="w-20 h-20 rounded-xl overflow-hidden"
-                    resizeMode="cover"
-                  />
-                  <View className="flex-1">
-                    <Text className="text-sm font-bold text-slate-900" numberOfLines={1}>
-                      {annonce.titre}
-                    </Text>
-                    <Text className="text-xs text-slate-500 mt-1" numberOfLines={2}>
-                      {annonce.description}
-                    </Text>
-                    <View className="flex-row items-center gap-2 mt-2">
-                      <View className="bg-blue-100 rounded-lg px-2 py-1">
-                        <Text className="text-[10px] font-bold text-blue-900">{annonce.categorie}</Text>
-                      </View>
-                      <View className="bg-slate-100 rounded-lg px-2 py-1">
-                        <Text className="text-[10px] font-bold text-slate-700">{annonce.statut}</Text>
+          <View className="gap-4">
+            {annonces.map((annonce, index) => {
+              const statusColors = getStatusColor(annonce.statut);
+              return (
+                <Animated.View key={annonce.id} entering={FadeInUp.delay(100 + index * 50).duration(600)}>
+                  <Pressable
+                    onPress={() => router.push(`/(annonces)/${annonce.id}`)}
+                    className="bg-[#1c1b1b] hover:bg-[#201f1f] p-6 rounded-sm border border-[#464554]/10"
+                  >
+                    <View className="flex-row gap-4">
+                      <SmartAnnonceImage
+                        uri={annonce.photos?.[0]}
+                        className="w-20 h-20 rounded-sm overflow-hidden border border-[#464554]/30"
+                        resizeMode="cover"
+                      />
+                      <View className="flex-1">
+                        <Text className="text-base font-medium text-[#e5e2e1]" numberOfLines={1}>
+                          {annonce.titre}
+                        </Text>
+                        <Text className="text-xs text-[#908fa0] mt-1" numberOfLines={2}>
+                          {annonce.description}
+                        </Text>
+                        <View className="flex-row items-center gap-2 mt-3">
+                          <View className="bg-[#0566d9]/10 rounded-sm px-2 py-1 border border-[#0566d9]/20">
+                            <Text className="text-[10px] font-bold text-[#adc6ff] uppercase">{annonce.categorie}</Text>
+                          </View>
+                          <View className={`rounded-sm px-2 py-1 ${statusColors.bg} border ${statusColors.border}`}>
+                            <Text className={`text-[10px] font-bold uppercase ${statusColors.text}`}>{annonce.statut}</Text>
+                          </View>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                </View>
-              </Pressable>
-            </Animated.View>
-          ))
+                  </Pressable>
+                </Animated.View>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
     </View>

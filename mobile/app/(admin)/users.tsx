@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, TextInput, Modal, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -79,187 +79,184 @@ export default function AdminUsers() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-slate-50 items-center justify-center">
-        <ActivityIndicator size="large" color="#1e3a8a" />
+      <View className="flex-1 bg-[#0e0e0e] items-center justify-center">
+        <ActivityIndicator size="large" color="#c0c1ff" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-slate-50" style={{ paddingTop: insets.top + 10 }}>
-      <ScrollView
-        className="flex-1 px-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1e3a8a" />}
-        contentContainerStyle={{ paddingBottom: 24 }}
-      >
-        {/* Header */}
-        <Animated.View entering={FadeInUp.duration(500)} className="flex-row items-center gap-3 mb-4">
-          <Pressable
-            onPress={() => router.back()}
-            className="w-10 h-10 rounded-xl bg-white items-center justify-center shadow-sm border border-slate-200"
-          >
-            <Ionicons name="arrow-back" size={20} color="#1e3a8a" />
-          </Pressable>
-          <View className="flex-1">
-            <Text className="text-xs font-semibold text-slate-500">Administration</Text>
-            <Text className="text-lg font-extrabold text-slate-900">Utilisateurs</Text>
-          </View>
-        </Animated.View>
+    <View className="flex-1 bg-[#0e0e0e]" style={{ paddingTop: insets.top }}>
+      {/* TopAppBar */}
+      <View className="bg-[#131313] border-b border-[#464554]/20 px-6 h-16 flex-row items-center justify-between">
+        <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center hover:bg-[#353534] rounded-sm">
+          <Ionicons name="arrow-back" size={20} color="#c0c1ff" />
+        </Pressable>
+        <View className="flex-1 ml-3">
+          <Text className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c0c1ff]/80">System Oversight</Text>
+          <Text className="text-lg font-light text-[#e5e2e1]">User Registry</Text>
+        </View>
+      </View>
 
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#c0c1ff" />}
+      >
         {/* Search */}
-        <Animated.View entering={FadeInUp.delay(100).duration(600)} className="mb-4">
-          <View className="bg-white rounded-xl p-3 flex-row items-center gap-2 shadow-sm border border-slate-200">
-            <Ionicons name="search" size={20} color="#64748b" />
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Rechercher par nom, email, CIN..."
-              className="flex-1 text-sm text-slate-900"
-              placeholderTextColor="#94a3b8"
-            />
-          </View>
-        </Animated.View>
+        <View className="bg-[#1c1b1b] rounded-sm flex-row items-center px-4 py-4 mb-6 border border-[#464554]/20">
+          <Ionicons name="search" size={20} color="#908fa0" />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="SEARCH SYSTEM NODES OR IDENTITIES..."
+            placeholderTextColor="#908fa0"
+            className="flex-1 text-[#e5e2e1] text-sm uppercase tracking-wider ml-3"
+          />
+        </View>
 
         {/* Stats */}
-        <Animated.View entering={FadeInUp.delay(150).duration(600)} className="bg-white rounded-xl p-4 mb-4 shadow-sm border border-slate-200">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-xs text-slate-500">Total utilisateurs</Text>
-              <Text className="text-2xl font-extrabold text-blue-900 mt-1">{meta?.total || 0}</Text>
-            </View>
-            <View className="bg-blue-100 rounded-full p-3">
-              <Ionicons name="people" size={24} color="#1e3a8a" />
-            </View>
+        <Animated.View entering={FadeInUp.duration(600)} className="bg-[#1c1b1b] p-8 rounded-sm mb-6 border border-[#464554]/10">
+          <View className="absolute top-0 right-0 p-4 opacity-10">
+            <Ionicons name="people" size={60} color="#e5e2e1" />
+          </View>
+          <Text className="text-xs font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-6">Active Identities</Text>
+          <View className="flex-row items-baseline gap-2">
+            <Text className="text-6xl font-light tracking-tighter text-[#e5e2e1]">{meta?.total || 0}</Text>
+            <Text className="text-sm font-medium text-[#ffb783]">Registered</Text>
           </View>
         </Animated.View>
 
-        {/* Users List */}
+        {/* Users Grid */}
         {users.length === 0 ? (
-          <Animated.View entering={FadeInUp.delay(200).duration(600)} className="bg-white rounded-xl p-6 items-center shadow-sm border border-slate-200">
-            <Ionicons name="people-outline" size={32} color="#94a3b8" />
-            <Text className="text-sm text-slate-500 mt-3">Aucun utilisateur trouvé</Text>
-          </Animated.View>
+          <View className="bg-[#1c1b1b] rounded-sm items-center p-8 border border-[#464554]/10">
+            <Ionicons name="people-outline" size={32} color="#908fa0" />
+            <Text className="text-sm text-[#c7c4d7] mt-3">No users found</Text>
+          </View>
         ) : (
-          users.map((user, index) => (
-            <Animated.View key={user.id} entering={FadeInUp.delay(200 + index * 50).duration(600)}>
-              <Pressable
-                onPress={() => {
-                  setSelectedUser(user);
-                  setShowModal(true);
-                }}
-                className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-slate-200"
-              >
-                <View className="flex-row items-start justify-between mb-2">
-                  <View className="flex-1">
-                    <Text className="text-sm font-bold text-slate-900">{user.email}</Text>
+          <View className="gap-6">
+            {users.map((user, index) => (
+              <Animated.View key={user.id} entering={FadeInUp.delay(100 + index * 50).duration(600)}>
+                <Pressable
+                  onPress={() => {
+                    setSelectedUser(user);
+                    setShowModal(true);
+                  }}
+                  className="bg-[#1c1b1b] border border-[#464554]/10 hover:border-[#c0c1ff]/20 p-6 rounded-sm relative overflow-hidden"
+                >
+                  <View className="absolute top-0 right-0 w-24 h-24 bg-[#c0c1ff]/5 blur-[40px] rounded-full -mr-12 -mt-12" />
+                  <View className="flex-row items-start justify-between mb-8">
+                    <View className="flex-row items-center gap-4 flex-1">
+                      <View className="relative">
+                        <View className="w-14 h-14 rounded-sm border border-[#464554]/30 bg-[#353534] items-center justify-center">
+                          <Ionicons name="person" size={24} color="#c0c1ff" />
+                        </View>
+                        <View className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-[#1c1b1b] ${user.isBlocked ? 'bg-[#ffb4ab]' : 'bg-[#4ade80]'}`} />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-lg font-medium text-[#e5e2e1]" numberOfLines={1}>{user.email}</Text>
+                        <Text className="text-[10px] font-semibold uppercase tracking-widest text-[#c0c1ff]/70 mt-1">
+                          {user.role}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View className="gap-4 mb-8">
                     {user.profil && (
-                      <Text className="text-xs text-slate-500 mt-1">
-                        {user.profil.prenom} {user.profil.nom}
-                      </Text>
+                      <View>
+                        <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60">Identity</Text>
+                        <Text className="text-sm text-[#c7c4d7] mt-1">{user.profil.prenom} {user.profil.nom}</Text>
+                      </View>
                     )}
+                    <View>
+                      <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60">Registry Entry</Text>
+                      <Text className="text-sm text-[#c7c4d7] mt-1">
+                        {new Date(user.dateInscription).toLocaleDateString('fr-FR')} • {user.solde} MAD
+                      </Text>
+                    </View>
                   </View>
-                  <View className={`px-2 py-1 rounded-lg ${user.isBlocked ? 'bg-red-100' : 'bg-green-100'}`}>
-                    <Text className={`text-[10px] font-bold ${user.isBlocked ? 'text-red-800' : 'text-green-800'}`}>
-                      {user.isBlocked ? 'BLOQUÉ' : 'ACTIF'}
-                    </Text>
+                  <View className="flex-row items-center justify-between pt-4 border-t border-[#464554]/10">
+                    <View className="flex-row gap-1">
+                      <View className={`w-1.5 h-1.5 rounded-full ${user.isBlocked ? 'bg-[#ffb4ab]' : 'bg-[#c0c1ff] shadow-[0_0_8px_rgba(192,193,255,0.8)]'}`} />
+                      <View className="w-1.5 h-1.5 rounded-full bg-[#464554]" />
+                      <View className="w-1.5 h-1.5 rounded-full bg-[#464554]" />
+                    </View>
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#e5e2e1]">Manage</Text>
+                      <Ionicons name="chevron-forward" size={14} color="#c0c1ff" />
+                    </View>
                   </View>
-                </View>
-
-                <View className="flex-row items-center gap-4 mt-2">
-                  <View className="flex-row items-center gap-1">
-                    <Ionicons name="shield" size={14} color="#64748b" />
-                    <Text className="text-xs text-slate-600">{user.role}</Text>
-                  </View>
-                  <View className="flex-row items-center gap-1">
-                    <Ionicons name="wallet" size={14} color="#64748b" />
-                    <Text className="text-xs text-slate-600">{user.solde} MAD</Text>
-                  </View>
-                  <View className="flex-row items-center gap-1">
-                    <Ionicons name="calendar" size={14} color="#64748b" />
-                    <Text className="text-xs text-slate-600">
-                      {new Date(user.dateInscription).toLocaleDateString('fr-FR')}
-                    </Text>
-                  </View>
-                </View>
-              </Pressable>
-            </Animated.View>
-          ))
+                </Pressable>
+              </Animated.View>
+            ))}
+          </View>
         )}
 
         {/* Pagination */}
         {meta && meta.lastPage > 1 && (
-          <Animated.View entering={FadeInUp.delay(300).duration(600)} className="flex-row gap-2 mt-4">
+          <View className="flex-row gap-3 mt-6 items-center justify-center">
             <Pressable
               onPress={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className={`flex-1 py-3 rounded-xl ${page === 1 ? 'bg-slate-200' : 'bg-blue-900'}`}
+              className={`flex-1 py-3 rounded-sm items-center ${page === 1 ? 'bg-[#1c1b1b]' : 'bg-[#8083ff]'}`}
             >
-              <Text className={`text-center text-sm font-bold ${page === 1 ? 'text-slate-400' : 'text-white'}`}>
-                Précédent
-              </Text>
+              <Text className={`text-sm font-bold uppercase tracking-wider ${page === 1 ? 'text-[#908fa0]' : 'text-[#0d0096]'}`}>Prev</Text>
             </Pressable>
-            <View className="bg-white rounded-xl px-4 py-3 border border-slate-200">
-              <Text className="text-sm font-bold text-slate-900">{page} / {meta.lastPage}</Text>
+            <View className="bg-[#1c1b1b] rounded-sm px-6 py-3 border border-[#464554]/20">
+              <Text className="text-sm font-bold text-[#c0c1ff]">{page} / {meta.lastPage}</Text>
             </View>
             <Pressable
               onPress={() => setPage(Math.min(meta.lastPage, page + 1))}
               disabled={page === meta.lastPage}
-              className={`flex-1 py-3 rounded-xl ${page === meta.lastPage ? 'bg-slate-200' : 'bg-blue-900'}`}
+              className={`flex-1 py-3 rounded-sm items-center ${page === meta.lastPage ? 'bg-[#1c1b1b]' : 'bg-[#8083ff]'}`}
             >
-              <Text className={`text-center text-sm font-bold ${page === meta.lastPage ? 'text-slate-400' : 'text-white'}`}>
-                Suivant
-              </Text>
+              <Text className={`text-sm font-bold uppercase tracking-wider ${page === meta.lastPage ? 'text-[#908fa0]' : 'text-[#0d0096]'}`}>Next</Text>
             </Pressable>
-          </Animated.View>
+          </View>
         )}
       </ScrollView>
 
       {/* Modal User Details */}
       <Modal visible={showModal} animationType="slide" transparent>
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: insets.bottom + 24 }}>
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-bold text-slate-900">Détails utilisateur</Text>
+        <View className="flex-1 bg-black/80 justify-end">
+          <View className="bg-[#131313] rounded-t-3xl p-6" style={{ paddingBottom: insets.bottom + 24 }}>
+            <View className="flex-row items-center justify-between mb-6">
+              <Text className="text-xl font-light text-[#c0c1ff]">User Details</Text>
               <Pressable onPress={() => setShowModal(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
+                <Ionicons name="close" size={24} color="#908fa0" />
               </Pressable>
             </View>
 
             {selectedUser && (
               <ScrollView showsVerticalScrollIndicator={false}>
-                <View className="bg-slate-50 rounded-xl p-4 mb-4">
-                  <Text className="text-xs text-slate-500 mb-1">Email</Text>
-                  <Text className="text-sm font-bold text-slate-900">{selectedUser.email}</Text>
+                <View className="bg-[#1c1b1b] rounded-sm p-4 mb-3">
+                  <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-1">Email</Text>
+                  <Text className="text-base font-medium text-[#e5e2e1]">{selectedUser.email}</Text>
                 </View>
-
-                <View className="bg-slate-50 rounded-xl p-4 mb-4">
-                  <Text className="text-xs text-slate-500 mb-1">Téléphone</Text>
-                  <Text className="text-sm font-bold text-slate-900">{selectedUser.telephone}</Text>
+                <View className="bg-[#1c1b1b] rounded-sm p-4 mb-3">
+                  <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-1">Phone</Text>
+                  <Text className="text-base font-medium text-[#e5e2e1]">{selectedUser.telephone}</Text>
                 </View>
-
-                <View className="bg-slate-50 rounded-xl p-4 mb-4">
-                  <Text className="text-xs text-slate-500 mb-1">Rôle actuel</Text>
-                  <Text className="text-sm font-bold text-blue-900">{selectedUser.role}</Text>
+                <View className="bg-[#1c1b1b] rounded-sm p-4 mb-6">
+                  <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-1">Role</Text>
+                  <Text className="text-base font-medium text-[#c0c1ff]">{selectedUser.role}</Text>
                 </View>
-
-                <Text className="text-sm font-bold text-slate-700 mb-3">Actions</Text>
-
+                <Text className="text-base font-medium text-[#e5e2e1] mb-3">Actions</Text>
                 <Pressable
                   onPress={() => handleBlockUser(selectedUser.id, selectedUser.isBlocked)}
-                  className={`rounded-xl py-3 mb-2 ${selectedUser.isBlocked ? 'bg-green-600' : 'bg-red-600'}`}
+                  className={`rounded-sm py-4 mb-3 items-center ${selectedUser.isBlocked ? 'bg-[#4ade80]' : 'bg-[#ffb4ab]'}`}
                 >
-                  <Text className="text-center text-sm font-bold text-white">
-                    {selectedUser.isBlocked ? 'Débloquer' : 'Bloquer'} l'utilisateur
+                  <Text className="text-base font-bold text-[#131313]">
+                    {selectedUser.isBlocked ? 'Unblock' : 'Block'} User
                   </Text>
                 </Pressable>
-
                 {selectedUser.role !== 'ADMINISTRATEUR' && (
                   <Pressable
                     onPress={() => handleChangeRole(selectedUser.id, 'ADMINISTRATEUR')}
-                    className="bg-blue-900 rounded-xl py-3"
+                    className="bg-[#8083ff] rounded-sm py-4 items-center"
                   >
-                    <Text className="text-center text-sm font-bold text-white">
-                      Promouvoir en Admin
+                    <Text className="text-base font-bold text-[#0d0096]">
+                      Promote to Admin
                     </Text>
                   </Pressable>
                 )}
