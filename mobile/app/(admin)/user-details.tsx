@@ -21,6 +21,7 @@ export default function AdminUserDetails() {
     telephone: '',
     adresseComplete: '',
     ville: '',
+    dateNaissance: '',
   });
 
   useEffect(() => {
@@ -44,6 +45,7 @@ export default function AdminUserDetails() {
         telephone: data.telephone || '',
         adresseComplete: data.profil?.adresseComplete || '',
         ville: data.profil?.ville || '',
+        dateNaissance: data.profil?.dateNaissance ? new Date(data.profil.dateNaissance).toISOString().split('T')[0] : '',
       });
     } catch (error) {
       console.error('Error loading user details:', error);
@@ -189,9 +191,8 @@ export default function AdminUserDetails() {
               <Text className="text-xs text-[#908fa0] mb-2">CIN</Text>
               <TextInput
                 value={formData.cin}
-                onChangeText={(text) => setFormData({ ...formData, cin: text })}
-                editable={isEditing}
-                className={`bg-[#0e0e0e] border border-[#464554]/20 rounded-sm px-4 py-3 text-[#e5e2e1] ${!isEditing && 'opacity-60'}`}
+                editable={false}
+                className="bg-[#0e0e0e] border border-[#464554]/20 rounded-sm px-4 py-3 text-[#e5e2e1] opacity-60"
                 placeholderTextColor="#908fa0"
               />
             </View>
@@ -230,6 +231,17 @@ export default function AdminUserDetails() {
                 placeholderTextColor="#908fa0"
               />
             </View>
+
+            <View>
+              <Text className="text-xs text-[#908fa0] mb-2">Date de Naissance (YYYY-MM-DD)</Text>
+              <TextInput
+                value={formData.dateNaissance}
+                onChangeText={(text) => setFormData({ ...formData, dateNaissance: text })}
+                editable={isEditing}
+                className={`bg-[#0e0e0e] border border-[#464554]/20 rounded-sm px-4 py-3 text-[#e5e2e1] ${!isEditing && 'opacity-60'}`}
+                placeholderTextColor="#908fa0"
+              />
+            </View>
           </View>
 
           {isEditing && (
@@ -244,6 +256,7 @@ export default function AdminUserDetails() {
                     telephone: user.telephone || '',
                     adresseComplete: user.profil?.adresseComplete || '',
                     ville: user.profil?.ville || '',
+                    dateNaissance: user.profil?.dateNaissance ? new Date(user.profil.dateNaissance).toISOString().split('T')[0] : '',
                   });
                 }}
                 className="flex-1 bg-[#353534] rounded-sm py-4 items-center"

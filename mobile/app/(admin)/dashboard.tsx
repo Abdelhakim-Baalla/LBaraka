@@ -85,60 +85,72 @@ export default function AdminDashboard() {
         </Animated.View>
 
         {/* Stats Grid */}
-        <View className="gap-4 mb-12">
-          {/* Active Users */}
-          <Animated.View entering={FadeInUp.delay(100).duration(600)} className="bg-[#2a2a2a] p-6 rounded-sm border-l-2 border-[#c0c1ff] relative overflow-hidden">
-            <View className="absolute top-0 right-0 p-2 opacity-10">
-              <Ionicons name="person" size={60} color="#e5e2e1" />
+        <View className="mb-12">
+          {/* Overview Section */}
+          <Text className="text-xs font-semibold text-[#c0c1ff] mb-3 uppercase tracking-wide">Overview</Text>
+          <View className="flex-row gap-3 mb-3">
+              <Animated.View entering={FadeInUp.delay(100).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm border-l-2 border-[#c0c1ff]">
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Total Users</Text>
+                <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.overview?.totalUsers || 0}</Text>
+              </Animated.View>
+              <Animated.View entering={FadeInUp.delay(150).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm">
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Points Relais</Text>
+                <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.overview?.totalPointsRelais || 0}</Text>
+              </Animated.View>
+          </View>
+          <View className="flex-row gap-3 mb-8">
+              <Animated.View entering={FadeInUp.delay(200).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm">
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Transactions</Text>
+                <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.overview?.totalTransactions || 0}</Text>
+              </Animated.View>
+              <Animated.View entering={FadeInUp.delay(250).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm">
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Terminées</Text>
+                <Text className="text-3xl font-extralight tracking-tight text-[#4ade80]">{stats?.overview?.transactionsCount || 0}</Text>
+              </Animated.View>
+          </View>
+
+          {/* Impact Section */}
+          <Text className="text-xs font-semibold text-[#ffb783] mb-3 uppercase tracking-wide">Impact</Text>
+          <View className="flex-row gap-3 mb-3">
+              <Animated.View entering={FadeInUp.delay(300).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm relative overflow-hidden">
+                <View className="absolute top-0 right-0 p-2 opacity-10"><Ionicons name="leaf" size={40} color="#ffb783" /></View>
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Food Saved</Text>
+                <View className="flex-row items-baseline gap-1">
+                  <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.impact?.tonsFoodSaved || 0}</Text>
+                  <Text className="text-[10px] font-medium text-[#ffb783]">Tons</Text>
+                </View>
+              </Animated.View>
+              <Animated.View entering={FadeInUp.delay(350).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm relative overflow-hidden">
+                <View className="absolute top-0 right-0 p-2 opacity-10"><Ionicons name="cloud" size={40} color="#ffb783" /></View>
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">CO2 Prev</Text>
+                <View className="flex-row items-baseline gap-1">
+                  <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.impact?.co2PreventedKg || 0}</Text>
+                  <Text className="text-[10px] font-medium text-[#ffb783]">KG</Text>
+                </View>
+              </Animated.View>
+          </View>
+          <Animated.View entering={FadeInUp.delay(400).duration(600)} className="bg-[#2a2a2a] p-5 rounded-sm mb-8 flex-row items-center justify-between">
+            <View>
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">People Helped</Text>
+                <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.impact?.totalPeopleHelped || 0}</Text>
             </View>
-            <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-4">Active Users</Text>
-            <View className="flex-row items-baseline gap-2 mb-4">
-              <Text className="text-4xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.overview?.totalUsers || 0}</Text>
-              <Text className="text-xs font-medium text-[#c0c1ff]">Total</Text>
-            </View>
-            <View className="h-1 w-full bg-[#0e0e0e] rounded-full overflow-hidden">
-              <View className="h-full bg-gradient-to-r from-[#c0c1ff] to-[#8083ff]" style={{ width: '75%' }} />
+            <View className="w-12 h-12 rounded-full bg-[#ffb783]/10 items-center justify-center">
+                <Ionicons name="heart" size={24} color="#ffb783" />
             </View>
           </Animated.View>
 
-          {/* Transactions */}
-          <Animated.View entering={FadeInUp.delay(150).duration(600)} className="bg-[#2a2a2a] p-6 rounded-sm relative overflow-hidden">
-            <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-4">Transactions</Text>
-            <View className="flex-row items-baseline gap-2 mb-4">
-              <Text className="text-4xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.overview?.totalTransactions || 0}</Text>
-              <Text className="text-xs font-medium text-[#c0c1ff]">Total</Text>
-            </View>
-            <View className="flex-row items-end gap-1 h-8">
-              <View className="w-1 bg-[#c0c1ff]/20 h-3" />
-              <View className="w-1 bg-[#c0c1ff]/40 h-5" />
-              <View className="w-1 bg-[#c0c1ff]/60 h-8" />
-              <View className="w-1 bg-[#c0c1ff] h-6" />
-              <View className="w-1 bg-[#c0c1ff]/80 h-4" />
-              <View className="w-1 bg-[#c0c1ff]/40 h-7" />
-            </View>
-          </Animated.View>
-
-          {/* Food Saved */}
-          <Animated.View entering={FadeInUp.delay(200).duration(600)} className="bg-[#2a2a2a] p-6 rounded-sm relative overflow-hidden">
-            <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-4">Food Saved (KG)</Text>
-            <View className="flex-row items-baseline gap-2 mb-4">
-              <Text className="text-4xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.impact?.tonsFoodSaved || 0}</Text>
-              <Text className="text-xs font-medium text-[#ffb783]">Tonnes</Text>
-            </View>
-            <View className="flex-row items-center gap-1">
-              <Ionicons name="trending-up" size={14} color="#ffb783" />
-              <Text className="text-[10px] text-[#908fa0]">Impact environnemental positif</Text>
-            </View>
-          </Animated.View>
-
-          {/* Points Relais */}
-          <Animated.View entering={FadeInUp.delay(250).duration(600)} className="bg-[#2a2a2a] p-6 rounded-sm relative overflow-hidden">
-            <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-4">Points Relais</Text>
-            <View className="flex-row items-baseline gap-2 mb-4">
-              <Text className="text-4xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.overview?.totalPointsRelais || 0}</Text>
-              <Text className="text-xs font-medium text-[#c7c4d7]">Actifs</Text>
-            </View>
-          </Animated.View>
+          {/* Financial Section */}
+          <Text className="text-xs font-semibold text-[#4ade80] mb-3 uppercase tracking-wide">Financial</Text>
+          <View className="flex-row gap-3">
+              <Animated.View entering={FadeInUp.delay(450).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm border-b-2 border-[#4ade80]">
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Circulating MAD</Text>
+                <Text className="text-2xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.financial?.totalCirculatingMad?.toLocaleString() || 0}</Text>
+              </Animated.View>
+              <Animated.View entering={FadeInUp.delay(500).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm border-b-2 border-[#ffb4ab]">
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Locked MAD</Text>
+                <Text className="text-2xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.financial?.currentlyLockedMad?.toLocaleString() || 0}</Text>
+              </Animated.View>
+          </View>
         </View>
 
         {/* Quick Actions */}
