@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "LBaraka - Partage Solidaire",
+    "slug": "lbaraka",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/lbaraka-light.png",
+    "scheme": "lbaraka",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.abdelhakimbaalla.lbaraka",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/lbaraka-light.png",
+        "backgroundImage": "./assets/images/lbaraka-light.png",
+        "monochromeImage": "./assets/images/lbaraka-light.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/lbaraka-light.png"
+    },
+    "updates": {
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "fallbackToCacheTimeout": 0
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/lbaraka-light.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "expo-localization"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d5f2bda3-ddee-4f5d-9706-d2d88942fe47"
+      }
+    },
+    "owner": "abdelhakimbaalla"
+  }
+}

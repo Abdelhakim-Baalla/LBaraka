@@ -1,0 +1,5 @@
+export enum RoleUtilisateur {
+    CITOYEN = 'CITOYEN',
+    PARTENAIRE = 'PARTENAIRE',
+    ADMINISTRATEUR = 'ADMINISTRATEUR',
+}

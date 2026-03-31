@@ -1,2 +1,56 @@
+# IDEs
 .idea
 .qodo
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+agent/
+.agents/
+.github/copilot-instructions.md
+.agents/rules/copilot.md
+.github/rules/
+.kilo/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.expo/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+.tmp/
+.temp/
+*.tmp
+*.temp
+
+# Docker
+docker-compose.override.yml
+/generated/prisma
