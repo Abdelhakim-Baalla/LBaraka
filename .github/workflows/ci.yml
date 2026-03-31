@@ -73,3 +73,5 @@ jobs:
 
       - name: Publish to EAS Build (Android)
         run: eas build --platform android --non-interactive
+        env:
+          EAS_BUILD_NO_EXPO_GO_WARNING: "true"
