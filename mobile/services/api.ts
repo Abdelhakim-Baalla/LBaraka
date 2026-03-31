@@ -751,6 +751,34 @@ export class ApiService {
     return await response.json();
   }
 
+  // Récupérer un utilisateur par ID (admin)
+  static async getAdminUserById(token: string, userId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/admin/users/${userId}`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch user');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Modifier le profil d'un utilisateur (admin)
+  static async updateAdminUserProfile(token: string, userId: string, data: any) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/admin/users/${userId}/profile`, {
+      method: 'PUT',
+      headers: await this.getAuthHeaders(token),
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to update user profile');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
   // Modifier le rôle d'un utilisateur (admin)
   static async updateUserRole(token: string, userId: string, role: string) {
     const baseUrl = this.getBaseUrl();
@@ -776,6 +804,94 @@ export class ApiService {
     });
     if (!response.ok) {
       const message = await this.getErrorMessage(response, 'Failed to update user status');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Supprimer un utilisateur (admin)
+  static async deleteAdminUser(token: string, userId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to delete user');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Récupérer toutes les transactions (admin)
+  static async getAdminTransactions(token: string, page: number = 1, limit: number = 20) {
+    const baseUrl = this.getBaseUrl();
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+
+    const response = await fetch(`${baseUrl}/admin/transactions?${params.toString()}`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch transactions');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Récupérer une transaction par ID (admin)
+  static async getAdminTransactionById(token: string, transactionId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/admin/transactions/${transactionId}`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch transaction');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Récupérer toutes les annonces (admin)
+  static async getAdminAnnonces(token: string, page: number = 1, limit: number = 20) {
+    const baseUrl = this.getBaseUrl();
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+
+    const response = await fetch(`${baseUrl}/admin/annonces?${params.toString()}`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch annonces');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Supprimer une annonce (admin)
+  static async deleteAdminAnnonce(token: string, annonceId: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/admin/annonces/${annonceId}`, {
+      method: 'DELETE',
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to delete annonce');
+      throw new Error(message);
+    }
+    return await response.json();
+  }
+
+  // Récupérer tous les points relais (admin)
+  static async getAdminPointsRelais(token: string) {
+    const baseUrl = this.getBaseUrl();
+    const response = await fetch(`${baseUrl}/admin/points-relais`, {
+      headers: await this.getAuthHeaders(token)
+    });
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, 'Failed to fetch points relais');
       throw new Error(message);
     }
     return await response.json();

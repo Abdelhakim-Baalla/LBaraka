@@ -29,7 +29,7 @@ export default function AdminAnnonces() {
         return;
       }
 
-      const data = await ApiService.getAnnonces(token);
+      const data = await ApiService.getAdminAnnonces(token, 1, 50);
       setAnnonces(data.annonces || []);
     } catch (error) {
       console.error('Error loading annonces:', error);

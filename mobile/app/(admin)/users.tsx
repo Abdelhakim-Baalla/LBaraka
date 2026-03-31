@@ -138,10 +138,7 @@ export default function AdminUsers() {
             {users.map((user, index) => (
               <Animated.View key={user.id} entering={FadeInUp.delay(100 + index * 50).duration(600)}>
                 <Pressable
-                  onPress={() => {
-                    setSelectedUser(user);
-                    setShowModal(true);
-                  }}
+                  onPress={() => router.push(`/(admin)/user-details?id=${user.id}`)}
                   className="bg-[#1c1b1b] border border-[#464554]/10 hover:border-[#c0c1ff]/20 p-6 rounded-sm relative overflow-hidden"
                 >
                   <View className="absolute top-0 right-0 w-24 h-24 bg-[#c0c1ff]/5 blur-[40px] rounded-full -mr-12 -mt-12" />

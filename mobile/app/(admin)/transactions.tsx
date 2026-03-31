@@ -28,7 +28,7 @@ export default function AdminTransactions() {
         return;
       }
 
-      const data = await ApiService.getMyTransactions(token);
+      const data = await ApiService.getAdminTransactions(token, 1, 50);
       setTransactions(data.transactions || []);
     } catch (error) {
       console.error('Error loading transactions:', error);

@@ -62,7 +62,7 @@ export default function AdminDashboard() {
       <View className="bg-[#131313] border-b border-[#464554]/20 px-6 h-16 flex-row items-center justify-between">
         <View className="flex-row items-center gap-3">
           <View className="w-8 h-8 rounded-sm bg-gradient-to-br from-[#c0c1ff] to-[#8083ff] items-center justify-center">
-            <MaterialCommunityIcons name="terminal" size={20} color="#1000a9" />
+            <Ionicons name="shield" size={20} color="#1000a9" />
           </View>
           <Text className="text-xl font-light tracking-tighter text-[#e5e2e1]">
             LBARAKA <Text className="font-bold text-[#c0c1ff]">COMMAND</Text>
