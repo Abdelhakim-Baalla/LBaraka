@@ -1,16 +1,33 @@
-import { useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import { ApiService } from '../../services/api';
+import { useTheme } from '../../theme/ThemeContext';
+import { radius } from '../../theme/tokens';
+import { Screen } from '../../components/ui/Screen';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Tag } from '../../components/ui/Chip';
+import { TextField } from '../../components/ui/TextField';
+import { T } from '../../components/ui/T';
+import { Avatar, EmptyState, SectionHeader } from '../../components/ui/Primitives';
+import { Segmented } from '../../components/ui/Segmented';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { Enter } from '../../components/ui/Enter';
+
+function roleTone(role?: string): 'primary' | 'gold' | 'info' | 'muted' {
+  if (role === 'ADMINISTRATEUR') return 'primary';
+  if (role === 'PARTENAIRE') return 'gold';
+  if (role === 'UTILISATEUR') return 'info';
+  return 'muted';
+}
 
 export default function AdminUserDetails() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { c } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -111,170 +128,200 @@ export default function AdminUserDetails() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-[#0e0e0e] items-center justify-center">
-        <ActivityIndicator size="large" color="#c0c1ff" />
-      </View>
+      <Screen>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
+          <ActivityIndicator size="large" color={c.primary} />
+          <T kind="small" color={c.muted} style={{ marginTop: 12 }}>
+            Chargement du profil...
+          </T>
+        </View>
+      </Screen>
     );
   }
 
   if (!user) {
     return (
-      <View className="flex-1 bg-[#0e0e0e] items-center justify-center">
-        <Text className="text-[#e5e2e1]">Utilisateur non trouvé</Text>
-      </View>
+      <Screen>
+        <Enter index={0}>
+          <EmptyState
+            icon="person-outline"
+            title="Utilisateur non trouvé"
+            body="Ce compte a peut-être été supprimé."
+            action="Retour"
+            onAction={() => router.back()}
+          />
+        </Enter>
+      </Screen>
     );
   }
 
-  return (
-    <View className="flex-1 bg-[#0e0e0e]" style={{ paddingTop: insets.top }}>
-      {/* TopAppBar */}
-      <View className="bg-[#131313] border-b border-[#464554]/20 px-6 h-16 flex-row items-center justify-between">
-        <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center hover:bg-[#353534] rounded-sm">
-          <Ionicons name="arrow-back" size={20} color="#c0c1ff" />
-        </Pressable>
-        <View className="flex-1 ml-3">
-          <Text className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c0c1ff]/80">User Management</Text>
-          <Text className="text-lg font-light text-[#e5e2e1]">User Details</Text>
-        </View>
-        {!isEditing && (
-          <Pressable onPress={() => setIsEditing(true)} className="w-10 h-10 items-center justify-center hover:bg-[#353534] rounded-sm">
-            <Ionicons name="create-outline" size={20} color="#c0c1ff" />
-          </Pressable>
-        )}
-      </View>
+  const fullName = `${user.profil?.prenom || ''} ${user.profil?.nom || ''}`.trim();
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 }}>
-        {/* User Info Card */}
-        <Animated.View entering={FadeInUp.duration(600)} className="bg-[#1c1b1b] p-6 rounded-sm mb-6 border border-[#464554]/10">
-          <View className="flex-row items-center gap-4 mb-6">
-            <View className="w-16 h-16 rounded-sm bg-[#353534] items-center justify-center">
-              <Ionicons name="person" size={32} color="#c0c1ff" />
+  return (
+    <Screen scroll>
+      <Enter index={0}>
+        <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <PressableScale
+            onPress={() => router.back()}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: radius.md,
+              backgroundColor: c.surface,
+              borderWidth: 1,
+              borderColor: c.line,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="arrow-back" size={20} color={c.ink} />
+          </PressableScale>
+          <View style={{ flex: 1 }}>
+            <T kind="overline" color={c.primary}>Console admin</T>
+            <T kind="h2" style={{ marginTop: 2 }}>Dossier utilisateur</T>
+          </View>
+          {!isEditing && (
+            <PressableScale
+              onPress={() => setIsEditing(true)}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: radius.md,
+                backgroundColor: c.surface,
+                borderWidth: 1,
+                borderColor: c.line,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="create-outline" size={20} color={c.primary} />
+            </PressableScale>
+          )}
+        </View>
+      </Enter>
+
+      <Enter index={1}>
+        <Card style={{ marginTop: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View>
+              <Avatar name={fullName || user.email} size={60} />
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: -2,
+                  right: -2,
+                  width: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: user.isBlocked ? c.danger : c.success,
+                  borderWidth: 2,
+                  borderColor: c.surface,
+                }}
+              />
             </View>
-            <View className="flex-1">
-              <Text className="text-xl font-medium text-[#e5e2e1]">{user.email}</Text>
-              <View className={`mt-2 px-3 py-1 rounded-sm self-start ${user.isBlocked ? 'bg-[#ffb4ab]/10 border border-[#ffb4ab]/20' : 'bg-[#4ade80]/10 border border-[#4ade80]/20'}`}>
-                <Text className={`text-[10px] font-bold uppercase ${user.isBlocked ? 'text-[#ffb4ab]' : 'text-[#4ade80]'}`}>
-                  {user.isBlocked ? 'BLOCKED' : 'ACTIVE'}
-                </Text>
+            <View style={{ flex: 1 }}>
+              <T kind="h3" numberOfLines={1}>{fullName || user.email}</T>
+              <T kind="small" color={c.muted} numberOfLines={1} style={{ marginTop: 2 }}>
+                {user.email}
+              </T>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                <Tag label={user.isBlocked ? 'Bloqué' : 'Actif'} tone={user.isBlocked ? 'danger' : 'success'} />
+                <Tag label={user.role} tone={roleTone(user.role)} />
               </View>
             </View>
           </View>
-
-          <View className="gap-4">
-            <View>
-              <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-2">Role</Text>
-              {isEditing ? (
-                <View className="flex-row gap-2">
-                  {['UTILISATEUR', 'PARTENAIRE', 'ADMINISTRATEUR'].map((r) => (
-                    <Pressable
-                      key={r}
-                      onPress={() => setFormData({ ...formData, role: r })}
-                      className={`px-3 py-2 rounded-sm border ${formData.role === r ? 'bg-[#c0c1ff]/20 border-[#c0c1ff]' : 'border-[#464554]/20'}`}
-                    >
-                      <Text className={`text-[10px] font-bold ${formData.role === r ? 'text-[#c0c1ff]' : 'text-[#908fa0]'}`}>{r}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : (
-                <Text className="text-base font-medium text-[#c0c1ff]">{user.role}</Text>
-              )}
-            </View>
-            <View>
-              <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-1">Registered</Text>
-              <Text className="text-base font-medium text-[#e5e2e1]">
-                {new Date(user.dateInscription).toLocaleDateString('fr-FR')}
-              </Text>
-            </View>
+          <View style={{ marginTop: 16 }}>
+            <T kind="caption" color={c.muted}>Rôle du compte</T>
+            {isEditing ? (
+              <View style={{ marginTop: 8 }}>
+                <Segmented
+                  options={[
+                    { value: 'UTILISATEUR', label: 'Utilisateur' },
+                    { value: 'PARTENAIRE', label: 'Partenaire' },
+                    { value: 'ADMINISTRATEUR', label: 'Admin' },
+                  ]}
+                  value={formData.role}
+                  onChange={(v) => setFormData({ ...formData, role: v })}
+                />
+              </View>
+            ) : (
+              <T kind="bodyStrong" color={c.primary} style={{ marginTop: 4 }}>{user.role}</T>
+            )}
           </View>
-        </Animated.View>
+          <T kind="small" color={c.muted} style={{ marginTop: 12 }}>
+            Inscrit le {user.dateInscription ? new Date(user.dateInscription).toLocaleDateString('fr-FR') : 'N/A'}
+          </T>
+        </Card>
+      </Enter>
 
-        {/* Profile Form */}
-        <Animated.View entering={FadeInUp.delay(100).duration(600)} className="bg-[#1c1b1b] p-6 rounded-sm mb-6 border border-[#464554]/10">
-          <Text className="text-lg font-medium text-[#e5e2e1] mb-4">Profile Information</Text>
-          
-          <View className="gap-4">
-            <View>
-              <Text className="text-xs text-[#908fa0] mb-2">Prénom</Text>
-              <TextInput
-                value={formData.prenom}
-                onChangeText={(text) => setFormData({ ...formData, prenom: text })}
-                editable={isEditing}
-                className={`bg-[#0e0e0e] border border-[#464554]/20 rounded-sm px-4 py-3 text-[#e5e2e1] ${!isEditing && 'opacity-60'}`}
-                placeholderTextColor="#908fa0"
-              />
-            </View>
+      <Enter index={2}>
+        <View style={{ marginTop: 24 }}>
+          <SectionHeader title="Profil" />
+          <Card style={{ marginTop: 12, gap: 16 }}>
+            <TextField
+              label="Prénom"
+              icon="person-outline"
+              value={formData.prenom}
+              onChangeText={(text) => setFormData({ ...formData, prenom: text })}
+              editable={isEditing}
+            />
+            <TextField
+              label="Nom"
+              icon="person-outline"
+              value={formData.nom}
+              onChangeText={(text) => setFormData({ ...formData, nom: text })}
+              editable={isEditing}
+            />
+            <TextField
+              label="CIN"
+              icon="card-outline"
+              value={formData.cin}
+              editable={false}
+            />
+            <TextField
+              label="Téléphone"
+              icon="call-outline"
+              value={formData.telephone}
+              onChangeText={(text) => setFormData({ ...formData, telephone: text })}
+              editable={isEditing}
+              keyboardType="phone-pad"
+            />
+            <TextField
+              label="Adresse"
+              icon="home-outline"
+              value={formData.adresseComplete}
+              onChangeText={(text) => setFormData({ ...formData, adresseComplete: text })}
+              editable={isEditing}
+              multiline
+              numberOfLines={2}
+            />
+            <TextField
+              label="Ville"
+              icon="location-outline"
+              value={formData.ville}
+              onChangeText={(text) => setFormData({ ...formData, ville: text })}
+              editable={isEditing}
+            />
+            <TextField
+              label="Date de naissance (AAAA-MM-JJ)"
+              icon="calendar-outline"
+              value={formData.dateNaissance}
+              onChangeText={(text) => setFormData({ ...formData, dateNaissance: text })}
+              editable={isEditing}
+              placeholder="AAAA-MM-JJ"
+            />
+          </Card>
+        </View>
+      </Enter>
 
-            <View>
-              <Text className="text-xs text-[#908fa0] mb-2">Nom</Text>
-              <TextInput
-                value={formData.nom}
-                onChangeText={(text) => setFormData({ ...formData, nom: text })}
-                editable={isEditing}
-                className={`bg-[#0e0e0e] border border-[#464554]/20 rounded-sm px-4 py-3 text-[#e5e2e1] ${!isEditing && 'opacity-60'}`}
-                placeholderTextColor="#908fa0"
-              />
-            </View>
-
-            <View>
-              <Text className="text-xs text-[#908fa0] mb-2">CIN</Text>
-              <TextInput
-                value={formData.cin}
-                editable={false}
-                className="bg-[#0e0e0e] border border-[#464554]/20 rounded-sm px-4 py-3 text-[#e5e2e1] opacity-60"
-                placeholderTextColor="#908fa0"
-              />
-            </View>
-
-            <View>
-              <Text className="text-xs text-[#908fa0] mb-2">Téléphone</Text>
-              <TextInput
-                value={formData.telephone}
-                onChangeText={(text) => setFormData({ ...formData, telephone: text })}
-                editable={isEditing}
-                className={`bg-[#0e0e0e] border border-[#464554]/20 rounded-sm px-4 py-3 text-[#e5e2e1] ${!isEditing && 'opacity-60'}`}
-                placeholderTextColor="#908fa0"
-              />
-            </View>
-
-            <View>
-              <Text className="text-xs text-[#908fa0] mb-2">Adresse</Text>
-              <TextInput
-                value={formData.adresseComplete}
-                onChangeText={(text) => setFormData({ ...formData, adresseComplete: text })}
-                editable={isEditing}
-                multiline
-                numberOfLines={2}
-                className={`bg-[#0e0e0e] border border-[#464554]/20 rounded-sm px-4 py-3 text-[#e5e2e1] ${!isEditing && 'opacity-60'}`}
-                placeholderTextColor="#908fa0"
-              />
-            </View>
-
-            <View>
-              <Text className="text-xs text-[#908fa0] mb-2">Ville</Text>
-              <TextInput
-                value={formData.ville}
-                onChangeText={(text) => setFormData({ ...formData, ville: text })}
-                editable={isEditing}
-                className={`bg-[#0e0e0e] border border-[#464554]/20 rounded-sm px-4 py-3 text-[#e5e2e1] ${!isEditing && 'opacity-60'}`}
-                placeholderTextColor="#908fa0"
-              />
-            </View>
-
-            <View>
-              <Text className="text-xs text-[#908fa0] mb-2">Date de Naissance (YYYY-MM-DD)</Text>
-              <TextInput
-                value={formData.dateNaissance}
-                onChangeText={(text) => setFormData({ ...formData, dateNaissance: text })}
-                editable={isEditing}
-                className={`bg-[#0e0e0e] border border-[#464554]/20 rounded-sm px-4 py-3 text-[#e5e2e1] ${!isEditing && 'opacity-60'}`}
-                placeholderTextColor="#908fa0"
-              />
-            </View>
-          </View>
-
-          {isEditing && (
-            <View className="flex-row gap-3 mt-6">
-              <Pressable
+      {isEditing && (
+        <Enter index={3}>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+            <View style={{ flex: 1 }}>
+              <Button
+                title="Annuler"
+                variant="secondary"
+                size="md"
                 onPress={() => {
                   setIsEditing(false);
                   setFormData({
@@ -288,42 +335,48 @@ export default function AdminUserDetails() {
                     role: user.role || '',
                   });
                 }}
-                className="flex-1 bg-[#353534] rounded-sm py-4 items-center"
-              >
-                <Text className="text-base font-bold text-[#e5e2e1]">Cancel</Text>
-              </Pressable>
-              <Pressable onPress={handleSave} className="flex-1 bg-[#8083ff] rounded-sm py-4 items-center">
-                <Text className="text-base font-bold text-[#0d0096]">Save Changes</Text>
-              </Pressable>
+              />
             </View>
-          )}
-        </Animated.View>
-
-        {/* Wallet Info */}
-        {user.portefeuille && (
-          <Animated.View entering={FadeInUp.delay(150).duration(600)} className="bg-[#1c1b1b] p-6 rounded-sm mb-6 border border-[#464554]/10">
-            <Text className="text-lg font-medium text-[#e5e2e1] mb-4">Wallet</Text>
-            <View className="flex-row gap-4">
-              <View className="flex-1 bg-[#0e0e0e] p-4 rounded-sm">
-                <Text className="text-xs text-[#908fa0] mb-1">Available</Text>
-                <Text className="text-2xl font-light text-[#4ade80]">{user.portefeuille.soldeReel} MAD</Text>
-              </View>
-              <View className="flex-1 bg-[#0e0e0e] p-4 rounded-sm">
-                <Text className="text-xs text-[#908fa0] mb-1">Blocked</Text>
-                <Text className="text-2xl font-light text-[#ffb783]">{user.portefeuille.soldeBloque} MAD</Text>
-              </View>
+            <View style={{ flex: 1 }}>
+              <Button title="Enregistrer" size="md" icon="save-outline" onPress={handleSave} />
             </View>
-          </Animated.View>
-        )}
+          </View>
+        </Enter>
+      )}
 
-        {/* Danger Zone */}
-        <Animated.View entering={FadeInUp.delay(200).duration(600)} className="bg-[#1c1b1b] p-6 rounded-sm border border-[#ffb4ab]/20">
-          <Text className="text-lg font-medium text-[#ffb4ab] mb-4">Danger Zone</Text>
-          <Pressable onPress={handleDelete} className="bg-[#ffb4ab]/10 border border-[#ffb4ab]/20 rounded-sm py-4 items-center">
-            <Text className="text-base font-bold text-[#ffb4ab]">Delete User</Text>
-          </Pressable>
-        </Animated.View>
-      </ScrollView>
-    </View>
+      {user.portefeuille && (
+        <Enter index={4}>
+          <View style={{ marginTop: 24 }}>
+            <SectionHeader title="Portefeuille" />
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+              <Card pad={16} style={{ flex: 1, backgroundColor: c.successSoft }}>
+                <T kind="caption" color={c.onSuccessSoft}>Disponible</T>
+                <T kind="h3" color={c.onSuccessSoft} style={{ marginTop: 6 }}>
+                  {user.portefeuille.soldeReel} MAD
+                </T>
+              </Card>
+              <Card pad={16} style={{ flex: 1, backgroundColor: c.goldSoft }}>
+                <T kind="caption" color={c.onGoldSoft}>Bloqué</T>
+                <T kind="h3" color={c.onGoldSoft} style={{ marginTop: 6 }}>
+                  {user.portefeuille.soldeBloque} MAD
+                </T>
+              </Card>
+            </View>
+          </View>
+        </Enter>
+      )}
+
+      <Enter index={5}>
+        <Card style={{ marginTop: 24, marginBottom: 8, backgroundColor: c.dangerSoft }}>
+          <T kind="h3" color={c.onDangerSoft}>Zone sensible</T>
+          <T kind="small" color={c.onDangerSoft} style={{ marginTop: 4 }}>
+            La suppression d&apos;un compte est définitive.
+          </T>
+          <View style={{ marginTop: 14 }}>
+            <Button title="Supprimer l'utilisateur" variant="danger" icon="trash-outline" onPress={handleDelete} />
+          </View>
+        </Card>
+      </Enter>
+    </Screen>
   );
 }

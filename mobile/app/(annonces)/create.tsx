@@ -1,21 +1,39 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, Alert, ActivityIndicator, Switch, Image } from 'react-native';
+import { ActivityIndicator, Alert, Image, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { ApiService } from '../../services/api';
+import { useTheme } from '../../theme/ThemeContext';
+import { radius } from '../../theme/tokens';
+import { Screen } from '../../components/ui/Screen';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Chip, Tag } from '../../components/ui/Chip';
+import { TextField } from '../../components/ui/TextField';
+import { T } from '../../components/ui/T';
+import { SectionHeader } from '../../components/ui/Primitives';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { Enter } from '../../components/ui/Enter';
 
 const CATEGORIES = ['POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 const MODES = ['DON_GRATUIT', 'PRET_TEMPORAIRE', 'LOCATION_SOLIDAIRE'];
 const CONDITIONS = ['NEUF', 'BON_ETAT', 'USE'];
 
+const STEP_TITLES = ['Votre objet', 'Photos', 'Conditions'];
+const STEP_BODIES = [
+  'Décrivez votre objet et précisez sa catégorie.',
+  'Ajoutez exactement 3 photos nettes de votre objet.',
+  'Fixez le mode, les montants et la localisation.',
+];
+
 export default function CreateAnnonceScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { c } = useTheme();
 
+  const [step, setStep] = useState(0);
   const [titre, setTitre] = useState('');
   const [description, setDescription] = useState('');
   const [categorie, setCategorie] = useState('POUSSETTE');
@@ -240,199 +258,310 @@ export default function CreateAnnonceScreen() {
     }
   };
 
+  const handleNext = () => {
+    if (step === 0) {
+      if (!titre.trim() || !description.trim()) {
+        Alert.alert('Validation', 'Titre et description sont obligatoires.');
+        return;
+      }
+      setStep(1);
+      return;
+    }
+    if (step === 1) {
+      if (photosBase64.length !== 3) {
+        Alert.alert('Validation', 'Veuillez sélectionner exactement 3 photos.');
+        return;
+      }
+      setStep(2);
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 0) {
+      setStep(step - 1);
+    } else {
+      router.back();
+    }
+  };
+
+  const progress = ((step + 1) / 3) * 100;
+
   return (
-    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 24 }}>
-        <Pressable
-          onPress={() => router.back()}
-          className="bg-white border border-outline-variant rounded-xl py-3 px-3 flex-row items-center gap-2 mb-3"
-        >
-          <Ionicons name="arrow-back" size={18} color="#1B4332" />
-          <Text className="text-primary font-bold">Retour</Text>
-        </Pressable>
-
-        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-          <Text className="text-base font-extrabold text-primary">Nouvelle annonce</Text>
-          <Text className="text-sm text-on-surface-variant mt-1">Formulaire simple pour tester rapidement le backend annonces.</Text>
-        </View>
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Titre</Text>
-        <TextInput
-          value={titre}
-          onChangeText={setTitre}
-          placeholder="Ex: Poussette en bon état"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Description</Text>
-        <TextInput
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Décrivez votre annonce"
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-2">Catégorie</Text>
-        <View className="flex-row flex-wrap gap-2 mb-3">
-          {CATEGORIES.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setCategorie(item)}
-              className={`px-3 py-2 rounded-lg border ${categorie === item ? 'bg-primary border-primary' : 'bg-white border-outline-variant'}`}
-            >
-              <Text className={`${categorie === item ? 'text-white' : 'text-on-surface'} text-xs font-bold`}>{item}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-2">Mode d'échange</Text>
-        <View className="flex-row flex-wrap gap-2 mb-3">
-          {MODES.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setMode(item)}
-              className={`px-3 py-2 rounded-lg border ${mode === item ? 'bg-primary border-primary' : 'bg-white border-outline-variant'}`}
-            >
-              <Text className={`${mode === item ? 'text-white' : 'text-on-surface'} text-xs font-bold`}>{item}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-2">État</Text>
-        <View className="flex-row flex-wrap gap-2 mb-3">
-          {CONDITIONS.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setCondition(item)}
-              className={`px-3 py-2 rounded-lg border ${condition === item ? 'bg-primary border-primary' : 'bg-white border-outline-variant'}`}
-            >
-              <Text className={`${condition === item ? 'text-white' : 'text-on-surface'} text-xs font-bold`}>{item}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Prix symbolique (optionnel)</Text>
-        <TextInput
-          value={prixSymbolique}
-          onChangeText={setPrixSymbolique}
-          placeholder="0"
-          keyboardType="numeric"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Montant caution (optionnel)</Text>
-        <TextInput
-          value={montantCaution}
-          onChangeText={setMontantCaution}
-          placeholder="0"
-          keyboardType="numeric"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Latitude</Text>
-        <TextInput
-          value={latitude}
-          onChangeText={setLatitude}
-          placeholder="33.58"
-          keyboardType="decimal-pad"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Longitude</Text>
-        <TextInput
-          value={longitude}
-          onChangeText={setLongitude}
-          placeholder="-7.60"
-          keyboardType="decimal-pad"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
-
-        <Pressable
-          onPress={useCurrentLocation}
-          disabled={isGettingLocation}
-          className={`rounded-xl py-3 items-center justify-center flex-row gap-2 mb-3 ${isGettingLocation ? 'bg-surface-container' : 'bg-white border border-outline-variant'}`}
-        >
-          {isGettingLocation ? <ActivityIndicator color="#1B4332" /> : <Ionicons name="locate-outline" size={18} color="#1B4332" />}
-          <Text className="text-primary font-bold">{isGettingLocation ? 'Récupération position...' : 'Utiliser ma position réelle'}</Text>
-        </Pressable>
-
-        <View className="bg-white border border-outline-variant rounded-xl p-3 mb-4 flex-row items-center justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-xs font-bold text-primary">Publier en Food Rescue</Text>
-            <Text className="text-xs text-on-surface-variant mt-1">Réservé aux comptes PARTENAIRE.</Text>
+    <Screen scroll>
+      <Enter index={0}>
+        <View style={{ marginTop: 8 }}>
+          <T kind="overline" color={c.primary}>Étape {step + 1}/3</T>
+          <T kind="h1" style={{ marginTop: 6 }}>{STEP_TITLES[step]}</T>
+          <T kind="body" color={c.muted} style={{ marginTop: 6 }}>
+            {STEP_BODIES[step]}
+          </T>
+          <View
+            style={{
+              marginTop: 14,
+              height: 6,
+              borderRadius: radius.pill,
+              backgroundColor: c.surface2,
+              overflow: 'hidden',
+            }}
+          >
+            <View
+              style={{
+                width: `${progress}%`,
+                height: '100%',
+                borderRadius: radius.pill,
+                backgroundColor: c.primary,
+              }}
+            />
           </View>
-          <Switch value={isFoodRescue} onValueChange={setIsFoodRescue} />
         </View>
+      </Enter>
 
-        <View className="bg-white border border-outline-variant rounded-xl p-3 mb-4">
-          <Text className="text-xs font-bold text-primary mb-2">Photos de l'annonce (3 obligatoires)</Text>
+      {step === 0 && (
+        <>
+          <Enter index={1}>
+            <Card style={{ marginTop: 20, gap: 16 }}>
+              <TextField
+                label="Titre"
+                icon="text-outline"
+                value={titre}
+                onChangeText={setTitre}
+                placeholder="Ex: Poussette en bon état"
+              />
+              <TextField
+                label="Description"
+                icon="document-text-outline"
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Décrivez votre annonce"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </Card>
+          </Enter>
+          <Enter index={2}>
+            <View style={{ marginTop: 24 }}>
+              <SectionHeader title="Catégorie" />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                {CATEGORIES.map((item) => (
+                  <Chip key={item} label={item} selected={categorie === item} onPress={() => setCategorie(item)} />
+                ))}
+              </View>
+            </View>
+          </Enter>
+          <Enter index={3}>
+            <View style={{ marginTop: 24 }}>
+              <SectionHeader title="État" />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                {CONDITIONS.map((item) => (
+                  <Chip key={item} label={item} selected={condition === item} onPress={() => setCondition(item)} />
+                ))}
+              </View>
+            </View>
+          </Enter>
+        </>
+      )}
 
-          <View className="flex-row gap-2 mb-3">
-            <Pressable onPress={pickFromLibrary} className="flex-1 bg-primary rounded-lg py-3 items-center">
-              <Text className="text-white font-bold text-xs">Choisir galerie</Text>
-            </Pressable>
-            <Pressable onPress={pickFromCamera} className="flex-1 bg-white border border-outline-variant rounded-lg py-3 items-center">
-              <Text className="text-primary font-bold text-xs">Prendre photo</Text>
-            </Pressable>
-          </View>
-
-          <View className="flex-row gap-2">
-            {[0, 1, 2].map((index) => {
-              const photo = photosBase64[index];
-              return (
-                <View key={index} className="flex-1">
-                  {photo ? (
-                    <View className="relative">
-                      <Image
-                        source={{ uri: `data:${photo.type};base64,${photo.base64}` }}
-                        className="w-full h-20 rounded-lg"
-                        resizeMode="cover"
-                      />
-                      <Pressable
-                        onPress={() => {
-                          const clone = [...photosBase64];
-                          clone.splice(index, 1);
-                          setPhotosBase64(clone);
-                        }}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-error rounded-full items-center justify-center"
-                      >
-                        <Ionicons name="close" size={14} color="#fff" />
-                      </Pressable>
+      {step === 1 && (
+        <>
+          <Enter index={1}>
+            <Card style={{ marginTop: 20 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <T kind="h3">Photos de l&apos;annonce</T>
+                <Tag label={`${photosBase64.length}/3`} tone="primary" />
+              </View>
+              <T kind="small" color={c.muted} style={{ marginTop: 6 }}>
+                3 photos obligatoires. Cadrez bien votre objet.
+              </T>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                {[0, 1, 2].map((index) => {
+                  const photo = photosBase64[index];
+                  return (
+                    <View key={index} style={{ flex: 1 }}>
+                      {photo ? (
+                        <View>
+                          <View style={{ width: '100%', aspectRatio: 3 / 4, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: c.surface2 }}>
+                            <Image
+                              source={{ uri: `data:${photo.type};base64,${photo.base64}` }}
+                              style={{ width: '100%', height: '100%' }}
+                              resizeMode="cover"
+                            />
+                          </View>
+                          <PressableScale
+                            onPress={() => {
+                              const clone = [...photosBase64];
+                              clone.splice(index, 1);
+                              setPhotosBase64(clone);
+                            }}
+                            style={{
+                              position: 'absolute',
+                              top: -8,
+                              right: -8,
+                              width: 28,
+                              height: 28,
+                              borderRadius: 14,
+                              backgroundColor: c.danger,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Ionicons name="close" size={15} color={c.surface} />
+                          </PressableScale>
+                        </View>
+                      ) : (
+                        <View
+                          style={{
+                            width: '100%',
+                            aspectRatio: 3 / 4,
+                            borderRadius: radius.lg,
+                            backgroundColor: c.surface2,
+                            borderWidth: 1,
+                            borderColor: c.line,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 4,
+                          }}
+                        >
+                          <Ionicons name="image-outline" size={20} color={c.muted} />
+                          <T kind="caption" color={c.muted}>Photo {index + 1}</T>
+                        </View>
+                      )}
                     </View>
-                  ) : (
-                    <View className="w-full h-20 rounded-lg bg-surface-container items-center justify-center border border-outline-variant">
-                      <Ionicons name="image-outline" size={18} color="#717973" />
-                      <Text className="text-[10px] text-on-surface-variant mt-1">Photo {index + 1}</Text>
-                    </View>
-                  )}
+                  );
+                })}
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                <View style={{ flex: 1 }}>
+                  <Button title="Galerie" size="md" icon="images-outline" fullWidth onPress={pickFromLibrary} />
                 </View>
-              );
-            })}
+                <View style={{ flex: 1 }}>
+                  <Button title="Caméra" size="md" variant="secondary" icon="camera-outline" fullWidth onPress={pickFromCamera} />
+                </View>
+              </View>
+              <T kind="small" color={c.muted} style={{ marginTop: 12 }}>
+                {photosBase64.length}/3 photos sélectionnées
+              </T>
+            </Card>
+          </Enter>
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <Enter index={1}>
+            <View style={{ marginTop: 20 }}>
+              <SectionHeader title="Mode d'échange" />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                {MODES.map((item) => (
+                  <Chip key={item} label={item} selected={mode === item} onPress={() => setMode(item)} />
+                ))}
+              </View>
+            </View>
+          </Enter>
+          <Enter index={2}>
+            <Card style={{ marginTop: 20, gap: 16 }}>
+              <TextField
+                label="Prix symbolique (optionnel)"
+                icon="pricetag-outline"
+                value={prixSymbolique}
+                onChangeText={setPrixSymbolique}
+                placeholder="0"
+                keyboardType="numeric"
+              />
+              <TextField
+                label="Montant caution (optionnel)"
+                icon="shield-checkmark-outline"
+                value={montantCaution}
+                onChangeText={setMontantCaution}
+                placeholder="0"
+                keyboardType="numeric"
+              />
+            </Card>
+          </Enter>
+          <Enter index={3}>
+            <View style={{ marginTop: 24 }}>
+              <SectionHeader title="Localisation" />
+              <Card style={{ marginTop: 12, gap: 16 }}>
+                <TextField
+                  label="Latitude"
+                  icon="location-outline"
+                  value={latitude}
+                  onChangeText={setLatitude}
+                  placeholder="33.58"
+                  keyboardType="decimal-pad"
+                />
+                <TextField
+                  label="Longitude"
+                  icon="location-outline"
+                  value={longitude}
+                  onChangeText={setLongitude}
+                  placeholder="-7.60"
+                  keyboardType="decimal-pad"
+                />
+                <PressableScale
+                  onPress={useCurrentLocation}
+                  disabled={isGettingLocation}
+                  style={{
+                    borderRadius: radius.md,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'row',
+                    gap: 8,
+                    backgroundColor: c.surface2,
+                    opacity: isGettingLocation ? 0.6 : 1,
+                  }}
+                >
+                  {isGettingLocation ? (
+                    <ActivityIndicator color={c.primary} />
+                  ) : (
+                    <Ionicons name="locate-outline" size={18} color={c.primary} />
+                  )}
+                  <T kind="bodyStrong" color={c.primary}>
+                    {isGettingLocation ? 'Récupération position...' : 'Utiliser ma position réelle'}
+                  </T>
+                </PressableScale>
+              </Card>
+            </View>
+          </Enter>
+          <Enter index={4}>
+            <Card style={{ marginTop: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <T kind="bodyStrong" color={c.primary}>Publier en Food Rescue</T>
+                <T kind="small" color={c.muted} style={{ marginTop: 4 }}>
+                  Réservé aux comptes PARTENAIRE.
+                </T>
+              </View>
+              <Switch
+                value={isFoodRescue}
+                onValueChange={setIsFoodRescue}
+                trackColor={{ false: c.line, true: c.primary }}
+                thumbColor={c.surface}
+              />
+            </Card>
+          </Enter>
+        </>
+      )}
+
+      <Enter index={5}>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 24, marginBottom: 8 }}>
+          <View style={{ flex: 1 }}>
+            <Button title="Retour" variant="ghost" icon="arrow-back" onPress={handleBack} />
           </View>
-
-          <Text className="text-xs text-on-surface-variant mt-2">{photosBase64.length}/3 photos sélectionnées</Text>
+          <View style={{ flex: 2 }}>
+            {step < 2 ? (
+              <Button title="Continuer" iconAfter="arrow-forward" onPress={handleNext} />
+            ) : (
+              <Button
+                title={isSubmitting ? 'Publication...' : "Publier l'annonce"}
+                icon="checkmark-circle-outline"
+                loading={isSubmitting}
+                onPress={handleSubmit}
+              />
+            )}
+          </View>
         </View>
-
-        <Pressable
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          className={`rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 ${isSubmitting ? 'bg-primary/60' : 'bg-primary'}`}
-        >
-          {isSubmitting ? <ActivityIndicator color="#fff" /> : <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />}
-          <Text className="text-white font-bold">{isSubmitting ? 'Publication...' : 'Publier l\'annonce'}</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push('/(tabs)/home')}
-          className="bg-white border border-outline-variant rounded-xl py-3.5 items-center justify-center flex-row gap-2"
-        >
-          <Ionicons name="arrow-back" size={18} color="#1B4332" />
-          <Text className="text-primary font-bold">Retour à l'accueil</Text>
-        </Pressable>
-      </ScrollView>
-    </View>
+      </Enter>
+    </Screen>
   );
 }

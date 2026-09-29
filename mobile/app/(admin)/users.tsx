@@ -1,15 +1,31 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, TextInput, Modal, Alert } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import { ApiService } from '../../services/api';
+import { useTheme } from '../../theme/ThemeContext';
+import { radius } from '../../theme/tokens';
+import { Screen } from '../../components/ui/Screen';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Tag } from '../../components/ui/Chip';
+import { TextField } from '../../components/ui/TextField';
+import { T } from '../../components/ui/T';
+import { Avatar, EmptyState } from '../../components/ui/Primitives';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { Enter } from '../../components/ui/Enter';
+
+function roleTone(role?: string): 'primary' | 'gold' | 'info' | 'muted' {
+  if (role === 'ADMINISTRATEUR') return 'primary';
+  if (role === 'PARTENAIRE') return 'gold';
+  if (role === 'UTILISATEUR') return 'info';
+  return 'muted';
+}
 
 export default function AdminUsers() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -77,191 +93,239 @@ export default function AdminUsers() {
     }
   };
 
+  const openActions = (user: any) => {
+    setSelectedUser(user);
+    setShowModal(true);
+  };
+
   if (isLoading) {
     return (
-      <View className="flex-1 bg-[#0e0e0e] items-center justify-center">
-        <ActivityIndicator size="large" color="#c0c1ff" />
-      </View>
+      <Screen>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
+          <ActivityIndicator size="large" color={c.primary} />
+          <T kind="small" color={c.muted} style={{ marginTop: 12 }}>
+            Chargement des utilisateurs...
+          </T>
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <View className="flex-1 bg-[#0e0e0e]" style={{ paddingTop: insets.top }}>
-      {/* TopAppBar */}
-      <View className="bg-[#131313] border-b border-[#464554]/20 px-6 h-16 flex-row items-center justify-between">
-        <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center hover:bg-[#353534] rounded-sm">
-          <Ionicons name="arrow-back" size={20} color="#c0c1ff" />
-        </Pressable>
-        <View className="flex-1 ml-3">
-          <Text className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c0c1ff]/80">System Oversight</Text>
-          <Text className="text-lg font-light text-[#e5e2e1]">User Registry</Text>
+    <Screen>
+      <Enter index={0}>
+        <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <PressableScale
+            onPress={() => router.back()}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: radius.md,
+              backgroundColor: c.surface,
+              borderWidth: 1,
+              borderColor: c.line,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="arrow-back" size={20} color={c.ink} />
+          </PressableScale>
+          <View style={{ flex: 1 }}>
+            <T kind="overline" color={c.primary}>Console admin</T>
+            <T kind="h2" style={{ marginTop: 2 }}>Utilisateurs</T>
+          </View>
+          <Tag label={`${meta?.total || users.length} comptes`} tone="primary" />
         </View>
-      </View>
+      </Enter>
 
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#c0c1ff" />}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+        style={{ marginTop: 16 }}
       >
-        {/* Search */}
-        <View className="bg-[#1c1b1b] rounded-sm flex-row items-center px-4 py-4 mb-6 border border-[#464554]/20">
-          <Ionicons name="search" size={20} color="#908fa0" />
-          <TextInput
+        <Enter index={1}>
+          <TextField
+            label="Rechercher"
+            icon="search-outline"
             value={search}
             onChangeText={setSearch}
-            placeholder="SEARCH SYSTEM NODES OR IDENTITIES..."
-            placeholderTextColor="#908fa0"
-            className="flex-1 text-[#e5e2e1] text-sm uppercase tracking-wider ml-3"
+            placeholder="Nom, email ou téléphone..."
           />
-        </View>
+        </Enter>
 
-        {/* Stats */}
-        <Animated.View entering={FadeInUp.duration(600)} className="bg-[#1c1b1b] p-8 rounded-sm mb-6 border border-[#464554]/10">
-          <View className="absolute top-0 right-0 p-4 opacity-10">
-            <Ionicons name="people" size={60} color="#e5e2e1" />
-          </View>
-          <Text className="text-xs font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-6">Active Identities</Text>
-          <View className="flex-row items-baseline gap-2">
-            <Text className="text-6xl font-light tracking-tighter text-[#e5e2e1]">{meta?.total || 0}</Text>
-            <Text className="text-sm font-medium text-[#ffb783]">Registered</Text>
-          </View>
-        </Animated.View>
+        <Enter index={2}>
+          <Card style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: c.primarySoft,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="people-outline" size={22} color={c.onPrimarySoft} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <T kind="h1">{String(meta?.total || 0)}</T>
+              <T kind="small" color={c.muted}>Comptes enregistrés</T>
+            </View>
+            <Tag label="Registre" tone="primary" />
+          </Card>
+        </Enter>
 
-        {/* Users Grid */}
         {users.length === 0 ? (
-          <View className="bg-[#1c1b1b] rounded-sm items-center p-8 border border-[#464554]/10">
-            <Ionicons name="people-outline" size={32} color="#908fa0" />
-            <Text className="text-sm text-[#c7c4d7] mt-3">No users found</Text>
-          </View>
+          <Enter index={3}>
+            <Card style={{ marginTop: 16 }}>
+              <EmptyState
+                icon="people-outline"
+                title="Aucun utilisateur"
+                body="Aucun compte ne correspond à cette recherche."
+              />
+            </Card>
+          </Enter>
         ) : (
-          <View className="gap-6">
+          <View style={{ gap: 12, marginTop: 16 }}>
             {users.map((user, index) => (
-              <Animated.View key={user.id} entering={FadeInUp.delay(100 + index * 50).duration(600)}>
-                <Pressable
+              <Enter key={user.id} index={Math.min(index, 6)}>
+                <PressableScale
                   onPress={() => router.push(`/(admin)/user-details?id=${user.id}`)}
-                  className="bg-[#1c1b1b] border border-[#464554]/10 hover:border-[#c0c1ff]/20 p-6 rounded-sm relative overflow-hidden"
+                  onLongPress={() => openActions(user)}
                 >
-                  <View className="absolute top-0 right-0 w-24 h-24 bg-[#c0c1ff]/5 blur-[40px] rounded-full -mr-12 -mt-12" />
-                  <View className="flex-row items-start justify-between mb-8">
-                    <View className="flex-row items-center gap-4 flex-1">
-                      <View className="relative">
-                        <View className="w-14 h-14 rounded-sm border border-[#464554]/30 bg-[#353534] items-center justify-center">
-                          <Ionicons name="person" size={24} color="#c0c1ff" />
-                        </View>
-                        <View className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-[#1c1b1b] ${user.isBlocked ? 'bg-[#ffb4ab]' : 'bg-[#4ade80]'}`} />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-lg font-medium text-[#e5e2e1]" numberOfLines={1}>{user.email}</Text>
-                        <Text className="text-[10px] font-semibold uppercase tracking-widest text-[#c0c1ff]/70 mt-1">
-                          {user.role}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View className="gap-4 mb-8">
-                    {user.profil && (
-                      <View>
-                        <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60">Identity</Text>
-                        <Text className="text-sm text-[#c7c4d7] mt-1">{user.profil.prenom} {user.profil.nom}</Text>
-                      </View>
-                    )}
+                  <Card pad={14} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View>
-                      <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60">Registry Entry</Text>
-                      <Text className="text-sm text-[#c7c4d7] mt-1">
-                        {new Date(user.dateInscription).toLocaleDateString('fr-FR')} • {user.solde} MAD
-                      </Text>
+                      <Avatar name={user.profil ? `${user.profil.prenom || ''} ${user.profil.nom || ''}`.trim() : user.email} size={48} />
+                      <View
+                        style={{
+                          position: 'absolute',
+                          bottom: -2,
+                          right: -2,
+                          width: 14,
+                          height: 14,
+                          borderRadius: 7,
+                          backgroundColor: user.isBlocked ? c.danger : c.success,
+                          borderWidth: 2,
+                          borderColor: c.surface,
+                        }}
+                      />
                     </View>
-                  </View>
-                  <View className="flex-row items-center justify-between pt-4 border-t border-[#464554]/10">
-                    <View className="flex-row gap-1">
-                      <View className={`w-1.5 h-1.5 rounded-full ${user.isBlocked ? 'bg-[#ffb4ab]' : 'bg-[#c0c1ff] shadow-[0_0_8px_rgba(192,193,255,0.8)]'}`} />
-                      <View className="w-1.5 h-1.5 rounded-full bg-[#464554]" />
-                      <View className="w-1.5 h-1.5 rounded-full bg-[#464554]" />
+                    <View style={{ flex: 1 }}>
+                      <T kind="bodyStrong" numberOfLines={1}>{user.email}</T>
+                      {user.profil ? (
+                        <T kind="small" color={c.ink2} numberOfLines={1} style={{ marginTop: 2 }}>
+                          {user.profil.prenom} {user.profil.nom}
+                        </T>
+                      ) : null}
+                      <T kind="caption" color={c.muted} style={{ marginTop: 4 }}>
+                        Solde {user.solde} MAD
+                      </T>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                        <Tag label={user.role} tone={roleTone(user.role)} />
+                        <Tag label={user.isBlocked ? 'Bloqué' : 'Actif'} tone={user.isBlocked ? 'danger' : 'success'} />
+                      </View>
                     </View>
-                    <View className="flex-row items-center gap-2">
-                      <Text className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#e5e2e1]">Manage</Text>
-                      <Ionicons name="chevron-forward" size={14} color="#c0c1ff" />
-                    </View>
-                  </View>
-                </Pressable>
-              </Animated.View>
+                    <Ionicons name="chevron-forward" size={18} color={c.muted} />
+                  </Card>
+                </PressableScale>
+              </Enter>
             ))}
           </View>
         )}
 
-        {/* Pagination */}
         {meta && meta.lastPage > 1 && (
-          <View className="flex-row gap-3 mt-6 items-center justify-center">
-            <Pressable
-              onPress={() => setPage(Math.max(1, page - 1))}
-              disabled={page === 1}
-              className={`flex-1 py-3 rounded-sm items-center ${page === 1 ? 'bg-[#1c1b1b]' : 'bg-[#8083ff]'}`}
-            >
-              <Text className={`text-sm font-bold uppercase tracking-wider ${page === 1 ? 'text-[#908fa0]' : 'text-[#0d0096]'}`}>Prev</Text>
-            </Pressable>
-            <View className="bg-[#1c1b1b] rounded-sm px-6 py-3 border border-[#464554]/20">
-              <Text className="text-sm font-bold text-[#c0c1ff]">{page} / {meta.lastPage}</Text>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 20, alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Button
+                title="Précédent"
+                size="md"
+                variant={page === 1 ? 'ghost' : 'secondary'}
+                icon="chevron-back-outline"
+                onPress={() => setPage(Math.max(1, page - 1))}
+              />
             </View>
-            <Pressable
-              onPress={() => setPage(Math.min(meta.lastPage, page + 1))}
-              disabled={page === meta.lastPage}
-              className={`flex-1 py-3 rounded-sm items-center ${page === meta.lastPage ? 'bg-[#1c1b1b]' : 'bg-[#8083ff]'}`}
-            >
-              <Text className={`text-sm font-bold uppercase tracking-wider ${page === meta.lastPage ? 'text-[#908fa0]' : 'text-[#0d0096]'}`}>Next</Text>
-            </Pressable>
+            <Card pad={12} flat>
+              <T kind="bodyStrong" color={c.primary}>{page} / {meta.lastPage}</T>
+            </Card>
+            <View style={{ flex: 1 }}>
+              <Button
+                title="Suivant"
+                size="md"
+                variant={page === meta.lastPage ? 'ghost' : 'secondary'}
+                iconAfter="chevron-forward-outline"
+                onPress={() => setPage(Math.min(meta.lastPage, page + 1))}
+              />
+            </View>
           </View>
         )}
       </ScrollView>
 
-      {/* Modal User Details */}
-      <Modal visible={showModal} animationType="slide" transparent>
-        <View className="flex-1 bg-black/80 justify-end">
-          <View className="bg-[#131313] rounded-t-3xl p-6" style={{ paddingBottom: insets.bottom + 24 }}>
-            <View className="flex-row items-center justify-between mb-6">
-              <Text className="text-xl font-light text-[#c0c1ff]">User Details</Text>
-              <Pressable onPress={() => setShowModal(false)}>
-                <Ionicons name="close" size={24} color="#908fa0" />
-              </Pressable>
+      <Modal visible={showModal} animationType="slide" transparent onRequestClose={() => setShowModal(false)}>
+        <View style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'flex-end' }}>
+          <View
+            style={{
+              backgroundColor: c.surface,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+              padding: 20,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <T kind="h2">Détails utilisateur</T>
+              <PressableScale onPress={() => setShowModal(false)} style={{ padding: 6 }}>
+                <Ionicons name="close" size={24} color={c.muted} />
+              </PressableScale>
             </View>
 
             {selectedUser && (
               <ScrollView showsVerticalScrollIndicator={false}>
-                <View className="bg-[#1c1b1b] rounded-sm p-4 mb-3">
-                  <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-1">Email</Text>
-                  <Text className="text-base font-medium text-[#e5e2e1]">{selectedUser.email}</Text>
-                </View>
-                <View className="bg-[#1c1b1b] rounded-sm p-4 mb-3">
-                  <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-1">Phone</Text>
-                  <Text className="text-base font-medium text-[#e5e2e1]">{selectedUser.telephone}</Text>
-                </View>
-                <View className="bg-[#1c1b1b] rounded-sm p-4 mb-6">
-                  <Text className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#908fa0]/60 mb-1">Role</Text>
-                  <Text className="text-base font-medium text-[#c0c1ff]">{selectedUser.role}</Text>
-                </View>
-                <Text className="text-base font-medium text-[#e5e2e1] mb-3">Actions</Text>
-                <Pressable
+                <Card flat style={{ backgroundColor: c.surface2 }}>
+                  <T kind="caption" color={c.muted}>Email</T>
+                  <T kind="bodyStrong" style={{ marginTop: 4 }}>{selectedUser.email}</T>
+                </Card>
+                <Card flat style={{ backgroundColor: c.surface2, marginTop: 10 }}>
+                  <T kind="caption" color={c.muted}>Téléphone</T>
+                  <T kind="bodyStrong" style={{ marginTop: 4 }}>{selectedUser.telephone}</T>
+                </Card>
+                <Card flat style={{ backgroundColor: c.surface2, marginTop: 10 }}>
+                  <T kind="caption" color={c.muted}>Rôle</T>
+                  <T kind="bodyStrong" color={c.primary} style={{ marginTop: 4 }}>{selectedUser.role}</T>
+                </Card>
+                <T kind="h3" style={{ marginTop: 20, marginBottom: 12 }}>Actions</T>
+                <Button
+                  title={selectedUser.isBlocked ? 'Débloquer' : 'Bloquer'}
+                  variant={selectedUser.isBlocked ? 'secondary' : 'danger'}
+                  icon={selectedUser.isBlocked ? 'checkmark-circle-outline' : 'ban-outline'}
                   onPress={() => handleBlockUser(selectedUser.id, selectedUser.isBlocked)}
-                  className={`rounded-sm py-4 mb-3 items-center ${selectedUser.isBlocked ? 'bg-[#4ade80]' : 'bg-[#ffb4ab]'}`}
-                >
-                  <Text className="text-base font-bold text-[#131313]">
-                    {selectedUser.isBlocked ? 'Unblock' : 'Block'} User
-                  </Text>
-                </Pressable>
+                />
                 {selectedUser.role !== 'ADMINISTRATEUR' && (
-                  <Pressable
-                    onPress={() => handleChangeRole(selectedUser.id, 'ADMINISTRATEUR')}
-                    className="bg-[#8083ff] rounded-sm py-4 items-center"
-                  >
-                    <Text className="text-base font-bold text-[#0d0096]">
-                      Promote to Admin
-                    </Text>
-                  </Pressable>
+                  <View style={{ marginTop: 12 }}>
+                    <Button
+                      title="Promouvoir admin"
+                      variant="secondary"
+                      icon="shield-checkmark-outline"
+                      onPress={() => handleChangeRole(selectedUser.id, 'ADMINISTRATEUR')}
+                    />
+                  </View>
                 )}
+                <View style={{ marginTop: 12 }}>
+                  <Button
+                    title="Voir le dossier"
+                    variant="ghost"
+                    icon="person-outline"
+                    onPress={() => {
+                      setShowModal(false);
+                      router.push(`/(admin)/user-details?id=${selectedUser.id}`);
+                    }}
+                  />
+                </View>
+                <View style={{ height: 12 }} />
               </ScrollView>
             )}
           </View>
         </View>
       </Modal>
-    </View>
+    </Screen>
   );
 }

@@ -1,12 +1,22 @@
 import { useCallback, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert, Image } from 'react-native';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { ActivityIndicator, Alert, Image, ScrollView, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { ApiService } from '../../../services/api';
 import SmartAnnonceImage from '../../../components/smart-annonce-image';
+import { useTheme } from '../../../theme/ThemeContext';
+import { radius } from '../../../theme/tokens';
+import { Screen } from '../../../components/ui/Screen';
+import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
+import { Chip } from '../../../components/ui/Chip';
+import { TextField } from '../../../components/ui/TextField';
+import { T } from '../../../components/ui/T';
+import { SectionHeader } from '../../../components/ui/Primitives';
+import { PressableScale } from '../../../components/ui/PressableScale';
+import { Enter } from '../../../components/ui/Enter';
 
 const CATEGORIES = ['POUSSETTE', 'BRICOLAGE', 'MEDICAL', 'EVENEMENTIEL', 'NOURRITURE', 'AUTRE'];
 const MODES = ['DON_GRATUIT', 'PRET_TEMPORAIRE', 'LOCATION_SOLIDAIRE'];
@@ -15,8 +25,8 @@ const PHOTO_SLOTS_COUNT = 3;
 
 export default function EditAnnonceScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
+  const { c } = useTheme();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -192,196 +202,197 @@ export default function EditAnnonceScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-surface items-center justify-center">
-        <ActivityIndicator size="large" color="#1B4332" />
-      </View>
+      <Screen>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
+          <ActivityIndicator size="large" color={c.primary} />
+          <T kind="small" color={c.muted} style={{ marginTop: 12 }}>
+            Chargement de l'annonce...
+          </T>
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 24 }}>
-        <Pressable
-          onPress={() => router.back()}
-          className="bg-white border border-outline-variant rounded-xl py-3 px-3 flex-row items-center gap-2 mb-3"
-        >
-          <Ionicons name="arrow-back" size={18} color="#1B4332" />
-          <Text className="text-primary font-bold">Retour</Text>
-        </Pressable>
-
-        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-          <Text className="text-base font-extrabold text-primary">Modifier annonce</Text>
-          <Text className="text-sm text-on-surface-variant mt-1">Mettez à jour les informations de votre annonce.</Text>
+    <Screen scroll>
+      <Enter index={0}>
+        <View style={{ marginTop: 8 }}>
+          <T kind="overline" color={c.primary}>Édition</T>
+          <T kind="h1" style={{ marginTop: 6 }}>Modifier annonce</T>
+          <T kind="body" color={c.muted} style={{ marginTop: 6 }}>
+            Mettez à jour les informations de votre annonce.
+          </T>
+          <View
+            style={{
+              marginTop: 14,
+              height: 6,
+              borderRadius: radius.pill,
+              backgroundColor: c.surface2,
+              overflow: 'hidden',
+            }}
+          >
+            <View
+              style={{ width: '100%', height: '100%', borderRadius: radius.pill, backgroundColor: c.primary }}
+            />
+          </View>
         </View>
+      </Enter>
 
-        {existingPhotos && existingPhotos.length > 0 && (
-          <View className="mb-4">
-            <Text className="text-xs font-bold text-on-surface-variant mb-2">Photos actuelles</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      <Enter index={1}>
+        <View style={{ marginTop: 20 }}>
+          <SectionHeader title="Photos" />
+          {existingPhotos && existingPhotos.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 12, paddingVertical: 4 }}
+              style={{ marginTop: 12, marginHorizontal: -20, paddingHorizontal: 20 }}
+            >
               {existingPhotos.map((photo, index) => (
-                <SmartAnnonceImage
+                <View
                   key={`photo-${index}`}
-                  uri={photo}
-                  className="w-28 h-28 rounded-xl overflow-hidden"
-                  resizeMode="cover"
-                />
+                  style={{ width: 140, aspectRatio: 1, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: c.surface2 }}
+                >
+                  <SmartAnnonceImage uri={photo} className="w-full h-full" resizeMode="cover" />
+                </View>
               ))}
             </ScrollView>
-          </View>
-        )}
-
-        <View className="mb-4">
-          <Text className="text-xs font-bold text-on-surface-variant mb-2">Remplacer les photos une par une</Text>
-          <View className="gap-3">
+          ) : (
+            <T kind="small" color={c.muted} style={{ marginTop: 8 }}>
+              Aucune photo enregistrée pour le moment.
+            </T>
+          )}
+          <View style={{ gap: 12, marginTop: 12 }}>
             {getPhotoSlots().map((photo, index) => {
               const newPhoto = newPhotosByIndex[index];
-
               return (
-                <View key={`replace-photo-${index}`} className="bg-white border border-outline-variant rounded-xl p-3">
-                  <Text className="text-[11px] text-on-surface-variant mb-2">Photo {index + 1}</Text>
-
-                  <View className="w-full h-28 rounded-xl overflow-hidden border border-outline-variant mb-2">
+                <Card key={`replace-photo-${index}`} pad={14}>
+                  <T kind="caption" color={c.muted}>Photo {index + 1}</T>
+                  <View style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: c.surface2, marginTop: 10 }}>
                     {newPhoto ? (
                       <Image
                         source={{ uri: `data:${newPhoto.type};base64,${newPhoto.base64}` }}
-                        className="w-full h-full"
+                        style={{ width: '100%', height: '100%' }}
                         resizeMode="cover"
                       />
                     ) : (
                       photo ? (
                         <SmartAnnonceImage uri={photo} className="w-full h-full" resizeMode="cover" />
                       ) : (
-                        <View className="w-full h-full bg-surface items-center justify-center">
-                          <Text className="text-xs text-on-surface-variant">Aucune photo</Text>
+                        <View style={{ width: '100%', height: '100%', backgroundColor: c.surface2, alignItems: 'center', justifyContent: 'center' }}>
+                          <T kind="small" color={c.muted}>Aucune photo</T>
                         </View>
                       )
                     )}
                   </View>
-
-                  <View className="flex-row gap-2">
-                    <Pressable
-                      onPress={() => pickPhotoForIndex(index, 'gallery')}
-                      className="flex-1 bg-primary/10 rounded-lg py-2 flex-row items-center justify-center gap-1"
-                    >
-                      <Ionicons name="images-outline" size={14} color="#1B4332" />
-                      <Text className="text-primary text-xs font-bold">Galerie</Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => pickPhotoForIndex(index, 'camera')}
-                      className="flex-1 bg-primary/10 rounded-lg py-2 flex-row items-center justify-center gap-1"
-                    >
-                      <Ionicons name="camera-outline" size={14} color="#1B4332" />
-                      <Text className="text-primary text-xs font-bold">Caméra</Text>
-                    </Pressable>
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Button title="Galerie" size="md" variant="secondary" icon="images-outline" onPress={() => pickPhotoForIndex(index, 'gallery')} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Button title="Caméra" size="md" variant="secondary" icon="camera-outline" onPress={() => pickPhotoForIndex(index, 'camera')} />
+                    </View>
                   </View>
-                </View>
+                </Card>
               );
             })}
           </View>
         </View>
+      </Enter>
 
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Titre</Text>
-        <TextInput value={titre} onChangeText={setTitre} className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3" />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Description</Text>
-        <TextInput
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-2">Catégorie</Text>
-        <View className="flex-row flex-wrap gap-2 mb-3">
-          {CATEGORIES.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setCategorie(item)}
-              className={`px-3 py-2 rounded-lg border ${categorie === item ? 'bg-primary border-primary' : 'bg-white border-outline-variant'}`}
-            >
-              <Text className={`${categorie === item ? 'text-white' : 'text-on-surface'} text-xs font-bold`}>{item}</Text>
-            </Pressable>
-          ))}
+      <Enter index={2}>
+        <View style={{ marginTop: 24 }}>
+          <SectionHeader title="Objet" />
+          <Card style={{ marginTop: 12, gap: 16 }}>
+            <TextField label="Titre" icon="text-outline" value={titre} onChangeText={setTitre} />
+            <TextField
+              label="Description"
+              icon="document-text-outline"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+            <View>
+              <T kind="caption" color={c.muted}>Catégorie</T>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                {CATEGORIES.map((item) => (
+                  <Chip key={item} label={item} selected={categorie === item} onPress={() => setCategorie(item)} />
+                ))}
+              </View>
+            </View>
+            <View>
+              <T kind="caption" color={c.muted}>État</T>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                {CONDITIONS.map((item) => (
+                  <Chip key={item} label={item} selected={condition === item} onPress={() => setCondition(item)} />
+                ))}
+              </View>
+            </View>
+          </Card>
         </View>
+      </Enter>
 
-        <Text className="text-xs font-bold text-on-surface-variant mb-2">Mode d'échange</Text>
-        <View className="flex-row flex-wrap gap-2 mb-3">
-          {MODES.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setMode(item)}
-              className={`px-3 py-2 rounded-lg border ${mode === item ? 'bg-primary border-primary' : 'bg-white border-outline-variant'}`}
-            >
-              <Text className={`${mode === item ? 'text-white' : 'text-on-surface'} text-xs font-bold`}>{item}</Text>
-            </Pressable>
-          ))}
+      <Enter index={3}>
+        <View style={{ marginTop: 24 }}>
+          <SectionHeader title="Conditions" />
+          <Card style={{ marginTop: 12, gap: 16 }}>
+            <View>
+              <T kind="caption" color={c.muted}>Mode d&apos;échange</T>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                {MODES.map((item) => (
+                  <Chip key={item} label={item} selected={mode === item} onPress={() => setMode(item)} />
+                ))}
+              </View>
+            </View>
+            <TextField
+              label="Prix symbolique"
+              icon="pricetag-outline"
+              value={prixSymbolique}
+              onChangeText={setPrixSymbolique}
+              keyboardType="numeric"
+            />
+            <TextField
+              label="Montant caution"
+              icon="shield-checkmark-outline"
+              value={montantCaution}
+              onChangeText={setMontantCaution}
+              keyboardType="numeric"
+            />
+            <TextField
+              label="Latitude"
+              icon="location-outline"
+              value={latitude}
+              onChangeText={setLatitude}
+              keyboardType="decimal-pad"
+            />
+            <TextField
+              label="Longitude"
+              icon="location-outline"
+              value={longitude}
+              onChangeText={setLongitude}
+              keyboardType="decimal-pad"
+            />
+          </Card>
         </View>
+      </Enter>
 
-        <Text className="text-xs font-bold text-on-surface-variant mb-2">État</Text>
-        <View className="flex-row flex-wrap gap-2 mb-3">
-          {CONDITIONS.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setCondition(item)}
-              className={`px-3 py-2 rounded-lg border ${condition === item ? 'bg-primary border-primary' : 'bg-white border-outline-variant'}`}
-            >
-              <Text className={`${condition === item ? 'text-white' : 'text-on-surface'} text-xs font-bold`}>{item}</Text>
-            </Pressable>
-          ))}
+      <Enter index={4}>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 24, marginBottom: 8 }}>
+          <View style={{ flex: 1 }}>
+            <Button title="Retour" variant="ghost" icon="arrow-back" onPress={() => router.back()} />
+          </View>
+          <View style={{ flex: 2 }}>
+            <Button
+              title={isSaving ? 'Enregistrement...' : 'Enregistrer'}
+              icon="save-outline"
+              loading={isSaving}
+              onPress={saveAnnonce}
+            />
+          </View>
         </View>
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Prix symbolique</Text>
-        <TextInput
-          value={prixSymbolique}
-          onChangeText={setPrixSymbolique}
-          keyboardType="numeric"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Montant caution</Text>
-        <TextInput
-          value={montantCaution}
-          onChangeText={setMontantCaution}
-          keyboardType="numeric"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Latitude</Text>
-        <TextInput
-          value={latitude}
-          onChangeText={setLatitude}
-          keyboardType="decimal-pad"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-3"
-        />
-
-        <Text className="text-xs font-bold text-on-surface-variant mb-1">Longitude</Text>
-        <TextInput
-          value={longitude}
-          onChangeText={setLongitude}
-          keyboardType="decimal-pad"
-          className="bg-white border border-outline-variant rounded-xl px-3 py-3 mb-4"
-        />
-
-        <Pressable
-          onPress={saveAnnonce}
-          disabled={isSaving}
-          className={`rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-3 ${isSaving ? 'bg-primary/60' : 'bg-primary'}`}
-        >
-          {isSaving ? <ActivityIndicator color="#fff" /> : <Ionicons name="save-outline" size={18} color="#fff" />}
-          <Text className="text-white font-bold">{isSaving ? 'Enregistrement...' : 'Enregistrer les changements'}</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.back()}
-          className="bg-white border border-outline-variant rounded-xl py-3.5 items-center justify-center flex-row gap-2"
-        >
-          <Ionicons name="arrow-back" size={18} color="#1B4332" />
-          <Text className="text-primary font-bold">Retour</Text>
-        </Pressable>
-      </ScrollView>
-    </View>
+      </Enter>
+    </Screen>
   );
 }

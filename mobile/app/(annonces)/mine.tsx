@@ -1,15 +1,24 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, ScrollView, RefreshControl, Alert } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../../services/api';
 import SmartAnnonceImage from '../../components/smart-annonce-image';
+import { useTheme } from '../../theme/ThemeContext';
+import { radius } from '../../theme/tokens';
+import { Screen } from '../../components/ui/Screen';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Tag } from '../../components/ui/Chip';
+import { T } from '../../components/ui/T';
+import { EmptyState } from '../../components/ui/Primitives';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { Enter } from '../../components/ui/Enter';
 
 export default function MyAnnoncesScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { c } = useTheme();
   const [annonces, setAnnonces] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,105 +88,157 @@ export default function MyAnnoncesScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
-        <View className="px-4">
-          <View className="h-11 rounded-xl bg-surface-container mb-3" />
-          <View className="h-20 rounded-2xl bg-surface-container mb-4" />
-          <View className="h-48 rounded-2xl bg-surface-container mb-3" />
-          <View className="h-48 rounded-2xl bg-surface-container mb-3" />
+      <Screen>
+        <View style={{ marginTop: 8, gap: 12 }}>
+          <View style={{ height: 48, borderRadius: radius.md, backgroundColor: c.surface2 }} />
+          <Card>
+            <T kind="h2">Mes annonces</T>
+            <T kind="body" color={c.muted} style={{ marginTop: 4 }}>
+              Chargement de vos annonces publiées...
+            </T>
+          </Card>
+          {[0, 1].map((i) => (
+            <Card key={i}>
+              <View style={{ height: 150, borderRadius: radius.lg, backgroundColor: c.surface2 }} />
+              <View style={{ height: 14, borderRadius: 7, backgroundColor: c.surface2, marginTop: 12 }} />
+            </Card>
+          ))}
         </View>
-      </View>
+      </Screen>
     );
   }
 
   return (
-    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
-      <View className="px-4 mb-4">
-        <Pressable
-          onPress={() => router.back()}
-          className="bg-white border border-outline-variant rounded-xl py-3 px-3 flex-row items-center gap-2 mb-3"
-        >
-          <Ionicons name="arrow-back" size={18} color="#1B4332" />
-          <Text className="text-primary font-bold">Retour</Text>
-        </Pressable>
-
-        <View className="bg-white rounded-2xl p-4 border border-outline-variant">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-base font-extrabold text-primary">Mes annonces</Text>
-              <Text className="text-sm text-on-surface-variant mt-1">Gérez vos annonces publiées.</Text>
-            </View>
-            <Pressable onPress={() => router.push('/(annonces)/create')} className="bg-primary px-3 py-2 rounded-lg">
-              <Text className="text-white font-bold text-xs">+ Créer</Text>
-            </Pressable>
+    <Screen>
+      <Enter index={0}>
+        <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <PressableScale
+            onPress={() => router.back()}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: radius.md,
+              backgroundColor: c.surface,
+              borderWidth: 1,
+              borderColor: c.line,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="arrow-back" size={20} color={c.ink} />
+          </PressableScale>
+          <View style={{ flex: 1 }}>
+            <T kind="overline" color={c.primary}>Espace personnel</T>
+            <T kind="h2" style={{ marginTop: 2 }}>Mes annonces</T>
           </View>
+          <Tag label={`${annonces.length} objets`} tone="primary" />
         </View>
-      </View>
+      </Enter>
+
+      <Enter index={1}>
+        <View style={{ marginTop: 16 }}>
+          <Button title="Publier une annonce" icon="add" onPress={() => router.push('/(annonces)/create')} />
+        </View>
+      </Enter>
 
       <ScrollView
-        className="flex-1 px-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1B4332" />}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        style={{ marginTop: 16 }}
       >
         {annonces.length === 0 ? (
-          <View className="bg-white border border-outline-variant rounded-2xl p-6 items-center">
-            <Ionicons name="albums-outline" size={30} color="#A5A6AA" />
-            <Text className="text-on-surface-variant mt-2">Vous n'avez pas encore d'annonce.</Text>
-          </View>
+          <Enter index={2}>
+            <Card style={{ marginTop: 4 }}>
+              <EmptyState
+                icon="albums-outline"
+                title="Aucune annonce"
+                body="Vous n'avez pas encore d'annonce."
+                action="Créer une annonce"
+                onAction={() => router.push('/(annonces)/create')}
+              />
+            </Card>
+          </Enter>
         ) : (
-          annonces.map((annonce) => (
-            <View key={annonce.id} className="bg-white border border-outline-variant rounded-2xl p-3 mb-3">
-              <Pressable onPress={() => router.push(`/(annonces)/${annonce.id}`)}>
-                <SmartAnnonceImage
-                  uri={annonce.photos?.[0]}
-                  className="w-full h-32 rounded-xl mb-3 overflow-hidden"
-                  resizeMode="cover"
-                />
-                <Text className="text-base font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
-                <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={2}>{annonce.description}</Text>
-
-                <View className="flex-row flex-wrap gap-2 mt-2">
-                  <View className="bg-primary/10 px-2 py-1 rounded-lg">
-                    <Text className="text-[10px] font-semibold text-primary">{annonce.categorie}</Text>
+          <View style={{ gap: 12 }}>
+            {annonces.map((annonce, i) => (
+              <Enter key={annonce.id} index={Math.min(i, 6)}>
+                <Card pad={14} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <PressableScale onPress={() => router.push(`/(annonces)/${annonce.id}`)}>
+                    <View
+                      style={{
+                        width: 84,
+                        height: 84,
+                        borderRadius: radius.lg,
+                        overflow: 'hidden',
+                        backgroundColor: c.surface2,
+                      }}
+                    >
+                      <SmartAnnonceImage
+                        uri={annonce.photos?.[0]}
+                        className="w-full h-full overflow-hidden"
+                        resizeMode="cover"
+                      />
+                    </View>
+                  </PressableScale>
+                  <View style={{ flex: 1 }}>
+                    <PressableScale onPress={() => router.push(`/(annonces)/${annonce.id}`)}>
+                      <T kind="bodyStrong" numberOfLines={1}>{annonce.titre}</T>
+                    </PressableScale>
+                    <T kind="caption" color={c.muted} style={{ marginTop: 2 }}>
+                      Créée le {annonce.dateCreation ? new Date(annonce.dateCreation).toLocaleDateString('fr-FR') : 'N/A'}
+                    </T>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                      <Tag
+                        label={annonce.montantCaution !== null && annonce.montantCaution !== undefined ? `${annonce.montantCaution} MAD` : 'Sans caution'}
+                        tone="gold"
+                      />
+                      <Tag
+                        label={String(annonce.statut || 'N/A')}
+                        tone={annonce.statut === 'DISPONIBLE' ? 'success' : 'muted'}
+                      />
+                    </View>
                   </View>
-                  <View className="bg-surface-container px-2 py-1 rounded-lg">
-                    <Text className="text-[10px] text-on-surface-variant">Statut: {annonce.statut}</Text>
+                  <View style={{ gap: 8 }}>
+                    <PressableScale
+                      onPress={() => router.push(`/(annonces)/edit/${annonce.id}`)}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: radius.md,
+                        backgroundColor: c.surface2,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={18} color={c.primary} />
+                    </PressableScale>
+                    <PressableScale
+                      onPress={() => deleteAnnonce(annonce.id)}
+                      disabled={deletingId === annonce.id}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: radius.md,
+                        backgroundColor: c.surface2,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: deletingId === annonce.id ? 0.6 : 1,
+                      }}
+                    >
+                      {deletingId === annonce.id ? (
+                        <ActivityIndicator size="small" color={c.danger} />
+                      ) : (
+                        <Ionicons name="trash-outline" size={18} color={c.danger} />
+                      )}
+                    </PressableScale>
                   </View>
-                  <View className="bg-surface-container px-2 py-1 rounded-lg">
-                    <Text className="text-[10px] text-on-surface-variant">
-                      Caution: {annonce.montantCaution !== null && annonce.montantCaution !== undefined ? `${annonce.montantCaution} MAD` : 'Aucune'}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text className="text-[11px] text-on-surface-variant mt-2">
-                  Créée le {annonce.dateCreation ? new Date(annonce.dateCreation).toLocaleDateString('fr-FR') : 'N/A'}
-                </Text>
-              </Pressable>
-
-              <View className="flex-row gap-2 mt-3">
-                <Pressable
-                  onPress={() => router.push(`/(annonces)/edit/${annonce.id}`)}
-                  className="flex-1 bg-primary rounded-xl py-2.5 items-center"
-                >
-                  <Text className="text-white font-bold text-xs">Modifier</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => deleteAnnonce(annonce.id)}
-                  disabled={deletingId === annonce.id}
-                  className={`flex-1 rounded-xl py-2.5 items-center ${deletingId === annonce.id ? 'bg-error/60' : 'bg-error'}`}
-                >
-                  {deletingId === annonce.id ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text className="text-white font-bold text-xs">Supprimer</Text>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-          ))
+                </Card>
+              </Enter>
+            ))}
+          </View>
         )}
       </ScrollView>
-    </View>
+    </Screen>
   );
 }

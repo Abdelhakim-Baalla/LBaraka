@@ -1,15 +1,23 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import { ApiService } from '../../services/api';
+import { useTheme } from '../../theme/ThemeContext';
+import { radius } from '../../theme/tokens';
+import { Screen } from '../../components/ui/Screen';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Tag } from '../../components/ui/Chip';
+import { T } from '../../components/ui/T';
+import { SectionHeader } from '../../components/ui/Primitives';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { Enter } from '../../components/ui/Enter';
 
 export default function AdminDashboard() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<any>(null);
@@ -50,169 +58,207 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-[#0e0e0e] items-center justify-center">
-        <ActivityIndicator size="large" color="#c0c1ff" />
-      </View>
+      <Screen>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
+          <ActivityIndicator size="large" color={c.primary} />
+          <T kind="small" color={c.muted} style={{ marginTop: 12 }}>
+            Chargement des statistiques...
+          </T>
+        </View>
+      </Screen>
     );
   }
 
+  const overview: { label: string; value: string | number; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { label: 'Total utilisateurs', value: stats?.overview?.totalUsers || 0, icon: 'people-outline' },
+    { label: 'Points relais', value: stats?.overview?.totalPointsRelais || 0, icon: 'storefront-outline' },
+    { label: 'Transactions', value: stats?.overview?.totalTransactions || 0, icon: 'swap-horizontal-outline' },
+    { label: 'Terminées', value: stats?.overview?.transactionsCount || 0, icon: 'checkmark-circle-outline' },
+  ];
+
+  const impact: { label: string; value: string | number; unit: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { label: 'Nourriture sauvée', value: stats?.impact?.tonsFoodSaved || 0, unit: 'Tonnes', icon: 'leaf-outline' },
+    { label: 'CO2 évité', value: stats?.impact?.co2PreventedKg || 0, unit: 'Kg', icon: 'cloud-outline' },
+    { label: 'Personnes aidées', value: stats?.impact?.totalPeopleHelped || 0, unit: 'Vies', icon: 'heart-outline' },
+  ];
+
+  const actions: { title: string; body: string; icon: keyof typeof Ionicons.glyphMap; href: '/(admin)/users' | '/(admin)/transactions' | '/(admin)/annonces' }[] = [
+    { title: 'Gérer les utilisateurs', body: 'Voir tous les comptes', icon: 'people-outline', href: '/(admin)/users' },
+    { title: 'Transactions', body: 'Historique complet', icon: 'swap-horizontal-outline', href: '/(admin)/transactions' },
+    { title: 'Annonces', body: 'Toutes les publications', icon: 'megaphone-outline', href: '/(admin)/annonces' },
+  ];
+
   return (
-    <View className="flex-1 bg-[#0e0e0e]" style={{ paddingTop: insets.top }}>
-      {/* TopAppBar */}
-      <View className="bg-[#131313] border-b border-[#464554]/20 px-6 h-16 flex-row items-center justify-between">
-        <View className="flex-row items-center gap-3">
-          <View className="w-8 h-8 rounded-sm bg-gradient-to-br from-[#c0c1ff] to-[#8083ff] items-center justify-center">
-            <Ionicons name="shield" size={20} color="#1000a9" />
-          </View>
-          <Text className="text-xl font-light tracking-tighter text-[#e5e2e1]">
-            LBARAKA <Text className="font-bold text-[#c0c1ff]">COMMAND</Text>
-          </Text>
-        </View>
-        <Pressable onPress={handleLogout} className="w-10 h-10 items-center justify-center hover:bg-[#353534] rounded-sm">
-          <Ionicons name="log-out-outline" size={20} color="#c0c1ff" />
-        </Pressable>
-      </View>
-
+    <Screen>
       <ScrollView
-        className="flex-1"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#c0c1ff" />}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 40, paddingBottom: 128 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+        contentContainerStyle={{ paddingBottom: 32 }}
       >
-        {/* Header */}
-        <Animated.View entering={FadeInUp.duration(500)} className="mb-6">
-          <Text className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c0c1ff]/80 mb-1">Architecture Overview</Text>
-          <Text className="text-3xl font-light text-[#e5e2e1]">Global Metrics</Text>
-        </Animated.View>
-
-        {/* Stats Grid */}
-        <View className="mb-12">
-          {/* Overview Section */}
-          <Text className="text-xs font-semibold text-[#c0c1ff] mb-3 uppercase tracking-wide">Overview</Text>
-          <View className="flex-row gap-3 mb-3">
-              <Animated.View entering={FadeInUp.delay(100).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm border-l-2 border-[#c0c1ff]">
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Total Users</Text>
-                <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.overview?.totalUsers || 0}</Text>
-              </Animated.View>
-              <Animated.View entering={FadeInUp.delay(150).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm">
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Points Relais</Text>
-                <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.overview?.totalPointsRelais || 0}</Text>
-              </Animated.View>
-          </View>
-          <View className="flex-row gap-3 mb-8">
-              <Animated.View entering={FadeInUp.delay(200).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm">
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Transactions</Text>
-                <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.overview?.totalTransactions || 0}</Text>
-              </Animated.View>
-              <Animated.View entering={FadeInUp.delay(250).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm">
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Terminées</Text>
-                <Text className="text-3xl font-extralight tracking-tight text-[#4ade80]">{stats?.overview?.transactionsCount || 0}</Text>
-              </Animated.View>
-          </View>
-
-          {/* Impact Section */}
-          <Text className="text-xs font-semibold text-[#ffb783] mb-3 uppercase tracking-wide">Impact</Text>
-          <View className="flex-row gap-3 mb-3">
-              <Animated.View entering={FadeInUp.delay(300).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm relative overflow-hidden">
-                <View className="absolute top-0 right-0 p-2 opacity-10"><Ionicons name="leaf" size={40} color="#ffb783" /></View>
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Food Saved</Text>
-                <View className="flex-row items-baseline gap-1">
-                  <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.impact?.tonsFoodSaved || 0}</Text>
-                  <Text className="text-[10px] font-medium text-[#ffb783]">Tons</Text>
-                </View>
-              </Animated.View>
-              <Animated.View entering={FadeInUp.delay(350).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm relative overflow-hidden">
-                <View className="absolute top-0 right-0 p-2 opacity-10"><Ionicons name="cloud" size={40} color="#ffb783" /></View>
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">CO2 Prev</Text>
-                <View className="flex-row items-baseline gap-1">
-                  <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.impact?.co2PreventedKg || 0}</Text>
-                  <Text className="text-[10px] font-medium text-[#ffb783]">KG</Text>
-                </View>
-              </Animated.View>
-          </View>
-          <Animated.View entering={FadeInUp.delay(400).duration(600)} className="bg-[#2a2a2a] p-5 rounded-sm mb-8 flex-row items-center justify-between">
-            <View>
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">People Helped</Text>
-                <Text className="text-3xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.impact?.totalPeopleHelped || 0}</Text>
+        <Enter index={0}>
+          <View
+            style={{
+              marginTop: 8,
+              backgroundColor: c.primary,
+              borderRadius: radius.xl,
+              padding: 20,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 14,
+            }}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: radius.md,
+                backgroundColor: c.primaryDeep,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="shield-checkmark" size={24} color={c.onPrimary} />
             </View>
-            <View className="w-12 h-12 rounded-full bg-[#ffb783]/10 items-center justify-center">
-                <Ionicons name="heart" size={24} color="#ffb783" />
+            <View style={{ flex: 1 }}>
+              <T kind="overline" color={c.onPrimary}>Console Admin</T>
+              <T kind="h1" color={c.onPrimary} style={{ marginTop: 2 }}>Pilotage LBaraka</T>
             </View>
-          </Animated.View>
-
-          {/* Financial Section */}
-          <Text className="text-xs font-semibold text-[#4ade80] mb-3 uppercase tracking-wide">Financial</Text>
-          <View className="flex-row gap-3">
-              <Animated.View entering={FadeInUp.delay(450).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm border-b-2 border-[#4ade80]">
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Circulating MAD</Text>
-                <Text className="text-2xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.financial?.totalCirculatingMad?.toLocaleString() || 0}</Text>
-              </Animated.View>
-              <Animated.View entering={FadeInUp.delay(500).duration(600)} className="flex-1 bg-[#2a2a2a] p-5 rounded-sm border-b-2 border-[#ffb4ab]">
-                <Text className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c7c4d7] mb-2">Locked MAD</Text>
-                <Text className="text-2xl font-extralight tracking-tight text-[#e5e2e1]">{stats?.financial?.currentlyLockedMad?.toLocaleString() || 0}</Text>
-              </Animated.View>
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View className="mb-12">
-          <View className="flex-row items-center gap-4 mb-6">
-            <Text className="text-lg font-medium text-[#e5e2e1]">Quick Actions</Text>
-            <View className="h-px flex-1 bg-[#464554]/20" />
-          </View>
-          <View className="gap-3">
-            <Pressable
-              onPress={() => router.push('/(admin)/users')}
-              className="bg-[#1c1b1b] border border-[#464554]/10 p-5 rounded-sm flex-row items-center gap-4"
+            <PressableScale
+              onPress={handleLogout}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: radius.md,
+                backgroundColor: c.primaryDeep,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <View className="w-10 h-10 rounded-sm bg-[#c0c1ff]/10 items-center justify-center">
-                <Ionicons name="people" size={20} color="#c0c1ff" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-medium text-[#e5e2e1]">Gérer les utilisateurs</Text>
-                <Text className="text-xs text-[#908fa0] mt-1">Voir tous les comptes</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#908fa0" />
-            </Pressable>
-
-            <Pressable
-              onPress={() => router.push('/(admin)/transactions')}
-              className="bg-[#1c1b1b] border border-[#464554]/10 p-5 rounded-sm flex-row items-center gap-4"
-            >
-              <View className="w-10 h-10 rounded-sm bg-[#adc6ff]/10 items-center justify-center">
-                <Ionicons name="swap-horizontal" size={20} color="#adc6ff" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-medium text-[#e5e2e1]">Transactions</Text>
-                <Text className="text-xs text-[#908fa0] mt-1">Historique complet</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#908fa0" />
-            </Pressable>
-
-            <Pressable
-              onPress={() => router.push('/(admin)/annonces')}
-              className="bg-[#1c1b1b] border border-[#464554]/10 p-5 rounded-sm flex-row items-center gap-4"
-            >
-              <View className="w-10 h-10 rounded-sm bg-[#ffb783]/10 items-center justify-center">
-                <Ionicons name="megaphone" size={20} color="#ffb783" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-medium text-[#e5e2e1]">Annonces</Text>
-                <Text className="text-xs text-[#908fa0] mt-1">Toutes les publications</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#908fa0" />
-            </Pressable>
+              <Ionicons name="log-out-outline" size={20} color={c.onPrimary} />
+            </PressableScale>
           </View>
-        </View>
+        </Enter>
 
-        {/* Floating Button - Voir l'app */}
-        <Pressable
-          onPress={() => router.push('/(tabs)/home')}
-          className="absolute bottom-8 right-6 bg-gradient-to-br from-[#10b981] to-[#059669] rounded-full w-14 h-14 items-center justify-center shadow-lg"
-          style={{ shadowColor: '#10b981', shadowOpacity: 0.3, shadowRadius: 12, elevation: 8 }}
-        >
-          <Ionicons name="apps" size={24} color="#fff" />
-        </Pressable>
+        <Enter index={1}>
+          <View style={{ marginTop: 20 }}>
+            <SectionHeader title="Vue globale" action="Actualiser" onAction={onRefresh} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
+              {overview.map((item) => (
+                <Card key={item.label} pad={16} style={{ width: '48%', flexGrow: 1, minWidth: 150 }}>
+                  <View
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      backgroundColor: c.surface2,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 10,
+                    }}
+                  >
+                    <Ionicons name={item.icon} size={18} color={c.primary} />
+                  </View>
+                  <T kind="h1">{String(item.value)}</T>
+                  <T kind="caption" color={c.muted} style={{ marginTop: 4 }}>{item.label}</T>
+                </Card>
+              ))}
+            </View>
+          </View>
+        </Enter>
+
+        <Enter index={2}>
+          <View style={{ marginTop: 24 }}>
+            <SectionHeader title="Impact solidaire" />
+            <Card pad={16} style={{ marginTop: 12, backgroundColor: c.goldSoft }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: c.surface,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="heart" size={22} color={c.onGoldSoft} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <T kind="h2" color={c.onGoldSoft}>{String(impact[2].value)} {impact[2].unit}</T>
+                  <T kind="small" color={c.onGoldSoft}>{impact[2].label}</T>
+                </View>
+                <Tag label="Impact" tone="gold" />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 14 }}>
+                {impact.slice(0, 2).map((item) => (
+                  <View key={item.label} style={{ flex: 1, backgroundColor: c.surface, borderRadius: radius.md, padding: 12 }}>
+                    <Ionicons name={item.icon} size={18} color={c.onGoldSoft} />
+                    <T kind="h3" color={c.onGoldSoft} style={{ marginTop: 6 }}>{String(item.value)}</T>
+                    <T kind="caption" color={c.muted} style={{ marginTop: 2 }}>{item.unit} {item.label}</T>
+                  </View>
+                ))}
+              </View>
+            </Card>
+          </View>
+        </Enter>
+
+        <Enter index={3}>
+          <View style={{ marginTop: 24 }}>
+            <SectionHeader title="Trésorerie" />
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+              <Card pad={16} style={{ flex: 1, backgroundColor: c.successSoft }}>
+                <T kind="caption" color={c.onSuccessSoft}>En circulation</T>
+                <T kind="h3" color={c.onSuccessSoft} style={{ marginTop: 6 }}>
+                  {stats?.financial?.totalCirculatingMad?.toLocaleString() || 0} MAD
+                </T>
+              </Card>
+              <Card pad={16} style={{ flex: 1, backgroundColor: c.goldSoft }}>
+                <T kind="caption" color={c.onGoldSoft}>Fonds bloqués</T>
+                <T kind="h3" color={c.onGoldSoft} style={{ marginTop: 6 }}>
+                  {stats?.financial?.currentlyLockedMad?.toLocaleString() || 0} MAD
+                </T>
+              </Card>
+            </View>
+          </View>
+        </Enter>
+
+        <Enter index={4}>
+          <View style={{ marginTop: 24 }}>
+            <SectionHeader title="Actions rapides" />
+            <View style={{ gap: 12, marginTop: 12 }}>
+              {actions.map((item) => (
+                <PressableScale key={item.href} onPress={() => router.push(item.href)}>
+                  <Card pad={16} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                    <View
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: radius.md,
+                        backgroundColor: c.surface2,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons name={item.icon} size={20} color={c.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <T kind="bodyStrong">{item.title}</T>
+                      <T kind="small" color={c.muted} style={{ marginTop: 2 }}>{item.body}</T>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={c.muted} />
+                  </Card>
+                </PressableScale>
+              ))}
+            </View>
+          </View>
+        </Enter>
+
+        <Enter index={5}>
+          <View style={{ marginTop: 20, marginBottom: 8 }}>
+            <Button title="Voir l'application" variant="secondary" icon="eye-outline" onPress={() => router.push('/(tabs)/home')} />
+          </View>
+        </Enter>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
