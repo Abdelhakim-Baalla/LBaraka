@@ -29,12 +29,19 @@ export class StorageService implements OnModuleInit {
         });
     }
 
-    // Créer le bucket au démarrage si nécessaire
+    // Créer le bucket au démarrage si nécessaire (non-bloquant si MinIO indisponible)
     async onModuleInit() {
-        const exists = await this.minioClient.bucketExists(this.bucketName);
+        try {
+            const exists = await this.minioClient.bucketExists(this.bucketName);
 
-        if (!exists) {
-            await this.minioClient.makeBucket(this.bucketName);
+            if (!exists) {
+                await this.minioClient.makeBucket(this.bucketName);
+            }
+        } catch (error) {
+            console.warn(
+                'MinIO indisponible au démarrage, le stockage de fichiers sera désactivé :',
+                (error as Error)?.message,
+            );
         }
     }
 
