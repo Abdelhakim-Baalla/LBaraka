@@ -1,20 +1,33 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, Modal, Image, Alert, TextInput } from 'react-native';
+import { View, ScrollView, ActivityIndicator, RefreshControl, Modal, Image, Alert, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Clipboard from 'expo-clipboard';
-import * as WebBrowser from 'expo-web-browser';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { ApiService } from '../../services/api';
+import { useTheme } from '../../theme/ThemeContext';
+import { fontFamily, radius, shadowMd, shadowSm } from '../../theme/tokens';
+import { Screen } from '../../components/ui/Screen';
+import { T } from '../../components/ui/T';
+import { Card } from '../../components/ui/Card';
+import { Tag } from '../../components/ui/Chip';
+import { Button } from '../../components/ui/Button';
+import { Avatar, EmptyState, SectionHeader } from '../../components/ui/Primitives';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { Enter } from '../../components/ui/Enter';
+import { Segmented } from '../../components/ui/Segmented';
+
+type Filter = 'ALL' | 'EMPRUNTS' | 'PRETS';
 
 // Ecran transactions avec reservations et QR codes
 export default function TransactionsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { c, mode } = useTheme();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState('');
   const [currentUserEmail, setCurrentUserEmail] = useState('');
@@ -33,7 +46,7 @@ export default function TransactionsScreen() {
   const [isScannerActive, setIsScannerActive] = useState(false);
   const [scanLocked, setScanLocked] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [filter, setFilter] = useState<'ALL' | 'EMPRUNTS' | 'PRETS'>('ALL');
+  const [filter, setFilter] = useState<Filter>('ALL');
   // Pour surveiller le statut précédent
   const prevStatusRef = useRef<string | null>(null);
   const [statusAutoUpdated, setStatusAutoUpdated] = useState(false);
@@ -70,9 +83,9 @@ export default function TransactionsScreen() {
 
       const url = `${apiUrl}/contrats/${transactionId}/pdf`;
       const fileUri = FileSystem.documentDirectory + `contrat-${transactionId}.pdf`;
-      
+
       console.log('Downloading from:', url);
-      
+
       const downloadResult = await FileSystem.downloadAsync(
         url,
         fileUri,
@@ -426,6 +439,18 @@ export default function TransactionsScreen() {
     });
   };
 
+  const formatShortDate = (date?: string) => {
+    if (!date) {
+      return 'Date non disponible';
+    }
+
+    return new Date(date).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
   // Obtenir le label du statut
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -439,12 +464,23 @@ export default function TransactionsScreen() {
     return labels[status] || status;
   };
 
-  // Obtenir la couleur du statut
-  const getStatusColor = (status: string) => {
-    if (status === 'TERMINEE') return 'text-green-600';
-    if (status === 'ANNULEE' || status === 'LITIGE_DEGRADATION') return 'text-red-600';
-    if (status === 'EN_COURS') return 'text-blue-600';
-    return 'text-amber-600';
+  // Ton du badge de statut (design system)
+  const getStatusTone = (status: string): 'primary' | 'gold' | 'success' | 'danger' | 'info' | 'muted' => {
+    if (status === 'TERMINEE') return 'success';
+    if (status === 'ANNULEE' || status === 'LITIGE_DEGRADATION') return 'danger';
+    if (status === 'EN_COURS') return 'info';
+    return 'gold';
+  };
+
+  // Couleur du rail de statut (meme mapping que le badge)
+  const getStatusRailColor = (status: string) => {
+    const tone = getStatusTone(status);
+    if (tone === 'success') return c.success;
+    if (tone === 'danger') return c.danger;
+    if (tone === 'info') return c.info;
+    if (tone === 'primary') return c.primary;
+    if (tone === 'muted') return c.muted;
+    return c.gold;
   };
 
   // Type de transaction selon l'utilisateur connecté
@@ -495,168 +531,227 @@ export default function TransactionsScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-surface items-center justify-center">
-        <ActivityIndicator size="large" color="#1B4332" />
-      </View>
+      <Screen padBottom={108}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={c.primary} />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
-      <ScrollView
-        className="flex-1 px-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1B4332" />}
-        contentContainerStyle={{ paddingBottom: 24 }}
-      >
-        <Pressable
-          onPress={() => router.back()}
-          className="bg-white border border-outline-variant rounded-xl py-3 px-3 flex-row items-center gap-2 mb-3"
-        >
-          <Ionicons name="arrow-back" size={18} color="#1B4332" />
-          <Text className="text-primary font-bold">Retour</Text>
-        </Pressable>
-
-        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-          <View className="flex-row items-center justify-between mb-2">
-            <View>
-              <Text className="text-xs text-on-surface-variant font-semibold">Espace Echanges</Text>
-              <Text className="text-base font-extrabold text-primary">Mes Transactions</Text>
-            </View>
-            <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-              <Ionicons name="swap-horizontal-outline" size={20} color="#1B4332" />
-            </View>
+    <Screen padBottom={108}>
+      <View style={{ flex: 1, gap: 14, paddingTop: 8 }}>
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <PressableScale
+            onPress={() => router.back()}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: radius.md,
+              backgroundColor: c.surface,
+              borderWidth: 1,
+              borderColor: c.line,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="arrow-back" size={18} color={c.ink2} />
+          </PressableScale>
+          <View style={{ flex: 1 }}>
+            <T kind="overline" color={c.muted}>
+              Espace Echanges
+            </T>
+            <T kind="h1" style={{ marginTop: 2 }}>
+              Mes Transactions
+            </T>
           </View>
-          <Text className="text-xs text-on-surface-variant">
-            Suivez vos reservations, remises et retours en un seul endroit.
-          </Text>
-        </View>
-
-        <View className="flex-row gap-2 mb-4">
-          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
-            <Text className="text-[11px] text-on-surface-variant">Total</Text>
-            <Text className="text-sm font-bold text-primary mt-1">{transactions.length}</Text>
-          </View>
-          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
-            <Text className="text-[11px] text-on-surface-variant">Emprunts</Text>
-            <Text className="text-sm font-bold text-blue-600 mt-1">{empruntsCount}</Text>
-          </View>
-          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
-            <Text className="text-[11px] text-on-surface-variant">Prets</Text>
-            <Text className="text-sm font-bold text-emerald-600 mt-1">{pretsCount}</Text>
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: radius.md,
+              backgroundColor: c.primarySoft,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="swap-horizontal-outline" size={22} color={c.primary} />
           </View>
         </View>
 
-        <View className="flex-row gap-2 mb-3">
-          <Pressable
-            onPress={() => setFilter('ALL')}
-            className={`flex-1 py-2.5 rounded-xl ${filter === 'ALL' ? 'bg-primary' : 'bg-white border border-outline-variant'}`}
-          >
-            <Text className={`text-center text-xs font-bold ${filter === 'ALL' ? 'text-white' : 'text-on-surface-variant'}`}>
-              Tout
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setFilter('EMPRUNTS')}
-            className={`flex-1 py-2.5 rounded-xl ${filter === 'EMPRUNTS' ? 'bg-primary' : 'bg-white border border-outline-variant'}`}
-          >
-            <Text className={`text-center text-xs font-bold ${filter === 'EMPRUNTS' ? 'text-white' : 'text-on-surface-variant'}`}>
+        <T kind="small" color={c.muted}>
+          Suivez vos reservations, remises et retours en un seul endroit.
+        </T>
+
+        {/* Compteurs */}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Card pad={14} style={{ flex: 1 }}>
+            <T kind="caption" color={c.muted}>
+              Total
+            </T>
+            <T kind="h2" style={{ marginTop: 4 }}>
+              {transactions.length}
+            </T>
+          </Card>
+          <Card pad={14} style={{ flex: 1 }}>
+            <T kind="caption" color={c.muted}>
               Emprunts
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setFilter('PRETS')}
-            className={`flex-1 py-2.5 rounded-xl ${filter === 'PRETS' ? 'bg-primary' : 'bg-white border border-outline-variant'}`}
-          >
-            <Text className={`text-center text-xs font-bold ${filter === 'PRETS' ? 'text-white' : 'text-on-surface-variant'}`}>
+            </T>
+            <T kind="h2" color={c.info} style={{ marginTop: 4 }}>
+              {empruntsCount}
+            </T>
+          </Card>
+          <Card pad={14} style={{ flex: 1 }}>
+            <T kind="caption" color={c.muted}>
               Prets
-            </Text>
-          </Pressable>
+            </T>
+            <T kind="h2" color={c.success} style={{ marginTop: 4 }}>
+              {pretsCount}
+            </T>
+          </Card>
         </View>
 
-        {filteredTransactions.length === 0 ? (
-          <View className="bg-white rounded-2xl p-6 border border-outline-variant items-center">
-            <Ionicons name="swap-horizontal-outline" size={32} color="#A5A6AA" />
-            <Text className="text-sm text-on-surface-variant text-center mt-3">
-              Aucune transaction pour le moment
-            </Text>
-          </View>
-        ) : (
-          filteredTransactions.map((transaction) => {
-            const type = getTransactionType(transaction);
-            const caution = getTransactionCaution(transaction);
-            const dateValue = getTransactionDate(transaction);
+        {/* Filtres */}
+        <Segmented<Filter>
+          options={[
+            { value: 'ALL', label: 'Tout' },
+            { value: 'EMPRUNTS', label: 'Emprunts' },
+            { value: 'PRETS', label: 'Prets' },
+          ]}
+          value={filter}
+          onChange={(v) => setFilter(v)}
+        />
 
-            return (
-              <Pressable
-                key={transaction.id}
-                onPress={() => {
-                  setSelectedTransaction(transaction);
-                  setShowDetailModal(true);
-                }}
-                className="bg-white rounded-2xl p-4 border border-outline-variant mb-3"
-              >
-                <View className="flex-row items-start justify-between mb-2">
-                  <View className="flex-1">
-                    <Text className="text-sm font-bold text-primary" numberOfLines={1}>
-                      {transaction.annonce?.titre || 'Annonce'}
-                    </Text>
-                    <Text className="text-xs text-on-surface-variant mt-1">
-                      {type === 'EMPRUNT' ? 'Vous empruntez' : 'Vous pretez'}
-                    </Text>
-                  </View>
-                  <View className={`px-2 py-1 rounded-lg ${type === 'EMPRUNT' ? 'bg-blue-50' : 'bg-emerald-50'}`}>
-                    <Text className={`text-[10px] font-bold ${type === 'EMPRUNT' ? 'text-blue-700' : 'text-emerald-700'}`}>
-                      {type}
-                    </Text>
-                  </View>
-                </View>
+        {/* Liste */}
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+          contentContainerStyle={{ paddingBottom: 120, gap: 12 }}
+        >
+          {statusAutoUpdated && (
+            <View style={{ backgroundColor: c.successSoft, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center' }}>
+              <T kind="small" color={c.onSuccessSoft}>
+                Statut mis à jour automatiquement
+              </T>
+            </View>
+          )}
 
-                <View className="flex-row items-center justify-between">
-                  <Text className={`text-xs font-semibold ${getStatusColor(transaction.statut)}`}>
-                    {getStatusLabel(transaction.statut)}
-                  </Text>
-                  <Text className="text-xs text-on-surface-variant">
-                    {formatDate(dateValue)}
-                  </Text>
-                </View>
+          {filteredTransactions.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon="swap-horizontal-outline"
+                title="Aucune transaction pour le moment"
+                body="Vos reservations et echanges apparaîtront ici."
+              />
+            </Card>
+          ) : (
+            filteredTransactions.map((transaction, i) => {
+              const type = getTransactionType(transaction);
+              const caution = getTransactionCaution(transaction);
+              const dateValue = getTransactionDate(transaction);
 
-                {caution > 0 ? (
-                  <View className="mt-2 pt-2 border-t border-outline-variant/30">
-                    <Text className="text-xs text-on-surface-variant">
-                      Caution: {caution.toFixed(2)} MAD
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
-            );
-          })
-        )}
-      </ScrollView>
+              return (
+                <Enter key={transaction.id} index={Math.min(i, 6)}>
+                  <PressableScale
+                    onPress={() => {
+                      setSelectedTransaction(transaction);
+                      setShowDetailModal(true);
+                    }}
+                    style={{
+                      backgroundColor: c.surface,
+                      borderRadius: radius.lg,
+                      overflow: 'hidden',
+                      flexDirection: 'row',
+                      ...shadowSm(mode),
+                    }}
+                  >
+                    <View style={{ width: 5, backgroundColor: getStatusRailColor(transaction.statut) }} />
+                    <View style={{ flex: 1, padding: 14 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={{ flex: 1 }}>
+                          <T kind="bodyStrong" numberOfLines={1}>
+                            {transaction.annonce?.titre || 'Annonce'}
+                          </T>
+                          <T kind="small" color={c.muted} style={{ marginTop: 2 }} numberOfLines={1}>
+                            {type === 'EMPRUNT' ? 'Vous empruntez' : 'Vous pretez'} · {formatShortDate(dateValue)}
+                          </T>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color={c.muted} />
+                      </View>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                        <Tag label={getStatusLabel(transaction.statut)} tone={getStatusTone(transaction.statut)} />
+                        {caution > 0 ? (
+                          <Tag label={`Caution ${caution.toFixed(2)} MAD`} tone="gold" />
+                        ) : null}
+                      </View>
+                    </View>
+                  </PressableScale>
+                </Enter>
+              );
+            })
+          )}
+        </ScrollView>
+      </View>
 
-      {/* Modal Detail Transaction */}
+      {/* Modal Détail Transaction */}
       <Modal visible={showDetailModal} transparent animationType="slide">
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: insets.bottom + 24, maxHeight: '90%' }}>
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-bold text-primary">Detail Transaction</Text>
-              <Pressable onPress={() => setShowDetailModal(false)}>
-                <Ionicons name="close" size={24} color="#1B4332" />
-              </Pressable>
+        <View style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'flex-end' }}>
+          <View
+            style={{
+              backgroundColor: c.surface,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+              padding: 20,
+              paddingBottom: insets.bottom + 24,
+              maxHeight: '90%',
+              overflow: 'hidden',
+              ...shadowMd(mode),
+            }}
+          >
+            {selectedTransaction ? (
+              <View
+                style={{
+                  height: 5,
+                  borderRadius: radius.pill,
+                  backgroundColor: getStatusRailColor(selectedTransaction.statut),
+                  marginBottom: 14,
+                }}
+              />
+            ) : null}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <T kind="h2">Détail de la transaction</T>
+              <PressableScale
+                onPress={() => setShowDetailModal(false)}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: radius.md,
+                  backgroundColor: c.surface2,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="close" size={22} color={c.ink2} />
+              </PressableScale>
             </View>
             {/* Badge de mise à jour auto */}
             {statusAutoUpdated && (
-              <View className="mb-2 px-3 py-2 bg-emerald-100 border border-emerald-300 rounded-xl items-center">
-                <Text className="text-xs text-emerald-800 font-semibold">Statut mis à jour automatiquement</Text>
+              <View style={{ marginBottom: 10, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: c.successSoft, borderRadius: radius.md, alignItems: 'center' }}>
+                <T kind="small" color={c.onSuccessSoft}>
+                  Statut mis à jour automatiquement
+                </T>
               </View>
             )}
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
               {selectedTransaction ? (
                 <>
 
                   {(() => {
                     const type = getTransactionType(selectedTransaction);
                     const caution = getTransactionCaution(selectedTransaction);
-                    const dateValue = getTransactionDate(selectedTransaction);
                     const annonce = selectedTransaction.annonce || {};
                     const emprunteur = selectedTransaction.emprunteur || {};
                     const preteur = selectedTransaction.preteur || {};
@@ -670,303 +765,314 @@ export default function TransactionsScreen() {
                         {annonce.photos && annonce.photos.length > 0 ? (
                           <Image
                             source={{ uri: annonce.photos[0] }}
-                            style={{ width: '100%', height: 170, borderRadius: 16, marginBottom: 12 }}
+                            style={{ width: '100%', height: 170, borderRadius: radius.lg, marginBottom: 12 }}
                             resizeMode="cover"
                           />
                         ) : (
-                          <View className="w-full h-[170px] rounded-xl bg-emerald-50 items-center justify-center mb-3">
-                            <Ionicons name="image-outline" size={48} color="#A5A6AA" />
+                          <View style={{ width: '100%', height: 170, borderRadius: radius.lg, backgroundColor: c.surface2, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                            <Ionicons name="image-outline" size={48} color={c.muted} />
                           </View>
                         )}
 
                         {/* INFOS ANNONCE */}
-                        <View className="bg-surface rounded-xl p-3 mb-3">
-                          <Text className="text-xs text-on-surface-variant">Annonce</Text>
-                          <Text className="text-base font-bold text-primary mt-1">
+                        <View style={{ backgroundColor: c.surface2, borderRadius: radius.md, padding: 14, marginBottom: 10 }}>
+                          <T kind="caption" color={c.muted}>
+                            Annonce
+                          </T>
+                          <T kind="h3" style={{ marginTop: 4 }}>
                             {annonce.titre || 'N/A'}
-                          </Text>
+                          </T>
                           {annonce.description ? (
-                            <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={3}>
+                            <T kind="small" color={c.muted} numberOfLines={3} style={{ marginTop: 4 }}>
                               {annonce.description}
-                            </Text>
+                            </T>
                           ) : null}
                         </View>
 
-                        <View className="flex-row gap-2 mb-3">
+                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
                           {annonce.categorie ? (
-                            <View className="flex-1 bg-surface rounded-xl p-3">
-                              <Text className="text-xs text-on-surface-variant">Catégorie</Text>
-                              <Text className="text-xs font-bold text-primary mt-1">
+                            <View style={{ flex: 1, backgroundColor: c.surface2, borderRadius: radius.md, padding: 12 }}>
+                              <T kind="caption" color={c.muted}>
+                                Catégorie
+                              </T>
+                              <T kind="small" style={{ marginTop: 4 }}>
                                 {annonce.categorie}
-                              </Text>
+                              </T>
                             </View>
                           ) : null}
                           {annonce.mode ? (
-                            <View className="flex-1 bg-surface rounded-xl p-3">
-                              <Text className="text-xs text-on-surface-variant">Mode</Text>
-                              <Text className="text-xs font-bold text-primary mt-1">
+                            <View style={{ flex: 1, backgroundColor: c.surface2, borderRadius: radius.md, padding: 12 }}>
+                              <T kind="caption" color={c.muted}>
+                                Mode
+                              </T>
+                              <T kind="small" style={{ marginTop: 4 }}>
                                 {annonce.mode}
-                              </Text>
+                              </T>
                             </View>
                           ) : null}
                           {annonce.condition ? (
-                            <View className="flex-1 bg-surface rounded-xl p-3">
-                              <Text className="text-xs text-on-surface-variant">État</Text>
-                              <Text className="text-xs font-bold text-primary mt-1">
+                            <View style={{ flex: 1, backgroundColor: c.surface2, borderRadius: radius.md, padding: 12 }}>
+                              <T kind="caption" color={c.muted}>
+                                État
+                              </T>
+                              <T kind="small" style={{ marginTop: 4 }}>
                                 {annonce.condition}
-                              </Text>
+                              </T>
                             </View>
                           ) : null}
                         </View>
 
                         {/* AUTRE UTILISATEUR */}
                         {otherUser && (otherUser.profil || otherUser.email) ? (
-                          <View className="bg-surface rounded-xl p-3 mb-3">
-                            <Text className="text-xs text-on-surface-variant mb-2">
+                          <View style={{ backgroundColor: c.surface2, borderRadius: radius.md, padding: 14, marginBottom: 10 }}>
+                            <T kind="caption" color={c.muted} style={{ marginBottom: 10 }}>
                               {type === 'EMPRUNT' ? 'Prêteur' : 'Emprunteur'}
-                            </Text>
-                            <View className="flex-row items-center gap-3">
+                            </T>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                               {otherUser.profil?.photoProfil ? (
                                 <Image
                                   source={{ uri: otherUser.profil.photoProfil }}
-                                  style={{ width: 44, height: 44, borderRadius: 22 }}
+                                  style={{ width: 44, height: 44, borderRadius: radius.pill }}
                                 />
                               ) : (
-                                <View className="w-11 h-11 rounded-full bg-primary/10 items-center justify-center">
-                                  <Ionicons name="person-outline" size={22} color="#1B4332" />
-                                </View>
+                                <Avatar name={`${otherUser.profil?.prenom || ''} ${otherUser.profil?.nom || ''}`} size={44} />
                               )}
-                              <View className="flex-1">
-                                <Text className="text-sm font-bold text-primary">
+                              <View style={{ flex: 1 }}>
+                                <T kind="bodyStrong">
                                   {otherUser.profil?.prenom || ''} {otherUser.profil?.nom || ''}
-                                </Text>
+                                </T>
                                 {otherUser.email ? (
-                                  <Text className="text-xs text-on-surface-variant mt-1">
+                                  <T kind="small" color={c.muted} style={{ marginTop: 2 }}>
                                     {otherUser.email}
-                                  </Text>
+                                  </T>
                                 ) : null}
                                 {otherUser.profil?.lBarakaScore ? (
-                                  <Text className="text-xs text-emerald-700 mt-1">
-                                    Score: {otherUser.profil.lBarakaScore} pts
-                                  </Text>
+                                  <View style={{ marginTop: 6, alignSelf: 'flex-start' }}>
+                                    <Tag label={`Score: ${otherUser.profil.lBarakaScore} pts`} tone="gold" />
+                                  </View>
                                 ) : null}
                               </View>
                             </View>
                           </View>
                         ) : null}
 
-                  <View className="flex-row gap-2 mb-3">
-                    <View className="flex-1 bg-surface rounded-xl p-3">
-                      <Text className="text-xs text-on-surface-variant">Type</Text>
-                      <Text className="text-sm font-bold text-primary mt-1">
-                        {type}
-                      </Text>
-                    </View>
-                    <View className="flex-1 bg-surface rounded-xl p-3">
-                      <Text className="text-xs text-on-surface-variant">Statut</Text>
-                      <Text className={`text-sm font-bold mt-1 ${getStatusColor(selectedTransaction.statut)}`}>
-                        {getStatusLabel(selectedTransaction.statut)}
-                      </Text>
-                    </View>
-                  </View>
+                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                          <View style={{ flex: 1, backgroundColor: c.surface2, borderRadius: radius.md, padding: 12 }}>
+                            <T kind="caption" color={c.muted}>
+                              Type
+                            </T>
+                            <T kind="bodyStrong" style={{ marginTop: 4 }}>
+                              {type}
+                            </T>
+                          </View>
+                          <View style={{ flex: 1, backgroundColor: c.surface2, borderRadius: radius.md, padding: 12 }}>
+                            <T kind="caption" color={c.muted}>
+                              Statut
+                            </T>
+                            <View style={{ marginTop: 6, alignSelf: 'flex-start' }}>
+                              <Tag label={getStatusLabel(selectedTransaction.statut)} tone={getStatusTone(selectedTransaction.statut)} />
+                            </View>
+                          </View>
+                        </View>
 
-                  {/* Dates */}
-                  {selectedTransaction.dateDebut || selectedTransaction.dateFinPrevue || selectedTransaction.dateFinReelle ? (
-                    <View className="bg-surface rounded-xl p-3 mb-3">
-                      <Text className="text-xs text-on-surface-variant mb-2">Dates</Text>
-                      {selectedTransaction.dateDebut ? (
-                        <Text className="text-xs text-on-surface mt-1">
-                          Debut: {formatDate(selectedTransaction.dateDebut)}
-                        </Text>
-                      ) : null}
-                      {selectedTransaction.dateFinPrevue ? (
-                        <Text className="text-xs text-on-surface mt-1">
-                          Fin prevue: {formatDate(selectedTransaction.dateFinPrevue)}
-                        </Text>
-                      ) : null}
-                      {selectedTransaction.dateFinReelle ? (
-                        <Text className="text-xs text-on-surface mt-1">
-                          Fin reelle: {formatDate(selectedTransaction.dateFinReelle)}
-                        </Text>
-                      ) : null}
-                    </View>
-                  ) : null}
+                        {/* Dates */}
+                        {selectedTransaction.dateDebut || selectedTransaction.dateFinPrevue || selectedTransaction.dateFinReelle ? (
+                          <View style={{ backgroundColor: c.surface2, borderRadius: radius.md, padding: 14, marginBottom: 10 }}>
+                            <SectionHeader title="Dates" />
+                            <View style={{ gap: 4, marginTop: 8 }}>
+                              {selectedTransaction.dateDebut ? (
+                                <T kind="small">
+                                  Debut: {formatDate(selectedTransaction.dateDebut)}
+                                </T>
+                              ) : null}
+                              {selectedTransaction.dateFinPrevue ? (
+                                <T kind="small">
+                                  Fin prevue: {formatDate(selectedTransaction.dateFinPrevue)}
+                                </T>
+                              ) : null}
+                              {selectedTransaction.dateFinReelle ? (
+                                <T kind="small">
+                                  Fin reelle: {formatDate(selectedTransaction.dateFinReelle)}
+                                </T>
+                              ) : null}
+                            </View>
+                          </View>
+                        ) : null}
 
-                  {/* Retard */}
-                  {selectedTransaction.retard && selectedTransaction.retard > 0 ? (
-                    <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
-                      <Text className="text-xs text-red-800 font-bold">
-                        Retard: {selectedTransaction.retard} jour(s)
-                      </Text>
-                    </View>
-                  ) : null}
+                        {/* Retard */}
+                        {selectedTransaction.retard && selectedTransaction.retard > 0 ? (
+                          <View style={{ backgroundColor: c.dangerSoft, borderRadius: radius.md, padding: 14, marginBottom: 10 }}>
+                            <T kind="bodyStrong" color={c.onDangerSoft}>
+                              Retard: {selectedTransaction.retard} jour(s)
+                            </T>
+                          </View>
+                        ) : null}
 
-                  {/* Degats */}
-                  {selectedTransaction.degats ? (
-                    <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
-                      <Text className="text-xs text-red-800 font-bold">
-                        Degradation signalee
-                      </Text>
-                    </View>
-                  ) : null}
+                        {/* Degats */}
+                        {selectedTransaction.degats ? (
+                          <View style={{ backgroundColor: c.dangerSoft, borderRadius: radius.md, padding: 14, marginBottom: 10 }}>
+                            <T kind="bodyStrong" color={c.onDangerSoft}>
+                              Degradation signalee
+                            </T>
+                          </View>
+                        ) : null}
 
-                  {/* Point relais */}
-                  {pointRelais ? (
-                    <View className="bg-surface rounded-xl p-3 mb-3">
-                      <Text className="text-xs text-on-surface-variant mb-2">Point Relais</Text>
-                      <Text className="text-sm font-bold text-primary">{pointRelais.nom}</Text>
-                      {pointRelais.adresse ? (
-                        <Text className="text-xs text-on-surface-variant mt-1">
-                          {pointRelais.adresse}
-                        </Text>
-                      ) : null}
-                      {pointRelais.telephone ? (
-                        <Text className="text-xs text-on-surface-variant mt-1">
-                          Tel: {pointRelais.telephone}
-                        </Text>
-                      ) : null}
-                    </View>
-                  ) : null}
+                        {/* Point relais */}
+                        {pointRelais ? (
+                          <View style={{ backgroundColor: c.surface2, borderRadius: radius.md, padding: 14, marginBottom: 10 }}>
+                            <T kind="caption" color={c.muted} style={{ marginBottom: 6 }}>
+                              Point Relais
+                            </T>
+                            <T kind="bodyStrong">{pointRelais.nom}</T>
+                            {pointRelais.adresse ? (
+                              <T kind="small" color={c.muted} style={{ marginTop: 2 }}>
+                                {pointRelais.adresse}
+                              </T>
+                            ) : null}
+                            {pointRelais.telephone ? (
+                              <T kind="small" color={c.muted} style={{ marginTop: 2 }}>
+                                Tel: {pointRelais.telephone}
+                              </T>
+                            ) : null}
+                          </View>
+                        ) : null}
 
-                  {/* Contrat PDF */}
-                  {contrat && (contrat.urlPdfBilingue || contrat.urlPdf) ? (
-                    <View className="bg-surface rounded-xl p-3 mb-3">
-                      <Text className="text-xs text-on-surface-variant mb-2">Contrat</Text>
-                      <Text className="text-xs text-on-surface">
-                        Numero: {contrat.numContrat || '-'}
-                      </Text>
-                      <Pressable
-                        onPress={() => handleDownloadPdf(selectedTransaction.id)}
-                        className="mt-2 bg-primary rounded-lg py-2 items-center"
-                      >
-                        <Text className="text-white font-semibold text-xs">Télécharger le contrat PDF</Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
+                        {/* Contrat PDF */}
+                        {contrat && (contrat.urlPdfBilingue || contrat.urlPdf) ? (
+                          <View style={{ backgroundColor: c.surface2, borderRadius: radius.md, padding: 14, marginBottom: 10 }}>
+                            <T kind="caption" color={c.muted} style={{ marginBottom: 6 }}>
+                              Contrat
+                            </T>
+                            <T kind="small">
+                              Numero: {contrat.numContrat || '-'}
+                            </T>
+                            <View style={{ marginTop: 10 }}>
+                              <Button
+                                title="Télécharger le contrat PDF"
+                                size="md"
+                                onPress={() => handleDownloadPdf(selectedTransaction.id)}
+                              />
+                            </View>
+                          </View>
+                        ) : null}
 
-                  {/* Scans */}
-                  {(selectedTransaction.scannedReception || selectedTransaction.scannedRetour) ? (
-                    <View className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-3">
-                      <Text className="text-xs text-emerald-800 font-bold mb-1">Validations</Text>
-                      {selectedTransaction.scannedReception ? (
-                        <Text className="text-xs text-emerald-800">✓ Reception validee</Text>
-                      ) : null}
-                      {selectedTransaction.scannedRetour ? (
-                        <Text className="text-xs text-emerald-800">✓ Retour valide</Text>
-                      ) : null}
-                    </View>
-                  ) : null}
+                        {/* Scans */}
+                        {(selectedTransaction.scannedReception || selectedTransaction.scannedRetour) ? (
+                          <View style={{ backgroundColor: c.successSoft, borderRadius: radius.md, padding: 14, marginBottom: 10 }}>
+                            <T kind="bodyStrong" color={c.onSuccessSoft} style={{ marginBottom: 4 }}>
+                              Validations
+                            </T>
+                            {selectedTransaction.scannedReception ? (
+                              <T kind="small" color={c.onSuccessSoft}>
+                                Reception validee
+                              </T>
+                            ) : null}
+                            {selectedTransaction.scannedRetour ? (
+                              <T kind="small" color={c.onSuccessSoft}>
+                                Retour valide
+                              </T>
+                            ) : null}
+                          </View>
+                        ) : null}
 
-                  {caution > 0 ? (
-                    <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
-                      <Text className="text-xs text-amber-800">
-                        Caution bloquee: {caution.toFixed(2)} MAD
-                      </Text>
-                    </View>
-                  ) : null}
+                        {caution > 0 ? (
+                          <View style={{ backgroundColor: c.goldSoft, borderRadius: radius.md, padding: 14, marginBottom: 10 }}>
+                            <T kind="small" color={c.onGoldSoft}>
+                              Caution bloquée : {caution.toFixed(2)} MAD
+                            </T>
+                          </View>
+                        ) : null}
 
-                  {/* Actions selon le statut */}
-                  {type === 'EMPRUNT' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
-                    <Pressable
-                      onPress={() => handleGenerateQRReception(selectedTransaction.id)}
-                      className="bg-primary rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
-                    >
-                      <Ionicons name="qr-code-outline" size={18} color="#fff" />
-                      <Text className="text-white font-bold">Generer QR Remise</Text>
-                    </Pressable>
-                  ) : null}
+                        {/* Actions selon le statut */}
+                        <View style={{ gap: 8, marginTop: 4 }}>
+                          {type === 'EMPRUNT' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
+                            <Button
+                              title="Generer QR Remise"
+                              icon="qr-code-outline"
+                              onPress={() => handleGenerateQRReception(selectedTransaction.id)}
+                            />
+                          ) : null}
 
-                  {type === 'PRET' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
-                    <Pressable
-                      onPress={() => openValidationModal('reception')}
-                      className="bg-emerald-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
-                    >
-                      <Ionicons name="checkmark-done-circle-outline" size={18} color="#fff" />
-                      <Text className="text-white font-bold">Valider Remise (scan)</Text>
-                    </Pressable>
-                  ) : null}
+                          {type === 'PRET' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
+                            <Button
+                              title="Valider Remise (scan)"
+                              icon="checkmark-done-circle-outline"
+                              onPress={() => openValidationModal('reception')}
+                            />
+                          ) : null}
 
-                  {type === 'PRET' && selectedTransaction.statut === 'EN_COURS' ? (
-                    <Pressable
-                      onPress={() => handleGenerateQRRetour(selectedTransaction.id)}
-                      className="bg-primary rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
-                    >
-                      <Ionicons name="qr-code-outline" size={18} color="#fff" />
-                      <Text className="text-white font-bold">Generer QR Retour</Text>
-                    </Pressable>
-                  ) : null}
+                          {type === 'PRET' && selectedTransaction.statut === 'EN_COURS' ? (
+                            <Button
+                              title="Generer QR Retour"
+                              icon="qr-code-outline"
+                              onPress={() => handleGenerateQRRetour(selectedTransaction.id)}
+                            />
+                          ) : null}
 
-                  {type === 'EMPRUNT' && selectedTransaction.statut === 'EN_COURS' ? (
-                    <Pressable
-                      onPress={() => openValidationModal('retour')}
-                      className="bg-emerald-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
-                    >
-                      <Ionicons name="checkmark-done-circle-outline" size={18} color="#fff" />
-                      <Text className="text-white font-bold">Confirmer Retour (scan)</Text>
-                    </Pressable>
-                  ) : null}
+                          {type === 'EMPRUNT' && selectedTransaction.statut === 'EN_COURS' ? (
+                            <Button
+                              title="Confirmer Retour (scan)"
+                              icon="checkmark-done-circle-outline"
+                              onPress={() => openValidationModal('retour')}
+                            />
+                          ) : null}
 
-                  {type === 'PRET' && selectedTransaction.statut === 'EN_ATTENTE_RETOUR' ? (
-                    <Pressable
-                      onPress={() => handleFinalizeRetour(selectedTransaction.id)}
-                      className="bg-emerald-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
-                    >
-                      <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
-                      <Text className="text-white font-bold">Finaliser Retour</Text>
-                    </Pressable>
-                  ) : null}
+                          {type === 'PRET' && selectedTransaction.statut === 'EN_ATTENTE_RETOUR' ? (
+                            <Button
+                              title="Finaliser Retour"
+                              icon="checkmark-circle-outline"
+                              onPress={() => handleFinalizeRetour(selectedTransaction.id)}
+                            />
+                          ) : null}
 
-                  {type === 'EMPRUNT' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
-                    <Pressable
-                      onPress={() => handleAnnulerReservation(selectedTransaction.id)}
-                      className="bg-red-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
-                    >
-                      <Ionicons name="close-circle-outline" size={18} color="#fff" />
-                      <Text className="text-white font-bold">Annuler Reservation</Text>
-                    </Pressable>
-                  ) : null}
+                          {type === 'EMPRUNT' && selectedTransaction.statut === 'EN_ATTENTE_RECEPTION' ? (
+                            <Button
+                              title="Annuler Reservation"
+                              variant="danger"
+                              icon="close-circle-outline"
+                              onPress={() => handleAnnulerReservation(selectedTransaction.id)}
+                            />
+                          ) : null}
 
-                  {type === 'PRET' && selectedTransaction.statut === 'TERMINEE' ? (
-                    <Pressable
-                      onPress={() => handleSignalerDegradation(selectedTransaction.id)}
-                      className="bg-red-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
-                    >
-                      <Ionicons name="alert-circle-outline" size={18} color="#fff" />
-                      <Text className="text-white font-bold">Signaler Degradation</Text>
-                    </Pressable>
-                  ) : null}
+                          {type === 'PRET' && selectedTransaction.statut === 'TERMINEE' ? (
+                            <Button
+                              title="Signaler Degradation"
+                              variant="danger"
+                              icon="alert-circle-outline"
+                              onPress={() => handleSignalerDegradation(selectedTransaction.id)}
+                            />
+                          ) : null}
 
-                  {selectedTransaction.annonce?.id ? (
-                    <>
-                      <Pressable
-                        onPress={async () => {
-                          const isEmprunteur = getTransactionType(selectedTransaction) === 'EMPRUNT';
-                          const otherId = isEmprunteur ? selectedTransaction.preteurId : selectedTransaction.emprunteurId;
-                          setShowDetailModal(false);
-                          
-                          // Attendre un peu pour que le modal se ferme
-                          setTimeout(() => {
-                            router.push(`/(tabs)/chat?openChat=${selectedTransaction.annonce.id}&otherId=${otherId}`);
-                          }, 300);
-                        }}
-                        className="bg-emerald-600 rounded-xl py-3.5 items-center justify-center flex-row gap-2 mb-2"
-                      >
-                        <Ionicons name="chatbubble-outline" size={18} color="#fff" />
-                        <Text className="text-white font-bold">Discuter</Text>
-                      </Pressable>
+                          {selectedTransaction.annonce?.id ? (
+                            <>
+                              <Button
+                                title="Discuter"
+                                variant="secondary"
+                                icon="chatbubble-outline"
+                                onPress={() => {
+                                  const isEmprunteur = getTransactionType(selectedTransaction) === 'EMPRUNT';
+                                  const otherId = isEmprunteur ? selectedTransaction.preteurId : selectedTransaction.emprunteurId;
+                                  setShowDetailModal(false);
 
-                      <Pressable
-                        onPress={() => {
-                          setShowDetailModal(false);
-                          router.push(`/(annonces)/${selectedTransaction.annonce.id}`);
-                        }}
-                        className="bg-white border border-outline-variant rounded-xl py-3.5 items-center justify-center flex-row gap-2"
-                      >
-                        <Ionicons name="eye-outline" size={18} color="#1B4332" />
-                        <Text className="text-primary font-bold">Voir Annonce</Text>
-                      </Pressable>
-                    </>
-                  ) : null}
+                                  // Attendre un peu pour que le modal se ferme
+                                  setTimeout(() => {
+                                    router.push(`/(tabs)/chat?openChat=${selectedTransaction.annonce.id}&otherId=${otherId}`);
+                                  }, 300);
+                                }}
+                              />
+
+                              <Button
+                                title="Voir Annonce"
+                                variant="secondary"
+                                icon="eye-outline"
+                                onPress={() => {
+                                  setShowDetailModal(false);
+                                  router.push(`/(annonces)/${selectedTransaction.annonce.id}`);
+                                }}
+                              />
+                            </>
+                          ) : null}
+                        </View>
                       </>
                     );
                   })()}
@@ -979,67 +1085,81 @@ export default function TransactionsScreen() {
 
       {/* Modal QR Code */}
       <Modal visible={showQRModal} transparent animationType="fade">
-        <View className="flex-1 bg-black/80 justify-center items-center p-6">
-          <View className="bg-white rounded-3xl p-6 w-full max-w-sm">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-bold text-primary">
+        <View style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Card style={{ width: '100%', maxWidth: 380 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <T kind="h2">
                 QR Code {qrType === 'reception' ? 'Remise' : 'Retour'}
-              </Text>
-              <Pressable onPress={() => setShowQRModal(false)}>
-                <Ionicons name="close" size={24} color="#1B4332" />
-              </Pressable>
+              </T>
+              <PressableScale
+                onPress={() => setShowQRModal(false)}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: radius.md,
+                  backgroundColor: c.surface2,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="close" size={22} color={c.ink2} />
+              </PressableScale>
             </View>
 
             {qrData ? (
-              <View className="items-center">
+              <View style={{ alignItems: 'center' }}>
                 <Image
                   source={{ uri: qrData }}
-                  style={{ width: 250, height: 250 }}
+                  style={{ width: 250, height: 250, borderRadius: radius.md }}
                   resizeMode="contain"
                 />
-                <Text className="text-xs text-on-surface-variant text-center mt-3">
+                <T kind="small" color={c.muted} center style={{ marginTop: 12 }}>
                   {qrType === 'reception'
                     ? 'Montrez ce QR au preteur pour valider la remise'
                     : 'Montrez ce QR a l\'emprunteur pour valider le retour'}
-                </Text>
+                </T>
 
                 {qrRawCode ? (
                   <>
-                    <Pressable
-                      onPress={handleCopyQrCode}
-                      className="bg-white border border-outline-variant rounded-xl py-2.5 px-4 mt-4"
-                    >
-                      <Text className="text-primary font-bold">Copier le code brut</Text>
-                    </Pressable>
-                    <Text selectable className="text-[10px] text-on-surface-variant text-center mt-3 px-2" numberOfLines={3}>
+                    <View style={{ marginTop: 14, alignSelf: 'stretch' }}>
+                      <Button
+                        title="Copier le code brut"
+                        variant="secondary"
+                        size="md"
+                        onPress={handleCopyQrCode}
+                      />
+                    </View>
+                    <T kind="caption" color={c.muted} center numberOfLines={3} style={{ marginTop: 12 }}>
                       {qrRawCode}
-                    </Text>
+                    </T>
                   </>
                 ) : null}
               </View>
             ) : (
-              <View className="items-center py-10">
-                <Ionicons name="alert-circle-outline" size={26} color="#A5A6AA" />
-                <Text className="text-sm text-on-surface-variant mt-3 text-center">
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <Ionicons name="alert-circle-outline" size={26} color={c.muted} />
+                <T kind="small" color={c.muted} center style={{ marginTop: 12 }}>
                   QR image non disponible. Utilisez le code brut si affiché.
-                </Text>
+                </T>
 
                 {qrRawCode ? (
                   <>
-                    <Pressable
-                      onPress={handleCopyQrCode}
-                      className="bg-white border border-outline-variant rounded-xl py-2.5 px-4 mt-4"
-                    >
-                      <Text className="text-primary font-bold">Copier le code brut</Text>
-                    </Pressable>
-                    <Text selectable className="text-[10px] text-on-surface-variant text-center mt-3 px-2" numberOfLines={4}>
+                    <View style={{ marginTop: 14, alignSelf: 'stretch' }}>
+                      <Button
+                        title="Copier le code brut"
+                        variant="secondary"
+                        size="md"
+                        onPress={handleCopyQrCode}
+                      />
+                    </View>
+                    <T kind="caption" color={c.muted} center numberOfLines={4} style={{ marginTop: 12 }}>
                       {qrRawCode}
-                    </Text>
+                    </T>
                   </>
                 ) : null}
               </View>
             )}
-          </View>
+          </Card>
         </View>
       </Modal>
 
@@ -1050,37 +1170,78 @@ export default function TransactionsScreen() {
         animationType="slide"
         onRequestClose={closeValidationFlow}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: insets.bottom + 24 }}>
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-bold text-primary">
+        <View style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'flex-end' }}>
+          <View
+            style={{
+              backgroundColor: c.surface,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+              padding: 20,
+              paddingBottom: insets.bottom + 24,
+              ...shadowMd(mode),
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <T kind="h2">
                 {validationType === 'reception' ? 'Valider Remise' : 'Confirmer Retour'}
-              </Text>
-              <Pressable onPress={closeValidationFlow}>
-                <Ionicons name="close" size={24} color="#1B4332" />
-              </Pressable>
+              </T>
+              <PressableScale
+                onPress={closeValidationFlow}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: radius.md,
+                  backgroundColor: c.surface2,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="close" size={22} color={c.ink2} />
+              </PressableScale>
             </View>
 
-            <Text className="text-xs text-on-surface-variant mb-2">Code QR scanné (ou token)</Text>
-            <TextInput
-              value={validationCode}
-              onChangeText={setValidationCode}
-              placeholder="Collez le code scanné ici"
-              multiline
-              className="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-on-surface min-h-[110px]"
-              textAlignVertical="top"
-            />
-
-            <Pressable
-              onPress={openCameraScanner}
-              className="bg-white border border-outline-variant rounded-xl py-3 items-center justify-center mt-3 flex-row gap-2"
+            <T kind="overline" color={c.muted} style={{ marginBottom: 8 }}>
+              Code QR scanné (ou token)
+            </T>
+            <View
+              style={{
+                backgroundColor: c.surface2,
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: c.line,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                minHeight: 110,
+              }}
             >
-              <Ionicons name="scan-outline" size={18} color="#1B4332" />
-              <Text className="text-primary font-bold">Scanner avec la caméra</Text>
-            </Pressable>
+              <TextInput
+                value={validationCode}
+                onChangeText={setValidationCode}
+                placeholder="Collez le code scanné ici"
+                placeholderTextColor={c.muted}
+                multiline
+                textAlignVertical="top"
+                style={{
+                  fontFamily: fontFamily.regular,
+                  fontSize: 15,
+                  color: c.ink,
+                  minHeight: 86,
+                }}
+              />
+            </View>
+
+            <View style={{ marginTop: 12 }}>
+              <Button
+                title="Scanner avec la caméra"
+                variant="secondary"
+                size="md"
+                icon="scan-outline"
+                onPress={openCameraScanner}
+              />
+            </View>
 
             {isScannerActive ? (
-              <View className="mt-3 rounded-2xl overflow-hidden border border-outline-variant">
+              <View style={{ marginTop: 12, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: c.line }}>
                 <View style={{ height: 260 }}>
                   <CameraView
                     style={{ flex: 1 }}
@@ -1091,38 +1252,36 @@ export default function TransactionsScreen() {
                   />
                 </View>
 
-                <View className="p-3 bg-surface border-t border-outline-variant">
-                  <Text className="text-xs text-on-surface-variant text-center">
+                <View style={{ padding: 12, backgroundColor: c.surface2 }}>
+                  <T kind="small" color={c.muted} center>
                     Placez le QR dans le cadre pour scanner automatiquement.
-                  </Text>
-                  <Pressable
-                    onPress={() => {
-                      setIsScannerActive(false);
-                      setScanLocked(false);
-                    }}
-                    className="mt-2 bg-white border border-outline-variant rounded-lg py-2 items-center"
-                  >
-                    <Text className="text-primary font-semibold text-xs">Fermer le scanner</Text>
-                  </Pressable>
+                  </T>
+                  <View style={{ marginTop: 8 }}>
+                    <Button
+                      title="Fermer le scanner"
+                      variant="secondary"
+                      size="md"
+                      onPress={() => {
+                        setIsScannerActive(false);
+                        setScanLocked(false);
+                      }}
+                    />
+                  </View>
                 </View>
               </View>
             ) : null}
 
-            <Pressable
-              onPress={handleValidateQr}
-              disabled={isValidating}
-              className="bg-primary rounded-xl py-3.5 items-center justify-center mt-4"
-            >
-              {isValidating ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold">Valider</Text>
-              )}
-            </Pressable>
+            <View style={{ marginTop: 14 }}>
+              <Button
+                title="Valider"
+                loading={isValidating}
+                onPress={handleValidateQr}
+              />
+            </View>
           </View>
         </View>
       </Modal>
 
-    </View>
+    </Screen>
   );
 }

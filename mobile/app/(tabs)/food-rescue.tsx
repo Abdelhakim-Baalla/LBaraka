@@ -1,15 +1,22 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { View, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService } from '../../services/api';
-import SmartAnnonceImage from '../../components/smart-annonce-image';
+import { useTheme } from '../../theme/ThemeContext';
+import { radius, shadowSm } from '../../theme/tokens';
+import { Screen } from '../../components/ui/Screen';
+import { T } from '../../components/ui/T';
+import { Card } from '../../components/ui/Card';
+import { Tag } from '../../components/ui/Chip';
+import { EmptyState } from '../../components/ui/Primitives';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { Enter } from '../../components/ui/Enter';
 
 export default function FoodRescueScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { c, mode } = useTheme();
   const [annonces, setAnnonces] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,70 +54,161 @@ export default function FoodRescueScreen() {
     loadFoodRescue();
   };
 
+  const getExpiry = (annonce: any): string | undefined => {
+    return annonce?.expirationDate || annonce?.dateExpiration || undefined;
+  };
+
+  const getRelais = (annonce: any): string => {
+    return (
+      annonce?.pointRelais?.nom ||
+      annonce?.relais ||
+      annonce?.quartier ||
+      annonce?.adresse ||
+      ''
+    );
+  };
+
+  const hoursLeft = (iso?: string): number | null => {
+    if (!iso) return null;
+    const ts = new Date(iso).getTime();
+    if (Number.isNaN(ts)) return null;
+    return Math.max(0, Math.ceil((ts - Date.now()) / 3600000));
+  };
+
+  const dayNumber = (iso?: string): string => {
+    if (!iso) return '';
+    const ts = new Date(iso).getTime();
+    if (Number.isNaN(ts)) return '';
+    return String(new Date(iso).getDate());
+  };
+
+  const monthLabel = (iso?: string): string => {
+    if (!iso) return '';
+    const ts = new Date(iso).getTime();
+    if (Number.isNaN(ts)) return '';
+    return new Date(iso)
+      .toLocaleDateString('fr-FR', { month: 'short' })
+      .toUpperCase()
+      .replace(/\./g, '');
+  };
+
   if (isLoading) {
     return (
-      <View className="flex-1 bg-surface items-center justify-center">
-        <ActivityIndicator size="large" color="#1B4332" />
-      </View>
+      <Screen padBottom={108}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={c.primary} />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <View className="flex-1 bg-surface px-4" style={{ paddingTop: insets.top + 10 }}>
-      <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-        <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-base font-extrabold text-primary">Food Rescue</Text>
-          <Ionicons name="restaurant-outline" size={20} color="#1B4332" />
-        </View>
-        <Text className="text-sm text-on-surface-variant">Repas et invendus à récupérer rapidement dans votre quartier.</Text>
-      </View>
-
-      <ScrollView
-        className="flex-1"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1B4332" />}
-        contentContainerStyle={{ paddingBottom: 24 }}
-      >
-        {annonces.length === 0 ? (
-          <View className="bg-white border border-outline-variant rounded-2xl p-6 items-center">
-            <Ionicons name="restaurant-outline" size={28} color="#A5A6AA" />
-            <Text className="text-on-surface-variant mt-2">Aucun Food Rescue actif maintenant.</Text>
+    <Screen padBottom={108}>
+      <View style={{ flex: 1, gap: 16, paddingTop: 8 }}>
+        {/* Header */}
+        <Enter index={0}>
+          <View style={{ marginTop: 8 }}>
+            <T kind="overline" color={c.muted}>
+              Sauvetage alimentaire
+            </T>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
+              <T kind="h1" style={{ flex: 1 }}>
+                Food Rescue
+              </T>
+              <Tag label={`${annonces.length} actif${annonces.length > 1 ? 's' : ''}`} tone="gold" />
+            </View>
+            <T kind="body" color={c.muted} style={{ marginTop: 8 }}>
+              Repas et invendus à récupérer rapidement dans votre quartier.
+            </T>
           </View>
-        ) : (
-          annonces.map((annonce) => (
-            <Pressable
-              key={annonce.id}
-              onPress={() => router.push(`/(annonces)/${annonce.id}`)}
-              className="bg-white border border-outline-variant rounded-2xl p-3 mb-3"
-            >
-              <SmartAnnonceImage
-                uri={annonce.photos?.[0]}
-                className="w-full h-30 rounded-xl mb-3 overflow-hidden"
-                resizeMode="cover"
+        </Enter>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+          contentContainerStyle={{ paddingBottom: 32, gap: 12 }}
+        >
+          {annonces.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon="restaurant-outline"
+                title="Aucun Food Rescue actif maintenant."
+                body="De nouveaux repas à sauver apparaîtront ici."
+                action="Voir les annonces"
+                onAction={() => router.push('/(tabs)/home')}
               />
-              <Text className="text-sm font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
-              <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={2}>{annonce.description}</Text>
+            </Card>
+          ) : (
+            annonces.map((annonce, i) => {
+              const expiry = getExpiry(annonce);
+              const relais = getRelais(annonce);
+              const hours = hoursLeft(expiry);
+              const day = dayNumber(expiry);
+              const month = monthLabel(expiry);
 
-              <View className="flex-row flex-wrap gap-2 mt-2">
-                <View className="bg-primary/10 px-2 py-1 rounded-lg">
-                  <Text className="text-[10px] text-primary font-semibold">{annonce.condition || 'BON_ETAT'}</Text>
-                </View>
-                <View className="bg-surface-container px-2 py-1 rounded-lg">
-                  <Text className="text-[10px] text-on-surface-variant">
-                    Expire: {annonce.dateExpiration ? new Date(annonce.dateExpiration).toLocaleString('fr-FR') : 'Bientôt'}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-center justify-between mt-3">
-                <View className="bg-primary/10 px-2 py-1 rounded-lg">
-                  <Text className="text-xs font-semibold text-primary">Expire bientôt</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#1B4332" />
-              </View>
-            </Pressable>
-          ))
-        )}
-      </ScrollView>
-    </View>
+              return (
+                <Enter key={annonce.id} index={Math.min(i, 6)}>
+                  <PressableScale
+                    onPress={() => router.push(`/(annonces)/${annonce.id}`)}
+                    style={{
+                      backgroundColor: c.surface,
+                      borderRadius: radius.lg,
+                      padding: 14,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      ...shadowSm(mode),
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 64,
+                        minHeight: 64,
+                        paddingVertical: 10,
+                        paddingHorizontal: 6,
+                        backgroundColor: c.surface2,
+                        borderRadius: radius.md,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {expiry && day ? (
+                        <>
+                          <T kind="h2">{day}</T>
+                          <T kind="caption" color={c.muted} style={{ marginTop: 2 }}>
+                            {month}
+                          </T>
+                        </>
+                      ) : (
+                        <Ionicons name="restaurant-outline" size={24} color={c.muted} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <T kind="bodyStrong" numberOfLines={1}>
+                        {annonce.titre}
+                      </T>
+                      {relais ? (
+                        <T kind="caption" color={c.muted} numberOfLines={1} style={{ marginTop: 2 }}>
+                          {relais}
+                        </T>
+                      ) : null}
+                      <View style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+                        {hours !== null ? (
+                          <Tag label={`Plus que ${hours} h`} tone="gold" />
+                        ) : (
+                          <Tag label="A recuperer vite" tone="info" />
+                        )}
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={c.muted} />
+                  </PressableScale>
+                </Enter>
+              );
+            })
+          )}
+        </ScrollView>
+      </View>
+    </Screen>
   );
 }

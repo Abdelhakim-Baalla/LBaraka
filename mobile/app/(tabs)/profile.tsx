@@ -1,16 +1,27 @@
-import { View, Text, Pressable, Alert } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useState, useCallback } from 'react';
-import { ApiService } from '../../services/api';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ApiService } from '@/services/api';
+import { useTheme } from '@/theme/ThemeContext';
+import { radius, shadowSm } from '@/theme/tokens';
+import { Screen } from '@/components/ui/Screen';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Tag } from '@/components/ui/Chip';
+import { T } from '@/components/ui/T';
+import { Avatar } from '@/components/ui/Primitives';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Enter } from '@/components/ui/Enter';
+import { Segmented } from '@/components/ui/Segmented';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { c, mode, setMode } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -18,14 +29,15 @@ export default function ProfileScreen() {
     }, [])
   );
 
-  // Charge les données utilisateur
   const loadUser = async () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) {
         const userData = await AsyncStorage.getItem('user');
         if (userData) {
-          setUser(JSON.parse(userData));
+          const parsed = JSON.parse(userData);
+          setUser(parsed);
+          setIsAdmin(parsed?.role === 'ADMINISTRATEUR');
         }
         return;
       }
@@ -33,23 +45,27 @@ export default function ProfileScreen() {
       try {
         const data = await ApiService.getUserProfile(token);
         setUser(data.utilisateur);
+        setIsAdmin(data.utilisateur?.role === 'ADMINISTRATEUR');
         await AsyncStorage.setItem('user', JSON.stringify(data.utilisateur));
       } catch {
         const userData = await AsyncStorage.getItem('user');
         if (userData) {
-          setUser(JSON.parse(userData));
+          const parsed = JSON.parse(userData);
+          setUser(parsed);
+          setIsAdmin(parsed?.role === 'ADMINISTRATEUR');
         }
       }
     } catch (error) {
       console.error('Error loading user:', error);
       const userData = await AsyncStorage.getItem('user');
       if (userData) {
-        setUser(JSON.parse(userData));
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        setIsAdmin(parsed?.role === 'ADMINISTRATEUR');
       }
     }
   };
 
-  // Gère la déconnexion
   const handleLogout = () => {
     Alert.alert(
       'Déconnexion',
@@ -84,156 +100,400 @@ export default function ProfileScreen() {
     );
   };
 
+  const displayName =
+    user?.profil?.prenom || user?.profil?.nom
+      ? `${user?.profil?.prenom || ''} ${user?.profil?.nom || ''}`.trim()
+      : 'Utilisateur';
+
+  const compteItems: {
+    icon: keyof typeof Ionicons.glyphMap;
+    label: string;
+    caption: string;
+    onPress: () => void;
+  }[] = [
+    { icon: 'person-outline', label: 'Modifier le profil', caption: 'Nom, ville et coordonnées', onPress: () => router.push('/edit-profile') },
+    { icon: 'wallet-outline', label: 'Mon portefeuille', caption: 'Solde, dépôts et retraits', onPress: () => router.push('/(tabs)/wallet') },
+    { icon: 'albums-outline', label: 'Mes annonces', caption: 'Gérer mes publications', onPress: () => router.push('/(annonces)/mine') },
+  ];
+
+  const appItems: {
+    icon: keyof typeof Ionicons.glyphMap;
+    label: string;
+    caption: string;
+    onPress: () => void;
+  }[] = [
+    { icon: 'location-outline', label: 'Points relais', caption: 'Trouver un point proche', onPress: () => router.push('/(points-relais)/') },
+  ];
+
   return (
-    <View className="flex-1 bg-surface">
-      <View
-        className="bg-white/90 px-6 pb-4 border-b border-outline-variant/30"
-        style={{ paddingTop: insets.top + 8 }}
-      >
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-xs font-semibold text-on-surface-variant">Espace personnel</Text>
-            <Text className="text-xl font-extrabold text-primary">Mon Profil</Text>
-          </View>
-          <Pressable className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-            <Ionicons name="settings-outline" size={20} color="#1B4332" />
-          </Pressable>
-        </View>
+    <Screen scroll padBottom={108} pad={0}>
+      <View style={{ height: 190, backgroundColor: c.primary, paddingHorizontal: 20, paddingTop: 16, overflow: 'hidden' }}>
+        <View
+          style={{
+            position: 'absolute',
+            width: 220,
+            height: 220,
+            borderRadius: 110,
+            backgroundColor: c.onPrimary,
+            opacity: 0.1,
+            top: -80,
+            right: -60,
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            width: 140,
+            height: 140,
+            borderRadius: 70,
+            backgroundColor: c.onPrimary,
+            opacity: 0.08,
+            bottom: -50,
+            left: 40,
+          }}
+        />
+        <T kind="overline" color={c.onPrimary} style={{ opacity: 0.7 }}>
+          Espace personnel
+        </T>
+        <T kind="h1" color={c.onPrimary} style={{ marginTop: 4 }} numberOfLines={1}>
+          {displayName}
+        </T>
       </View>
 
-      <View className="flex-1 px-6 pt-5 pb-5 justify-between">
-        <View>
+      <View style={{ paddingHorizontal: 20 }}>
+        <Enter index={0}>
+          <View style={{ marginTop: -42 }}>
+            <Avatar name={displayName} size={84} />
+          </View>
+        </Enter>
 
-          {user && (
-            <View className="bg-white rounded-2xl p-4 border border-outline-variant/70 mb-5">
-              <View className="flex-row items-center gap-3 mb-3">
-                <View className="w-14 h-14 rounded-full bg-primary-container items-center justify-center">
-                  <Text className="text-white text-xl font-bold">
-                    {user.email?.charAt(0).toUpperCase()}
-                  </Text>
+        <Enter index={1}>
+          <View style={{ marginTop: 12 }}>
+            <T kind="h1" numberOfLines={1}>
+              {displayName}
+            </T>
+            {user?.email ? (
+              <T kind="small" color={c.muted} numberOfLines={1} style={{ marginTop: 2 }}>
+                {user.email}
+              </T>
+            ) : null}
+            {user?.telephone ? (
+              <T kind="small" color={c.muted} numberOfLines={1} style={{ marginTop: 2 }}>
+                {user.telephone}
+              </T>
+            ) : null}
+
+            {user ? (
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    backgroundColor: c.surface2,
+                    borderRadius: radius.md,
+                    paddingVertical: 12,
+                    gap: 2,
+                  }}
+                >
+                  <Ionicons name="star" size={16} color={c.gold} />
+                  <T kind="h2" color={c.gold}>
+                    {user.profil?.lBarakaScore || 0}
+                  </T>
+                  <T kind="caption" color={c.muted}>
+                    Points
+                  </T>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-bold text-primary" numberOfLines={1}>
-                    {user.profil?.prenom || user.profil?.nom
-                      ? `${user.profil?.prenom || ''} ${user.profil?.nom || ''}`.trim()
-                      : 'Utilisateur'}
-                  </Text>
-                  <Text className="text-xs text-on-surface-variant" numberOfLines={1}>{user.email}</Text>
-                  <Text className="text-xs text-on-surface-variant" numberOfLines={1}>{user.telephone}</Text>
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    backgroundColor: c.surface2,
+                    borderRadius: radius.md,
+                    paddingVertical: 12,
+                    gap: 2,
+                  }}
+                >
+                  <Ionicons name="ribbon" size={16} color={c.gold} />
+                  <T kind="h3" numberOfLines={1} style={{ marginTop: 2 }}>
+                    {user.profil?.palier || 'BRONZE'}
+                  </T>
+                  <T kind="caption" color={c.muted}>
+                    Palier
+                  </T>
+                </View>
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    backgroundColor: c.surface2,
+                    borderRadius: radius.md,
+                    paddingVertical: 12,
+                    gap: 2,
+                  }}
+                >
+                  <Ionicons name="medal" size={16} color={c.gold} />
+                  <T kind="h2" color={c.gold}>
+                    {user.profil?.badges?.length || 0}
+                  </T>
+                  <T kind="caption" color={c.muted}>
+                    Badges
+                  </T>
                 </View>
               </View>
+            ) : null}
 
-              <View className="flex-row justify-between gap-2 pt-3 border-t border-outline-variant/20">
-                <View className="items-center bg-surface-container rounded-xl py-2.5 flex-1">
-                  <Text className="text-lg font-bold text-primary">{user.profil?.lBarakaScore || 0}</Text>
-                  <Text className="text-[10px] text-on-surface-variant uppercase tracking-wider">Points</Text>
-                </View>
-                <View className="items-center bg-surface-container rounded-xl py-2.5 flex-1">
-                  <Text className="text-lg font-bold text-secondary" numberOfLines={1}>{user.profil?.palier || 'BRONZE'}</Text>
-                  <Text className="text-[10px] text-on-surface-variant uppercase tracking-wider">Palier</Text>
-                </View>
-                <View className="items-center bg-surface-container rounded-xl py-2.5 flex-1">
-                  <Text className="text-lg font-bold text-primary">{user.profil?.badges?.length || 0}</Text>
-                  <Text className="text-[10px] text-on-surface-variant uppercase tracking-wider">Badges</Text>
-                </View>
+            {user?.profil?.palier ? (
+              <View style={{ marginTop: 12, alignSelf: 'flex-start' }}>
+                <Tag label={String(user.profil.palier)} tone="gold" />
               </View>
-            </View>
-          )}
+            ) : null}
+          </View>
+        </Enter>
 
-          <View className="bg-primary rounded-2xl p-3.5 mb-5 flex-row items-center gap-3">
-            <Ionicons name="leaf-outline" size={20} color="#ffffff" />
-            <View className="flex-1">
-              <Text className="text-white font-bold text-sm">Impact personnel</Text>
-              <Text className="text-white/85 text-[11px]">Continuez vos échanges pour progresser.</Text>
+        <Enter index={2}>
+          <View
+            style={{
+              marginTop: 16,
+              backgroundColor: c.primarySoft,
+              borderRadius: radius.lg,
+              padding: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              ...shadowSm(mode),
+            }}
+          >
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: c.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="leaf-outline" size={20} color={c.onPrimary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <T kind="bodyStrong" color={c.onPrimarySoft}>
+                Impact personnel
+              </T>
+              <T kind="small" color={c.onPrimarySoft} style={{ marginTop: 2 }}>
+                Continuez vos échanges pour progresser.
+              </T>
             </View>
           </View>
+        </Enter>
 
-
-          <View className="bg-white rounded-2xl border border-outline-variant/70 overflow-hidden">
-          <Pressable 
-            onPress={() => router.push('/edit-profile')}
-            className="flex-row items-center justify-between px-5 py-4 border-b border-outline-variant/10 active:bg-surface-container-low"
-          >
-            <View className="flex-row items-center gap-3">
-              <Ionicons name="person-outline" size={21} color="#012d1d" />
-              <Text className="text-sm font-semibold text-on-surface">
-                Modifier le profil
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#717973" />
-          </Pressable>
-
-          <Pressable 
-            onPress={() => router.push('/(tabs)/wallet')}
-            className="flex-row items-center justify-between px-5 py-4 border-b border-outline-variant/10 active:bg-surface-container-low"
-          >
-            <View className="flex-row items-center gap-3">
-              <Ionicons name="wallet-outline" size={21} color="#012d1d" />
-              <Text className="text-sm font-semibold text-on-surface">
-                Mon portefeuille
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#717973" />
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/(annonces)/mine')}
-            className="flex-row items-center justify-between px-5 py-4 border-b border-outline-variant/10 active:bg-surface-container-low"
-          >
-            <View className="flex-row items-center gap-3">
-              <Ionicons name="albums-outline" size={21} color="#012d1d" />
-              <Text className="text-sm font-semibold text-on-surface">
-                Mes annonces
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#717973" />
-          </Pressable>
-
-          <Pressable className="flex-row items-center justify-between px-5 py-4 border-b border-outline-variant/10 active:bg-surface-container-low">
-            <View className="flex-row items-center gap-3">
-              <Ionicons name="notifications-outline" size={21} color="#012d1d" />
-              <Text className="text-sm font-semibold text-on-surface">
-                Notifications
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#717973" />
-          </Pressable>
-
-          <Pressable className="flex-row items-center justify-between px-5 py-4 active:bg-surface-container-low">
-            <View className="flex-row items-center gap-3">
-              <Ionicons name="settings-outline" size={21} color="#012d1d" />
-              <Text className="text-sm font-semibold text-on-surface">
-                Paramètres
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#717973" />
-          </Pressable>
-        </View>
-        </View>
-
-        <View>
-          <Pressable
-            onPress={handleLogout}
-            disabled={isLoading}
-            className={`bg-error rounded-xl py-4 px-6 flex-row items-center justify-center shadow-lg ${
-              isLoading ? 'opacity-50' : ''
-            }`}
-          >
-            <Ionicons name="log-out-outline" size={22} color="#ffffff" />
-            <Text className="text-white font-bold text-base tracking-wide ml-2.5">
-              {isLoading ? 'Déconnexion...' : 'Se déconnecter'}
-            </Text>
-          </Pressable>
-
-          <View className="items-center pt-3 opacity-50">
-            <Text className="text-xs text-on-surface-variant">LBaraka v1.0.0</Text>
+        <Enter index={3}>
+          <View style={{ marginTop: 16 }}>
+            <T kind="overline" color={c.muted} style={{ marginBottom: 8 }}>
+              Compte
+            </T>
+            <Card pad={0} style={{ overflow: 'hidden' }}>
+              {compteItems.map((item, i) => (
+                <PressableScale
+                  key={item.label}
+                  onPress={item.onPress}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 18,
+                    paddingVertical: 16,
+                    backgroundColor: 'transparent',
+                    borderBottomWidth: i === compteItems.length - 1 ? 0 : 1,
+                    borderBottomColor: c.line,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: radius.md,
+                        backgroundColor: c.surface2,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons name={item.icon} size={20} color={c.primary} />
+                    </View>
+                    <View>
+                      <T kind="bodyStrong">{item.label}</T>
+                      <T kind="small" color={c.muted} style={{ marginTop: 2 }}>
+                        {item.caption}
+                      </T>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={c.muted} />
+                </PressableScale>
+              ))}
+            </Card>
           </View>
-        </View>
+        </Enter>
+
+        <Enter index={4}>
+          <View style={{ marginTop: 16 }}>
+            <T kind="overline" color={c.muted} style={{ marginBottom: 8 }}>
+              Preferences
+            </T>
+            <Card style={{ gap: 14 }}>
+              <View>
+                <T kind="bodyStrong">Theme</T>
+                <T kind="small" color={c.muted} style={{ marginTop: 2, marginBottom: 10 }}>
+                  {mode === 'light' ? 'Mode clair actif' : 'Mode sombre actif'}
+                </T>
+                <Segmented
+                  options={[
+                    { value: 'light', label: 'Clair' },
+                    { value: 'dark', label: 'Sombre' },
+                  ]}
+                  value={mode}
+                  onChange={(v) => setMode(v)}
+                />
+              </View>
+              <PressableScale
+                onPress={() => router.push('/edit-profile')}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderTopWidth: 1,
+                  borderTopColor: c.line,
+                  paddingTop: 14,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: radius.md,
+                      backgroundColor: c.surface2,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="language-outline" size={20} color={c.primary} />
+                  </View>
+                  <View>
+                    <T kind="bodyStrong">Langue</T>
+                    <T kind="small" color={c.muted} style={{ marginTop: 2 }}>
+                      Francais, gerer dans le profil
+                    </T>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={c.muted} />
+              </PressableScale>
+            </Card>
+          </View>
+        </Enter>
+
+        <Enter index={5}>
+          <View style={{ marginTop: 16 }}>
+            <T kind="overline" color={c.muted} style={{ marginBottom: 8 }}>
+              Application
+            </T>
+            <Card pad={0} style={{ overflow: 'hidden' }}>
+              {appItems.map((item, i) => (
+                <PressableScale
+                  key={item.label}
+                  onPress={item.onPress}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 18,
+                    paddingVertical: 16,
+                    backgroundColor: 'transparent',
+                    borderBottomWidth: isAdmin ? 1 : i === appItems.length - 1 ? 0 : 1,
+                    borderBottomColor: c.line,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: radius.md,
+                        backgroundColor: c.surface2,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons name={item.icon} size={20} color={c.primary} />
+                    </View>
+                    <View>
+                      <T kind="bodyStrong">{item.label}</T>
+                      <T kind="small" color={c.muted} style={{ marginTop: 2 }}>
+                        {item.caption}
+                      </T>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={c.muted} />
+                </PressableScale>
+              ))}
+              {isAdmin ? (
+                <PressableScale
+                  onPress={() => router.push('/(admin)/dashboard')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 18,
+                    paddingVertical: 16,
+                    backgroundColor: 'transparent',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: radius.md,
+                        backgroundColor: c.surface2,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons name="shield-checkmark-outline" size={20} color={c.primary} />
+                    </View>
+                    <View>
+                      <T kind="bodyStrong">Administration</T>
+                      <T kind="small" color={c.muted} style={{ marginTop: 2 }}>
+                        Tableau de bord admin
+                      </T>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={c.muted} />
+                </PressableScale>
+              ) : null}
+            </Card>
+          </View>
+        </Enter>
+
+        <Enter index={6}>
+          <View style={{ marginTop: 20, marginBottom: 8 }}>
+            <Button
+              title={isLoading ? 'Déconnexion...' : 'Se déconnecter'}
+              variant="danger"
+              icon="log-out-outline"
+              loading={isLoading}
+              onPress={handleLogout}
+            />
+            <T kind="caption" color={c.muted} center style={{ marginTop: 14 }}>
+              LBaraka v1.0.0
+            </T>
+          </View>
+        </Enter>
+        {isLoading && !user ? (
+          <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+            <ActivityIndicator color={c.primary} />
+          </View>
+        ) : null}
       </View>
-
-
-      <View className="absolute -bottom-32 -left-32 w-96 h-96 bg-primary/5 rounded-full blur-3xl" style={{ opacity: 0.3 }} />
-      <View className="absolute top-20 -right-20 w-64 h-64 bg-secondary/5 rounded-full blur-3xl" style={{ opacity: 0.3 }} />
-    </View>
+    </Screen>
   );
 }

@@ -1,15 +1,27 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, TextInput, Modal, Alert, ImageBackground } from 'react-native';
+import { View, Pressable, ScrollView, ActivityIndicator, RefreshControl, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
-import { ApiService } from '../../services/api';
+import { ApiService } from '@/services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/theme/ThemeContext';
+import { radius, shadowSm, shadowMd } from '@/theme/tokens';
+import { Screen } from '@/components/ui/Screen';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Tag } from '@/components/ui/Chip';
+import { TextField } from '@/components/ui/TextField';
+import { T } from '@/components/ui/T';
+import { SectionHeader, EmptyState } from '@/components/ui/Primitives';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Enter } from '@/components/ui/Enter';
+import { Segmented } from '@/components/ui/Segmented';
 
-// Ecran portefeuille avec solde et historique
 export default function WalletScreen() {
+  const { c, mode, dark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [wallet, setWallet] = useState<any>(null);
@@ -28,6 +40,7 @@ export default function WalletScreen() {
   const [historyFilter, setHistoryFilter] = useState<'ALL' | 'CREDIT' | 'DEBIT'>('ALL');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [balanceVisible, setBalanceVisible] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -35,7 +48,6 @@ export default function WalletScreen() {
     }, [])
   );
 
-  // Charger le wallet
   const loadWallet = async () => {
     try {
       const [token, userRaw] = await Promise.all([
@@ -64,13 +76,11 @@ export default function WalletScreen() {
     }
   };
 
-  // Rafraichir les donnees
   const onRefresh = () => {
     setRefreshing(true);
     loadWallet();
   };
 
-  // Deposer des fonds
   const handleDeposit = async () => {
     if (!montant || isNaN(Number(montant)) || Number(montant) <= 0) {
       setError('Montant invalide');
@@ -98,7 +108,6 @@ export default function WalletScreen() {
     }
   };
 
-  // Retirer des fonds
   const handleRetrait = async () => {
     if (!montantRetrait || isNaN(Number(montantRetrait)) || Number(montantRetrait) <= 0) {
       setErrorRetrait('Montant invalide');
@@ -144,9 +153,9 @@ export default function WalletScreen() {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
-      Alert.alert('✅ Fichier sauvegardé', `${fileName}\n\nChemins: Documents de votre appareil`);
+      Alert.alert('Fichier sauvegardé', `${fileName}\n\nChemins: Documents de votre appareil`);
     } catch (error: any) {
-      Alert.alert('Erreur', error?.message || 'Impossible d\'exporter le CSV');
+      Alert.alert('Erreur', error?.message || "Impossible d'exporter le CSV");
     }
   };
 
@@ -173,7 +182,7 @@ export default function WalletScreen() {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      Alert.alert('📄 PDF généré', `${fileName}\\n\\nChemins: Documents de votre appareil`);
+      Alert.alert('PDF généré', `${fileName}\n\nChemins: Documents de votre appareil`);
     } catch (error: any) {
       Alert.alert('Erreur', error?.message || 'Impossible de charger le reçu');
     }
@@ -191,7 +200,7 @@ export default function WalletScreen() {
     return type === 'DEPOT' || type === 'DEBLOCAGE';
   };
 
-  const getMouvementIcon = (type: string) => {
+  const getMouvementIcon = (type: string): keyof typeof Ionicons.glyphMap => {
     if (type === 'DEPOT') return 'arrow-down-circle-outline';
     if (type === 'RETRAIT') return 'arrow-up-circle-outline';
     if (type === 'BLOCAGE') return 'lock-closed-outline';
@@ -199,7 +208,13 @@ export default function WalletScreen() {
     return 'swap-horizontal-outline';
   };
 
-  // Formater la date
+  const getMouvementTone = (type: string): 'success' | 'danger' | 'primary' | 'gold' | 'muted' => {
+    if (type === 'DEPOT' || type === 'DEBLOCAGE') return 'success';
+    if (type === 'RETRAIT') return 'danger';
+    if (type === 'BLOCAGE') return 'gold';
+    return 'muted';
+  };
+
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('fr-FR', {
       day: '2-digit',
@@ -218,16 +233,13 @@ export default function WalletScreen() {
   const totalMouvements = mouvements.length;
 
   const filteredMouvements = mouvements.filter((item: any) => {
-    // Filtre par type (ALL, CREDIT, DEBIT)
     if (historyFilter === 'ALL') {
-      // continue
     } else if (historyFilter === 'CREDIT') {
       if (!isPositiveMouvement(item.type)) return false;
     } else if (historyFilter === 'DEBIT') {
       if (isPositiveMouvement(item.type)) return false;
     }
 
-    // Filtre par date
     if (dateFrom || dateTo) {
       const itemDate = new Date(item.date);
       if (dateFrom) {
@@ -250,372 +262,400 @@ export default function WalletScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-surface items-center justify-center">
-        <ActivityIndicator size="large" color="#1B4332" />
-      </View>
+      <Screen padBottom={108}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={c.primary} />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
+    <Screen padBottom={108}>
       <ScrollView
-        className="flex-1 px-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1B4332" />}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
         contentContainerStyle={{ paddingBottom: 24 }}
       >
-        <Pressable
-          onPress={() => router.back()}
-          className="bg-white border border-outline-variant rounded-xl py-3 px-3 flex-row items-center gap-2 mb-3"
-        >
-          <Ionicons name="arrow-back" size={18} color="#1B4332" />
-          <Text className="text-primary font-bold">Retour</Text>
-        </Pressable>
-
-        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-          <View className="flex-row items-center justify-between mb-2">
-            <View>
-              <Text className="text-xs text-on-surface-variant font-semibold">Espace Finance</Text>
-              <Text className="text-base font-extrabold text-primary">Portefeuille Solidaire</Text>
-            </View>
-            <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-              <Ionicons name="wallet-outline" size={20} color="#1B4332" />
+        <Enter index={0}>
+          <View style={{ marginTop: 8 }}>
+            <T kind="overline" color={c.muted}>
+              Espace Finance
+            </T>
+            <T kind="h1" style={{ marginTop: 4 }}>
+              Portefeuille Solidaire
+            </T>
+            <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Tag label={`${userPoints} pts`} tone="gold" />
+              <T kind="caption" color={c.muted}>
+                {`Palier : ${userPalier}`}
+              </T>
             </View>
           </View>
-          <Text className="text-xs text-on-surface-variant">
-            Démo simple: dépôt et retrait direct utilisateur. En production, paiement externe recommandé.
-          </Text>
-        </View>
+        </Enter>
 
-        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm font-extrabold text-primary">Comprendre vos valeurs</Text>
-            <Ionicons name="help-circle-outline" size={18} color="#1B4332" />
-          </View>
-
-          <View className="flex-row gap-2">
-            <View className="flex-1 bg-primary/10 rounded-xl p-3">
-              <Text className="text-[11px] text-on-surface-variant">Points LBaraka</Text>
-              <Text className="text-base font-bold text-primary mt-1">{userPoints} pts</Text>
-              <Text className="text-[10px] text-on-surface-variant mt-1">Palier: {userPalier}</Text>
-            </View>
-            <View className="flex-1 bg-emerald-50 rounded-xl p-3">
-              <Text className="text-[11px] text-on-surface-variant">Argent wallet</Text>
-              <Text className="text-base font-bold text-emerald-700 mt-1">{soldeReel.toFixed(2)} MAD</Text>
-              <Text className="text-[10px] text-on-surface-variant mt-1">Caution: {soldeBloque.toFixed(2)} MAD</Text>
-            </View>
-          </View>
-
-          <Text className="text-xs text-on-surface-variant mt-3">
-            Les points et l'argent sont différents: les points mesurent votre impact/réputation, le wallet MAD sert aux cautions et paiements.
-          </Text>
-        </View>
-
-        {/* Carte Solde Hero */}
-        <ImageBackground
-          source={{ uri: 'https://images.pexels.com/photos/10531120/pexels-photo-10531120.jpeg' }}
-          resizeMode="cover"
-          style={{
-            borderRadius: 16,
-            marginBottom: 16,
-            overflow: 'hidden',
-            minHeight: 150,
-          }}
-          imageStyle={{ borderRadius: 16 }}
-        >
+        <Enter index={1}>
           <View
             style={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              bottom: 0,
-              left: 0,
-              backgroundColor: 'rgba(27, 67, 50, 0.32)',
+              borderRadius: radius.xl,
+              marginTop: 16,
+              backgroundColor: dark ? c.ink : '#241811',
+              padding: 20,
+              overflow: 'hidden',
+              ...shadowMd(mode),
             }}
-          />
-
-          <View style={{ padding: 16 }}>
-            <Text className="text-white/80 text-xs font-semibold uppercase">Solde principal</Text>
-            <Text className="text-white text-3xl font-black mt-1">{soldeReel.toFixed(2)} MAD</Text>
-            <Text className="text-white/80 text-xs mt-1">Caution bloquée: {soldeBloque.toFixed(2)} MAD</Text>
-
-            <View className="mt-3">
-              <View className="flex-row items-center justify-between mb-1">
-                <Text className="text-[11px] text-white/85">Part du solde bloqué</Text>
-                <Text className="text-[11px] text-white font-bold">{ratioBloque}%</Text>
-              </View>
-              <View className="h-2 rounded-full bg-white/25 overflow-hidden">
-                <View className="h-2 rounded-full bg-white" style={{ width: `${ratioBloque}%` }} />
-              </View>
-            </View>
-          </View>
-        </ImageBackground>
-
-        {/* Mini stats */}
-        <View className="flex-row gap-2 mb-4">
-          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
-            <Text className="text-[11px] text-on-surface-variant">Devise</Text>
-            <Text className="text-sm font-bold text-primary mt-1">{wallet?.wallet?.devise || 'MAD'}</Text>
-          </View>
-          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
-            <Text className="text-[11px] text-on-surface-variant">Mouvements</Text>
-            <Text className="text-sm font-bold text-primary mt-1">{totalMouvements}</Text>
-          </View>
-          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
-            <Text className="text-[11px] text-on-surface-variant">Crédits</Text>
-            <Text className="text-sm font-bold text-emerald-700 mt-1">{mouvementsCredit}</Text>
-          </View>
-        </View>
-
-        {/* Actions rapides */}
-        <View className="flex-row gap-2 mb-3">
-          <Pressable
-            onPress={() => setShowDepotModal(true)}
-            className="flex-1 bg-white rounded-2xl p-4 border border-outline-variant flex-row items-center justify-between"
           >
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="arrow-down-circle-outline" size={18} color="#1B4332" />
-              <Text className="text-on-surface font-semibold text-xs">Dépôt</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#6c757d" />
-          </Pressable>
-
-          <Pressable
-            onPress={() => setShowRetraitModal(true)}
-            className="flex-1 bg-white rounded-2xl p-4 border border-outline-variant flex-row items-center justify-between"
-          >
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="arrow-up-circle-outline" size={18} color="#1B4332" />
-              <Text className="text-on-surface font-semibold text-xs">Retrait</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#6c757d" />
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/(tabs)/transactions')}
-            className="flex-1 bg-white rounded-2xl p-4 border border-outline-variant flex-row items-center justify-between"
-          >
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="receipt-outline" size={18} color="#1B4332" />
-              <Text className="text-on-surface font-semibold text-xs">Transactions</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#6c757d" />
-          </Pressable>
-        </View>
-
-        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-3">
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm font-extrabold text-primary">Synthèse rapide</Text>
-            <Ionicons name="stats-chart-outline" size={18} color="#1B4332" />
-          </View>
-          <Text className="text-xs text-on-surface-variant">
-            Débits: {mouvementsDebit} • Crédits: {mouvementsCredit} • Opérations totales: {totalMouvements}
-          </Text>
-          <Text className="text-xs text-on-surface-variant mt-1">
-            Conseil: gardez un petit solde libre pour réserver plus vite les annonces utiles.
-          </Text>
-        </View>
-
-        <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
-          <View className="flex-row items-center gap-2 mb-2">
-            <Ionicons name="information-circle-outline" size={18} color="#b45309" />
-            <Text className="text-sm font-bold text-amber-800">Règles simples du wallet</Text>
-          </View>
-          <Text className="text-xs text-amber-800">1. Dépôt: ajoute du solde réel immédiatement.</Text>
-          <Text className="text-xs text-amber-800 mt-1">2. Blocage caution: réservé automatiquement pendant une transaction.</Text>
-          <Text className="text-xs text-amber-800 mt-1">3. Déblocage: la caution revient après validation du retour.</Text>
-        </View>
-
-        <Pressable
-          onPress={handleExportCsv}
-          className="bg-white border border-outline-variant rounded-xl py-3.5 px-4 flex-row items-center justify-center gap-2 mb-3"
-        >
-          <Ionicons name="download-outline" size={18} color="#1B4332" />
-          <Text className="text-primary font-bold">Exporter mes mouvements (CSV)</Text>
-        </Pressable>
-
-        {/* Filtres avancés */}
-        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-3">
-          <Text className="text-sm font-semibold text-on-surface mb-3">Filtrer par date</Text>
-          <View className="flex-row gap-2">
-            <TextInput
-              value={dateFrom}
-              onChangeText={setDateFrom}
-              placeholder="Du (YYYY-MM-DD)"
-              className="flex-1 bg-surface border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface"
+            <View
+              style={{
+                position: 'absolute',
+                top: -70,
+                right: -50,
+                width: 190,
+                height: 190,
+                borderRadius: 95,
+                backgroundColor: dark ? c.ink2 : '#E4703A',
+                opacity: 0.16,
+              }}
             />
-            <TextInput
-              value={dateTo}
-              onChangeText={setDateTo}
-              placeholder="Au (YYYY-MM-DD)"
-              className="flex-1 bg-surface border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface"
+            <View
+              style={{
+                position: 'absolute',
+                bottom: -90,
+                left: -40,
+                width: 170,
+                height: 170,
+                borderRadius: 85,
+                backgroundColor: dark ? c.ink2 : '#E4703A',
+                opacity: 0.1,
+              }}
             />
-          </View>
-        </View>
-
-        {/* Historique */}
-        <View className="bg-white rounded-2xl p-4 border border-outline-variant mb-3">
-          <View className="flex-row items-center justify-between mb-3">
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="time-outline" size={20} color="#1B4332" />
-              <Text className="text-on-surface font-semibold">Historique</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <T kind="overline" color={dark ? c.bg : '#E8B95C'}>
+                Solde disponible
+              </T>
+              <View
+                style={{
+                  width: 44,
+                  height: 30,
+                  borderRadius: 7,
+                  backgroundColor: dark ? c.bg : '#E8B95C',
+                  opacity: 0.85,
+                }}
+              />
             </View>
-            <View className="flex-row gap-1">
-              <Pressable
-                onPress={() => setHistoryFilter('ALL')}
-                className={`px-2 py-1 rounded-lg ${historyFilter === 'ALL' ? 'bg-primary' : 'bg-surface-container'}`}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+              <T kind="display" color={dark ? c.bg : '#F5EDE1'} style={{ flex: 1 }} numberOfLines={1}>
+                {balanceVisible ? `${soldeReel.toFixed(2)} MAD` : '••••••'}
+              </T>
+              <PressableScale
+                onPress={() => setBalanceVisible((v) => !v)}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: dark ? 'rgba(21,17,16,0.08)' : 'rgba(245,237,225,0.16)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                <Text className={`text-[10px] font-bold ${historyFilter === 'ALL' ? 'text-white' : 'text-on-surface-variant'}`}>Tout</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setHistoryFilter('CREDIT')}
-                className={`px-2 py-1 rounded-lg ${historyFilter === 'CREDIT' ? 'bg-primary' : 'bg-surface-container'}`}
-              >
-                <Text className={`text-[10px] font-bold ${historyFilter === 'CREDIT' ? 'text-white' : 'text-on-surface-variant'}`}>Crédit</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setHistoryFilter('DEBIT')}
-                className={`px-2 py-1 rounded-lg ${historyFilter === 'DEBIT' ? 'bg-primary' : 'bg-surface-container'}`}
-              >
-                <Text className={`text-[10px] font-bold ${historyFilter === 'DEBIT' ? 'text-white' : 'text-on-surface-variant'}`}>Débit</Text>
-              </Pressable>
+                <Ionicons
+                  name={balanceVisible ? 'eye-outline' : 'eye-off-outline'}
+                  size={20}
+                  color={dark ? c.bg : '#F5EDE1'}
+                />
+              </PressableScale>
+            </View>
+            <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <T kind="small" color={dark ? c.bg : '#F5EDE1'} style={{ opacity: 0.85 }}>
+                {`Caution bloquée ${soldeBloque.toFixed(2)} MAD`}
+              </T>
+              <T kind="caption" color={dark ? c.bg : '#F5EDE1'}>
+                {`${ratioBloque}%`}
+              </T>
+            </View>
+            <View style={{ marginTop: 8, height: 6, borderRadius: 3, backgroundColor: dark ? 'rgba(21,17,16,0.12)' : 'rgba(245,237,225,0.2)', overflow: 'hidden' }}>
+              <View style={{ height: 6, borderRadius: 3, backgroundColor: dark ? '#9A5B12' : '#E8B95C', width: `${ratioBloque}%` }} />
             </View>
           </View>
+        </Enter>
 
-          {filteredMouvements.length > 0 ? (
-            filteredMouvements.map((mouvement: any, index: number) => (
-              <View key={mouvement.id || index} className="py-3 border-b border-outline-variant/30">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1 flex-row items-start gap-2">
-                    <Ionicons name={getMouvementIcon(mouvement.type)} size={16} color="#1B4332" style={{ marginTop: 2 }} />
-                    <View className="flex-1">
-                      <Text className="text-sm font-semibold text-on-surface">{getMouvementLabel(mouvement.type)}</Text>
-                      <Text className="text-xs text-on-surface-variant mt-1">
-                        {formatDate(mouvement.date)}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text
-                    className={`text-sm font-bold ${
-                      isPositiveMouvement(mouvement.type)
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {isPositiveMouvement(mouvement.type) ? '+' : '-'}
-                    {mouvement.montant?.toFixed(2)} MAD
-                  </Text>
+        <Enter index={2}>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+            <PressableScale
+              onPress={() => setShowDepotModal(true)}
+              style={{
+                flex: 1,
+                height: 84,
+                borderRadius: radius.lg,
+                backgroundColor: c.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                ...shadowSm(mode),
+              }}
+            >
+              <Ionicons name="arrow-down-circle-outline" size={24} color={c.onPrimary} />
+              <T kind="bodyStrong" color={c.onPrimary}>
+                Dépôt
+              </T>
+            </PressableScale>
+            <PressableScale
+              onPress={() => setShowRetraitModal(true)}
+              style={{
+                flex: 1,
+                height: 84,
+                borderRadius: radius.lg,
+                backgroundColor: c.surface,
+                borderWidth: 1,
+                borderColor: c.line,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                ...shadowSm(mode),
+              }}
+            >
+              <Ionicons name="arrow-up-circle-outline" size={24} color={c.primary} />
+              <T kind="bodyStrong">Retrait</T>
+            </PressableScale>
+            <PressableScale
+              onPress={handleExportCsv}
+              style={{
+                flex: 1,
+                height: 84,
+                borderRadius: radius.lg,
+                backgroundColor: c.surface,
+                borderWidth: 1,
+                borderColor: c.line,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                ...shadowSm(mode),
+              }}
+            >
+              <Ionicons name="receipt-outline" size={24} color={c.primary} />
+              <T kind="bodyStrong">Historique</T>
+            </PressableScale>
+          </View>
+        </Enter>
+
+        <Enter index={3}>
+          <View
+            style={{
+              marginTop: 16,
+              backgroundColor: c.surface2,
+              borderRadius: radius.lg,
+              flexDirection: 'row',
+              paddingVertical: 14,
+            }}
+          >
+            <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
+              <T kind="h3">{wallet?.wallet?.devise || 'MAD'}</T>
+              <T kind="caption" color={c.muted}>
+                Devise
+              </T>
+            </View>
+            <View style={{ flex: 1, alignItems: 'center', gap: 2, borderLeftWidth: 1, borderRightWidth: 1, borderColor: c.line }}>
+              <T kind="h3">{totalMouvements}</T>
+              <T kind="caption" color={c.muted}>
+                Mouvements
+              </T>
+            </View>
+            <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
+              <T kind="h3" color={c.success}>
+                {mouvementsCredit}
+              </T>
+              <T kind="caption" color={c.muted}>
+                Crédits
+              </T>
+            </View>
+          </View>
+        </Enter>
+
+        <Enter index={4}>
+          <View style={{ marginTop: 20 }}>
+            <SectionHeader title="Historique" action="Transactions" onAction={() => router.push('/(tabs)/transactions')} />
+            <View style={{ marginTop: 12 }}>
+              <Segmented
+                options={[
+                  { value: 'ALL', label: 'Tout' },
+                  { value: 'CREDIT', label: 'Crédit' },
+                  { value: 'DEBIT', label: 'Débit' },
+                ]}
+                value={historyFilter}
+                onChange={(v) => setHistoryFilter(v as typeof historyFilter)}
+              />
+            </View>
+            <Card style={{ marginTop: 12, gap: 12 }}>
+              <T kind="bodyStrong">Filtrer par date</T>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <TextField
+                    label="Du"
+                    value={dateFrom}
+                    onChangeText={setDateFrom}
+                    placeholder="YYYY-MM-DD"
+                  />
                 </View>
-
-                <View className="flex-row justify-end mt-2">
-                  <Pressable
-                    onPress={() => handleShowReceipt(String(mouvement.id))}
-                    className="bg-primary/10 rounded-lg px-3 py-1.5"
-                  >
-                    <Text className="text-primary text-[11px] font-bold">Voir reçu</Text>
-                  </Pressable>
+                <View style={{ flex: 1 }}>
+                  <TextField
+                    label="Au"
+                    value={dateTo}
+                    onChangeText={setDateTo}
+                    placeholder="YYYY-MM-DD"
+                  />
                 </View>
               </View>
-            ))
-          ) : (
-            <View className="items-center py-5">
-              <Ionicons name="wallet-outline" size={24} color="#A5A6AA" />
-              <Text className="text-sm text-on-surface-variant text-center mt-2">Aucun mouvement pour ce filtre</Text>
-            </View>
-          )}
-        </View>
+            </Card>
+
+            <Card style={{ marginTop: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <Ionicons name="time-outline" size={20} color={c.primary} />
+                <T kind="h3">Mouvements</T>
+              </View>
+              <T kind="small" color={c.muted}>
+                {`Débits : ${mouvementsDebit} - Crédits : ${mouvementsCredit} - Total : ${totalMouvements}`}
+              </T>
+              {filteredMouvements.length > 0 ? (
+                filteredMouvements.map((mouvement: any, index: number) => (
+                  <Enter key={mouvement.id || index} index={Math.min(index, 6)}>
+                    <PressableScale onPress={() => handleShowReceipt(String(mouvement.id))}>
+                      <View
+                        style={{
+                          paddingVertical: 12,
+                          borderBottomWidth: index === filteredMouvements.length - 1 ? 0 : 1,
+                          borderBottomColor: c.line,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                          <View
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: radius.md,
+                              backgroundColor: c.surface2,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Ionicons name={getMouvementIcon(mouvement.type)} size={20} color={c.primary} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <T kind="bodyStrong">{getMouvementLabel(mouvement.type)}</T>
+                            <T kind="small" color={c.muted} style={{ marginTop: 2 }}>
+                              {formatDate(mouvement.date)}
+                            </T>
+                          </View>
+                          <T
+                            kind="bodyStrong"
+                            color={isPositiveMouvement(mouvement.type) ? c.success : c.danger}
+                          >
+                            {isPositiveMouvement(mouvement.type) ? '+' : '-'}
+                            {mouvement.montant?.toFixed(2)} MAD
+                          </T>
+                          <Ionicons name="chevron-forward" size={18} color={c.muted} />
+                        </View>
+                        <View style={{ marginTop: 6, alignSelf: 'flex-start' }}>
+                          <Tag label={getMouvementLabel(mouvement.type)} tone={getMouvementTone(mouvement.type)} />
+                        </View>
+                      </View>
+                    </PressableScale>
+                  </Enter>
+                ))
+              ) : (
+                <EmptyState
+                  icon="wallet-outline"
+                  title="Aucun mouvement pour ce filtre"
+                  body="Ajustez le filtre ou la période pour voir plus de résultats."
+                />
+              )}
+            </Card>
+          </View>
+        </Enter>
       </ScrollView>
 
-      {/* Modal Depot */}
       <Modal visible={showDepotModal} transparent animationType="slide">
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: insets.bottom + 24 }}>
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-bold text-primary">Deposer des fonds</Text>
-              <Pressable onPress={() => setShowDepotModal(false)}>
-                <Ionicons name="close" size={24} color="#1B4332" />
+        <View style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'flex-end' }}>
+          <View
+            style={{
+              backgroundColor: c.surface,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+              padding: 24,
+              paddingBottom: insets.bottom + 24,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <T kind="h2">Déposer des fonds</T>
+              <Pressable onPress={() => setShowDepotModal(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={24} color={c.ink} />
               </Pressable>
             </View>
 
             {error ? (
-              <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
-                <Text className="text-sm text-red-600">{error}</Text>
+              <View style={{ backgroundColor: c.dangerSoft, borderRadius: radius.md, padding: 12, marginBottom: 16 }}>
+                <T kind="bodyStrong" color={c.onDangerSoft}>{error}</T>
               </View>
             ) : null}
 
-            <View className="mb-4">
-              <Text className="text-sm font-semibold text-on-surface mb-2">Montant (MAD)</Text>
-              <TextInput
-                value={montant}
-                onChangeText={setMontant}
-                placeholder="100"
-                keyboardType="numeric"
-                className="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-on-surface"
-              />
-            </View>
+            <TextField
+              label="Montant (MAD)"
+              value={montant}
+              onChangeText={setMontant}
+              placeholder="100"
+              keyboardType="numeric"
+            />
 
-            <Pressable
-              onPress={handleDeposit}
-              disabled={isDepositing}
-              className="bg-primary rounded-xl py-3.5 items-center justify-center"
-            >
-              {isDepositing ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold">Confirmer le depot</Text>
-              )}
-            </Pressable>
+            <View style={{ marginTop: 20 }}>
+              <Button title="Confirmer le dépôt" loading={isDepositing} onPress={handleDeposit} />
+            </View>
           </View>
         </View>
       </Modal>
 
-      {/* Modal Retrait */}
       <Modal visible={showRetraitModal} transparent animationType="slide">
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: insets.bottom + 24 }}>
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-bold text-primary">Retirer des fonds</Text>
-              <Pressable onPress={() => setShowRetraitModal(false)}>
-                <Ionicons name="close" size={24} color="#1B4332" />
+        <View style={{ flex: 1, backgroundColor: c.overlay, justifyContent: 'flex-end' }}>
+          <View
+            style={{
+              backgroundColor: c.surface,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+              padding: 24,
+              paddingBottom: insets.bottom + 24,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <T kind="h2">Retirer des fonds</T>
+              <Pressable onPress={() => setShowRetraitModal(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={24} color={c.ink} />
               </Pressable>
             </View>
 
             {errorRetrait ? (
-              <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
-                <Text className="text-sm text-red-600">{errorRetrait}</Text>
+              <View style={{ backgroundColor: c.dangerSoft, borderRadius: radius.md, padding: 12, marginBottom: 16 }}>
+                <T kind="bodyStrong" color={c.onDangerSoft}>{errorRetrait}</T>
               </View>
             ) : null}
 
-            <View className="mb-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-              <Text className="text-[12px] text-amber-800">
-                Solde disponible: {wallet?.wallet?.soldeReel?.toFixed(2) || '0.00'} MAD
-              </Text>
+            <View style={{ backgroundColor: c.goldSoft, borderRadius: radius.md, padding: 12, marginBottom: 16 }}>
+              <T kind="small" color={c.onGoldSoft}>
+                Solde disponible : {wallet?.wallet?.soldeReel?.toFixed(2) || '0.00'} MAD
+              </T>
             </View>
 
-            <View className="mb-4">
-              <Text className="text-sm font-semibold text-on-surface mb-2">Montant (MAD)</Text>
-              <TextInput
-                value={montantRetrait}
-                onChangeText={setMontantRetrait}
-                placeholder="50"
-                keyboardType="numeric"
-                className="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-on-surface"
-              />
-            </View>
+            <TextField
+              label="Montant (MAD)"
+              value={montantRetrait}
+              onChangeText={setMontantRetrait}
+              placeholder="50"
+              keyboardType="numeric"
+            />
 
-            <Pressable
-              onPress={handleRetrait}
-              disabled={isWithdrawing}
-              className="bg-primary rounded-xl py-3.5 items-center justify-center"
-            >
-              {isWithdrawing ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold">Confirmer le retrait</Text>
-              )}
-            </Pressable>
+            <View style={{ marginTop: 20 }}>
+              <Button title="Confirmer le retrait" loading={isWithdrawing} onPress={handleRetrait} />
+            </View>
           </View>
         </View>
       </Modal>
-    </View>
+    </Screen>
   );
 }

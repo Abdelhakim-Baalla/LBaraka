@@ -1,13 +1,20 @@
-import { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet, FlatList, Alert, Platform } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import { ApiService } from '../../services/api';
 import SmartAnnonceImage from '../../components/smart-annonce-image';
+import { useTheme } from '../../theme/ThemeContext';
+import { radius, shadowMd, shadowSm } from '../../theme/tokens';
+import { Screen } from '../../components/ui/Screen';
+import { T } from '../../components/ui/T';
+import { Card } from '../../components/ui/Card';
+import { Tag } from '../../components/ui/Chip';
+import { EmptyState } from '../../components/ui/Primitives';
+import { PressableScale } from '../../components/ui/PressableScale';
+import { Enter } from '../../components/ui/Enter';
 
 // Import conditionnel de react-native-maps (seulement sur mobile)
 let MapView: any = null;
@@ -21,9 +28,13 @@ if (Platform.OS !== 'web') {
   PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
 }
 
+const CARD_W = 240;
+const CARD_GAP = 12;
+const SNAP = CARD_W + CARD_GAP;
+
 export default function MapScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { c, mode } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -36,6 +47,28 @@ export default function MapScreen() {
     latitudeDelta: 0.1,
     longitudeDelta: 0.1,
   });
+
+  const listRef = useRef<FlatList<any>>(null);
+  const onViewableRef = useRef(({ viewableItems }: { viewableItems: Array<{ item?: any }> }) => {
+    const first = viewableItems?.[0]?.item;
+    if (first) {
+      setSelectedAnnonce(first);
+    }
+  });
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 });
+
+  const scrollToAnnonceIndex = useCallback((index: number) => {
+    if (index < 0) return;
+    try {
+      listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+    } catch {
+      try {
+        listRef.current?.scrollToOffset({ offset: index * SNAP, animated: true });
+      } catch {
+        // Carousel non pret, on ignore le defilement
+      }
+    }
+  }, []);
 
   const loadUserLocation = async () => {
     try {
@@ -72,7 +105,7 @@ export default function MapScreen() {
       if (!silent) {
         setIsRefreshing(true);
       }
-      
+
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) {
         router.replace('/(auth)/sign-in');
@@ -85,7 +118,7 @@ export default function MapScreen() {
         userLocation.longitude,
         50 // Rayon de 50km pour voir plus d'annonces
       );
-      
+
       console.log('Annonces trouvées:', data.annonces?.length || 0);
       setAnnonces(data.annonces || []);
     } catch (error) {
@@ -109,189 +142,256 @@ export default function MapScreen() {
     fetchNearby(false);
   };
 
+  const handleMarkerPress = (annonce: any) => {
+    setSelectedAnnonce(annonce);
+    const idx = annonces.findIndex((a) => a?.id === annonce?.id);
+    if (idx >= 0) {
+      scrollToAnnonceIndex(idx);
+    }
+  };
+
   const getMarkerColor = (categorie: string) => {
     const colors: Record<string, string> = {
-      POUSSETTE: '#10b981',
-      BRICOLAGE: '#f59e0b',
-      MEDICAL: '#3b82f6',
-      EVENEMENTIEL: '#ec4899',
-      NOURRITURE: '#ef4444',
-      AUTRE: '#6b7280',
+      POUSSETTE: c.success,
+      BRICOLAGE: c.gold,
+      MEDICAL: c.info,
+      EVENEMENTIEL: c.primary,
+      NOURRITURE: c.danger,
+      AUTRE: c.muted,
     };
-    return colors[categorie] || '#1B4332';
+    return colors[categorie] || c.primary;
+  };
+
+  const cautionLabel = (annonce: any): string | null => {
+    const raw = annonce?.caution ?? annonce?.montantCaution ?? annonce?.cautionMontant;
+    const n = Number(raw);
+    if (raw === undefined || raw === null || raw === '' || Number.isNaN(n)) return null;
+    return `${n} DH`;
   };
 
   // Si on est sur web, afficher un message
   if (Platform.OS === 'web') {
     return (
-      <View className="flex-1 bg-surface items-center justify-center px-6" style={{ paddingTop: insets.top + 10 }}>
-        <Ionicons name="map-outline" size={64} color="#A5A6AA" />
-        <Text className="text-lg font-bold text-primary mt-4 text-center">
-          Carte non disponible sur web
-        </Text>
-        <Text className="text-sm text-on-surface-variant mt-2 text-center">
-          La carte interactive est disponible uniquement sur l'application mobile (Android/iOS).
-        </Text>
-        <Pressable
-          onPress={() => router.push('/(tabs)/home')}
-          className="bg-primary rounded-xl py-3 px-6 mt-6"
-        >
-          <Text className="text-white font-bold">Retour à l'accueil</Text>
-        </Pressable>
-      </View>
+      <Screen padBottom={108}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Enter index={0}>
+            <Card style={{ width: '100%' }}>
+              <EmptyState
+                icon="map-outline"
+                title="Carte non disponible sur web"
+                body="La carte interactive est disponible uniquement sur l'application mobile (Android/iOS)."
+                action="Retour à l'accueil"
+                onAction={() => router.push('/(tabs)/home')}
+              />
+            </Card>
+          </Enter>
+        </View>
+      </Screen>
     );
   }
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-surface items-center justify-center">
-        <ActivityIndicator size="large" color="#1B4332" />
-        <Text className="text-sm text-on-surface-variant mt-3">Chargement de la carte...</Text>
-      </View>
+      <Screen padBottom={108}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <ActivityIndicator size="large" color={c.primary} />
+          <T kind="body" color={c.muted}>
+            Chargement de la carte...
+          </T>
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <View className="flex-1 bg-surface">
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        region={mapRegion}
-        onRegionChangeComplete={setMapRegion}
-        showsUserLocation
-        showsMyLocationButton={false}
-      >
-        {annonces.map((annonce) => {
-          if (!annonce.geolocalisation || annonce.geolocalisation.length < 2) {
-            console.log('Annonce sans géolocalisation:', annonce.id);
-            return null;
-          }
-          return (
-            <Marker
-              key={annonce.id}
-              coordinate={{
-                latitude: annonce.geolocalisation[0],
-                longitude: annonce.geolocalisation[1],
-              }}
-              title={annonce.titre}
-              description={`${annonce.categorie} - ${annonce.distance}km`}
-              pinColor={getMarkerColor(annonce.categorie)}
-              onPress={() => setSelectedAnnonce(annonce)}
-            />
-          );
-        })}
-      </MapView>
-
-      {/* Header flottant */}
-      <Animated.View entering={FadeInUp.duration(500)} className="absolute top-0 left-0 right-0 bg-white/95 border-b border-outline-variant/30 px-5 pb-3" style={{ paddingTop: insets.top + 10 }}>
-        <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-1">
-            <Text className="text-xs font-semibold text-on-surface-variant">Carte Interactive</Text>
-            <Text className="text-base font-extrabold text-primary">Annonces Proches</Text>
-          </View>
-          <View className="flex-row items-center gap-2">
-            <View className="bg-primary/10 px-3 py-2 rounded-lg">
-              <Text className="text-xs font-bold text-primary">{annonces.length}</Text>
-            </View>
-            <Pressable
-              onPress={handleRefresh}
-              disabled={isRefreshing}
-              className="bg-white border border-outline-variant rounded-lg p-2"
-            >
-              {isRefreshing ? (
-                <ActivityIndicator size="small" color="#1B4332" />
-              ) : (
-                <Ionicons name="refresh" size={18} color="#1B4332" />
-              )}
-            </Pressable>
-          </View>
-        </View>
-        
-        <View className="flex-row gap-2">
-          <Pressable
-            onPress={loadUserLocation}
-            disabled={isLocating}
-            className="flex-1 bg-primary rounded-lg py-2.5 flex-row items-center justify-center gap-2"
-          >
-            {isLocating ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="locate" size={16} color="#fff" />
-            )}
-            <Text className="text-white font-bold text-xs">
-              {isLocating ? 'Localisation...' : 'Me localiser'}
-            </Text>
-          </Pressable>
-          
-          <Pressable
-            onPress={() => router.push('/(annonces)/create')}
-            className="flex-1 bg-white border border-outline-variant rounded-lg py-2.5 flex-row items-center justify-center gap-2"
-          >
-            <Ionicons name="add-circle-outline" size={16} color="#1B4332" />
-            <Text className="text-primary font-bold text-xs">Créer annonce</Text>
-          </Pressable>
-        </View>
-      </Animated.View>
-
-      {/* Bottom sheet avec liste des annonces */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl border-t border-outline-variant" style={{ paddingBottom: insets.bottom + 10 }}>
-        <View className="px-5 pt-4 pb-2">
-          <View className="w-12 h-1 bg-outline-variant rounded-full self-center mb-3" />
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm font-extrabold text-primary">Annonces à proximité</Text>
-            {annonces.length === 0 ? (
-              <Pressable onPress={handleRefresh} className="bg-primary/10 rounded-lg px-3 py-1.5">
-                <Text className="text-xs font-bold text-primary">Recharger</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 12 }}>
-          {annonces.length === 0 ? (
-            <View className="bg-surface rounded-xl p-4 items-center justify-center" style={{ width: 280 }}>
-              <Ionicons name="map-outline" size={24} color="#A5A6AA" />
-              <Text className="text-xs text-on-surface-variant mt-2 text-center">
-                Aucune annonce dans un rayon de 50km
-              </Text>
-              <Pressable
-                onPress={() => router.push('/(annonces)/create')}
-                className="bg-primary rounded-lg px-4 py-2 mt-3"
-              >
-                <Text className="text-white font-bold text-xs">Créer une annonce</Text>
-              </Pressable>
-            </View>
-          ) : (
-            annonces.map((annonce) => (
-              <Pressable
+    <Screen padBottom={108} pad={0}>
+      <View style={{ flex: 1 }}>
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={styles.map}
+          region={mapRegion}
+          onRegionChangeComplete={setMapRegion}
+          showsUserLocation
+          showsMyLocationButton={false}
+        >
+          {annonces.map((annonce) => {
+            if (!annonce.geolocalisation || annonce.geolocalisation.length < 2) {
+              console.log('Annonce sans géolocalisation:', annonce.id);
+              return null;
+            }
+            return (
+              <Marker
                 key={annonce.id}
-                onPress={() => router.push(`/(annonces)/${annonce.id}`)}
-                className={`bg-white border rounded-2xl p-3 ${selectedAnnonce?.id === annonce.id ? 'border-primary border-2' : 'border-outline-variant'}`}
-                style={{ width: 280 }}
-              >
-                <SmartAnnonceImage
-                  uri={annonce.photos?.[0]}
-                  className="w-full h-32 rounded-xl mb-2 overflow-hidden"
-                  resizeMode="cover"
-                />
-                <Text className="text-sm font-bold text-primary" numberOfLines={1}>{annonce.titre}</Text>
-                <Text className="text-xs text-on-surface-variant mt-1" numberOfLines={2}>{annonce.description}</Text>
-                
-                <View className="flex-row items-center justify-between mt-2">
-                  <View className="bg-primary/10 px-2 py-1 rounded-lg">
-                    <Text className="text-[10px] font-semibold text-primary">{annonce.categorie}</Text>
-                  </View>
-                  <View className="flex-row items-center gap-1">
-                    <Ionicons name="location" size={12} color="#6b7280" />
-                    <Text className="text-xs text-on-surface-variant">{annonce.distance} km</Text>
-                  </View>
+                coordinate={{
+                  latitude: annonce.geolocalisation[0],
+                  longitude: annonce.geolocalisation[1],
+                }}
+                title={annonce.titre}
+                description={`${annonce.categorie} - ${annonce.distance}km`}
+                pinColor={getMarkerColor(annonce.categorie)}
+                onPress={() => handleMarkerPress(annonce)}
+              />
+            );
+          })}
+        </MapView>
+
+        {/* Search pill flottante */}
+        <View style={{ position: 'absolute', top: 12, left: 16, right: 16 }}>
+          <Enter index={0}>
+            <Card pad={12} style={{ borderRadius: radius.pill, ...shadowMd(mode) }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: radius.pill,
+                    backgroundColor: c.surface2,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="search" size={20} color={c.muted} />
                 </View>
-              </Pressable>
-            ))
-          )}
-        </ScrollView>
+                <PressableScale onPress={handleRefresh} disabled={isRefreshing} style={{ flex: 1 }}>
+                  <T kind="bodyStrong" numberOfLines={1}>
+                    Rechercher pres de moi
+                  </T>
+                  <T kind="caption" color={c.muted} numberOfLines={1} style={{ marginTop: 2 }}>
+                    {isRefreshing ? 'Actualisation...' : `${annonces.length} annonces dans un rayon de 50 km`}
+                  </T>
+                </PressableScale>
+                <PressableScale
+                  onPress={loadUserLocation}
+                  disabled={isLocating}
+                  accessibilityLabel="Me localiser"
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: radius.pill,
+                    backgroundColor: c.primary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: isLocating ? 0.6 : 1,
+                  }}
+                >
+                  {isLocating ? (
+                    <ActivityIndicator size="small" color={c.onPrimary} />
+                  ) : (
+                    <Ionicons name="locate" size={20} color={c.onPrimary} />
+                  )}
+                </PressableScale>
+              </View>
+            </Card>
+          </Enter>
+        </View>
+
+        {/* FAB creation */}
+        <PressableScale
+          onPress={() => router.push('/(annonces)/create')}
+          accessibilityLabel="Créer une annonce"
+          style={{
+            position: 'absolute',
+            right: 16,
+            bottom: 262,
+            width: 56,
+            height: 56,
+            borderRadius: radius.pill,
+            backgroundColor: c.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            ...shadowMd(mode),
+          }}
+        >
+          <Ionicons name="add" size={28} color={c.onPrimary} />
+        </PressableScale>
+
+        {/* Carousel bas */}
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 16,
+            left: 0,
+            right: 0,
+          }}
+        >
+          <FlatList
+            ref={listRef}
+            data={annonces}
+            keyExtractor={(item) => String(item.id)}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, gap: CARD_GAP }}
+            snapToInterval={SNAP}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            getItemLayout={(_, index) => ({ length: SNAP, offset: SNAP * index, index })}
+            onViewableItemsChanged={onViewableRef.current}
+            viewabilityConfig={viewabilityConfig.current}
+            ListEmptyComponent={
+              <Card style={{ width: 280 }}>
+                <EmptyState
+                  icon="map-outline"
+                  title="Aucune annonce dans un rayon de 50km"
+                  action="Créer une annonce"
+                  onAction={() => router.push('/(annonces)/create')}
+                />
+              </Card>
+            }
+            renderItem={({ item: annonce }) => {
+              const selected = selectedAnnonce?.id === annonce.id;
+              const caution = cautionLabel(annonce);
+              return (
+                <PressableScale onPress={() => router.push(`/(annonces)/${annonce.id}`)}>
+                  <View
+                    style={{
+                      width: CARD_W,
+                      backgroundColor: c.surface,
+                      borderRadius: radius.lg,
+                      padding: 10,
+                      borderWidth: selected ? 2 : 0,
+                      borderColor: selected ? c.primary : 'transparent',
+                      ...shadowSm(mode),
+                    }}
+                  >
+                    <View
+                      style={{
+                        height: 110,
+                        borderRadius: radius.md,
+                        overflow: 'hidden',
+                        backgroundColor: c.surface2,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <SmartAnnonceImage
+                        uri={annonce.photos?.[0]}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                    </View>
+                    <T kind="bodyStrong" numberOfLines={1}>
+                      {annonce.titre}
+                    </T>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 }}>
+                      {caution ? (
+                        <Tag label={`Caution ${caution}`} tone="gold" />
+                      ) : (
+                        <Tag label={annonce.categorie || 'AUTRE'} tone="primary" />
+                      )}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="location" size={12} color={c.muted} />
+                        <T kind="caption" color={c.muted}>
+                          {annonce.distance} km
+                        </T>
+                      </View>
+                    </View>
+                  </View>
+                </PressableScale>
+              );
+            }}
+          />
+        </View>
       </View>
-    </View>
+    </Screen>
   );
 }
 

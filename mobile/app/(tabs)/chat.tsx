@@ -1,13 +1,40 @@
 import { useCallback, useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, RefreshControl, TextInput, Modal, KeyboardAvoidingView, Platform, Alert, Linking } from 'react-native';
+import { View, ScrollView, ActivityIndicator, RefreshControl, TextInput, Modal, KeyboardAvoidingView, Platform, Alert, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { FadeInUp } from 'react-native-reanimated';
-import { ApiService } from '../../services/api';
+import { ApiService } from '@/services/api';
+import { useTheme } from '@/theme/ThemeContext';
+import { radius, shadowSm } from '@/theme/tokens';
+import { Screen } from '@/components/ui/Screen';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Tag } from '@/components/ui/Chip';
+import { T } from '@/components/ui/T';
+import { Avatar, EmptyState } from '@/components/ui/Primitives';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Enter } from '@/components/ui/Enter';
+import { Segmented } from '@/components/ui/Segmented';
+
+const STATUS_TONES: Record<string, 'gold' | 'info' | 'primary' | 'success' | 'danger' | 'muted'> = {
+  EN_ATTENTE_RECEPTION: 'gold',
+  EN_COURS: 'info',
+  EN_ATTENTE_RETOUR: 'primary',
+  TERMINEE: 'success',
+  ANNULEE: 'danger',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  EN_ATTENTE_RECEPTION: 'En attente réception',
+  EN_COURS: 'En cours',
+  EN_ATTENTE_RETOUR: 'En attente retour',
+  TERMINEE: 'Terminée',
+  ANNULEE: 'Annulée',
+};
 
 export default function ChatScreen() {
+  const { c, mode } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -37,7 +64,6 @@ export default function ChatScreen() {
         if (!token) return;
 
         try {
-          console.log('Auto-opening chat:', params.openChat, params.otherId);
           const data = await ApiService.getChatHistory(token, String(params.otherId), String(params.openChat));
           setMessages(data || []);
           setSelectedConvo({
@@ -47,7 +73,7 @@ export default function ChatScreen() {
           setShowChatModal(true);
         } catch (error) {
           console.error('Error auto-opening chat:', error);
-          Alert.alert('Erreur', 'Impossible d\'ouvrir la conversation');
+          Alert.alert('Erreur', "Impossible d'ouvrir la conversation");
         }
       }
     };
@@ -149,7 +175,7 @@ export default function ChatScreen() {
         if (supported) {
           await Linking.openURL(contrat.urlPdfBilingue);
         } else {
-          Alert.alert('Erreur', 'Impossible d\'ouvrir le PDF');
+          Alert.alert('Erreur', "Impossible d'ouvrir le PDF");
         }
       } else {
         Alert.alert('Info', 'Contrat non disponible');
@@ -180,7 +206,7 @@ export default function ChatScreen() {
       });
 
       setMessageText('');
-      
+
       // Recharger les messages
       const data = await ApiService.getChatHistory(token, receiverId, annonceId);
       setMessages(data || []);
@@ -189,6 +215,14 @@ export default function ChatScreen() {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleVoicePress = () => {
+    Alert.alert('Message vocal', 'Les messages vocaux seront bientôt disponibles.');
+  };
+
+  const handleAttachPress = () => {
+    Alert.alert('Pièce jointe', 'Les pièces jointes seront bientôt disponibles.');
   };
 
   const formatDate = (date: string) => {
@@ -200,255 +234,272 @@ export default function ChatScreen() {
     });
   };
 
+  const formatTime = (date?: string) => {
+    if (!date) return '';
+    return new Date(date).toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const dayLabel = (date?: string) => {
+    if (!date) return '';
+    return new Date(date).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+  };
+
+  const convoDisplayName = (convo: any) => {
+    const annonceId = convo?._id?.annonceId || '';
+    return annonceId ? `Annonce ${annonceId.substring(0, 8)}` : 'Conversation';
+  };
+
   if (isLoading) {
     return (
-      <View className="flex-1 bg-surface items-center justify-center">
-        <ActivityIndicator size="large" color="#1B4332" />
-      </View>
+      <Screen padBottom={108}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={c.primary} />
+        </View>
+      </Screen>
     );
   }
 
+  const threadTitle =
+    selectedConvo?.reservation?.annonce?.titre ||
+    (selectedConvo?._id?.annonceId ? `Annonce ${String(selectedConvo._id.annonceId).substring(0, 8)}` : 'Conversation');
+  const threadAnnonceId = selectedConvo?._id?.annonceId || '';
+  let lastThreadDay = '';
+
   return (
-    <View className="flex-1 bg-surface" style={{ paddingTop: insets.top + 10 }}>
+    <Screen padBottom={108}>
       <ScrollView
-        className="flex-1 px-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#1B4332" />}
-        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+        contentContainerStyle={{ paddingBottom: 120 }}
       >
         {/* Header */}
-        <Animated.View entering={FadeInUp.duration(500)} className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-          <View className="flex-row items-center justify-between mb-3">
-            <View className="flex-1">
-              <Text className="text-xs font-semibold text-on-surface-variant">Espace Discussion</Text>
-              <Text className="text-base font-extrabold text-primary">Messagerie</Text>
+        <Enter index={0}>
+          <View style={{ marginTop: 8 }}>
+            <T kind="overline" color={c.muted}>Espace Discussion</T>
+            <T kind="h1" style={{ marginTop: 4 }}>Messagerie</T>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <Tag label={`${conversations.length} conversations`} tone="primary" />
+              <Tag label={`${reservations.length} réservations`} tone="info" />
             </View>
-            <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-              <Ionicons name="chatbubbles-outline" size={20} color="#1B4332" />
-            </View>
           </View>
-          <Text className="text-xs text-on-surface-variant">
-            Communiquez avec les membres pour vos échanges.
-          </Text>
-        </Animated.View>
-
-        {/* Stats */}
-        <Animated.View entering={FadeInUp.delay(100).duration(600)} className="flex-row gap-2 mb-4">
-          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
-            <Text className="text-[11px] text-on-surface-variant">Conversations</Text>
-            <Text className="text-sm font-bold text-primary mt-1">{conversations.length}</Text>
-          </View>
-          <View className="flex-1 bg-white rounded-xl p-3 border border-outline-variant">
-            <Text className="text-[11px] text-on-surface-variant">Réservations</Text>
-            <Text className="text-sm font-bold text-blue-600 mt-1">{reservations.length}</Text>
-          </View>
-        </Animated.View>
+        </Enter>
 
         {/* Tabs */}
-        <Animated.View entering={FadeInUp.delay(150).duration(600)} className="flex-row gap-2 mb-4">
-          <Pressable
-            onPress={() => setActiveTab('conversations')}
-            className={`flex-1 py-3 rounded-xl ${activeTab === 'conversations' ? 'bg-primary' : 'bg-white border border-outline-variant'}`}
-          >
-            <Text className={`text-center text-sm font-bold ${activeTab === 'conversations' ? 'text-white' : 'text-on-surface-variant'}`}>
-              Conversations
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setActiveTab('reservations')}
-            className={`flex-1 py-3 rounded-xl ${activeTab === 'reservations' ? 'bg-primary' : 'bg-white border border-outline-variant'}`}
-          >
-            <Text className={`text-center text-sm font-bold ${activeTab === 'reservations' ? 'text-white' : 'text-on-surface-variant'}`}>
-              Réservations
-            </Text>
-          </Pressable>
-        </Animated.View>
+        <Enter index={1}>
+          <View style={{ marginTop: 16 }}>
+            <Segmented
+              options={[
+                { value: 'conversations', label: 'Conversations' },
+                { value: 'reservations', label: 'Réservations' },
+              ]}
+              value={activeTab}
+              onChange={(v) => setActiveTab(v as typeof activeTab)}
+            />
+          </View>
+        </Enter>
+
         {activeTab === 'conversations' ? (
           <>
-            <Animated.View entering={FadeInUp.delay(200).duration(600)} className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-              <View className="flex-row items-center gap-2 mb-2">
-                <Ionicons name="chatbubble-ellipses-outline" size={20} color="#1B4332" />
-                <Text className="text-sm font-extrabold text-primary">Vos conversations</Text>
-              </View>
-              <Text className="text-xs text-on-surface-variant">
-                Discutez avec les membres avant la remise de l'objet.
-              </Text>
-            </Animated.View>
-
             {conversations.length === 0 ? (
-              <Animated.View entering={FadeInUp.delay(250).duration(600)} className="bg-white rounded-2xl p-6 border border-outline-variant items-center">
-                <Ionicons name="chatbubbles-outline" size={32} color="#A5A6AA" />
-                <Text className="text-sm text-on-surface-variant text-center mt-3">
-                  Aucune conversation pour le moment
-                </Text>
-                <Text className="text-xs text-on-surface-variant text-center mt-1">
-                  Réservez une annonce pour démarrer une discussion
-                </Text>
-              </Animated.View>
+              <Enter index={2}>
+                <Card style={{ marginTop: 12 }}>
+                  <EmptyState
+                    icon="chatbubbles-outline"
+                    title="Aucune conversation pour le moment"
+                    body="Réservez une annonce pour démarrer une discussion"
+                  />
+                </Card>
+              </Enter>
             ) : (
               conversations.map((convo, index) => {
-            const lastMessage = convo.lastMessage || {};
-            const annonceId = convo._id?.annonceId || '';
-            const participants = convo._id?.participants || [];
-            const isFromMe = lastMessage.senderId === currentUserId;
+                const lastMessage = convo.lastMessage || {};
+                const isFromMe = lastMessage.senderId === currentUserId;
+                const name = convoDisplayName(convo);
+                const preview = lastMessage.content
+                  ? `${isFromMe ? 'Vous : ' : ''}${lastMessage.content}`
+                  : 'Aucun message pour le moment';
+                const unread = Boolean(lastMessage.content) && !isFromMe;
 
                 return (
-                  <Animated.View key={`convo-${index}`} entering={FadeInUp.delay(250 + index * 50).duration(600)}>
-                    <Pressable
+                  <Enter key={`convo-${index}`} index={Math.min(index, 6)}>
+                    <PressableScale
                       onPress={() => openConversation(convo)}
-                      className="bg-white border border-outline-variant rounded-2xl p-4 mb-3"
+                      style={{
+                        backgroundColor: c.surface,
+                        borderRadius: radius.lg,
+                        padding: 14,
+                        marginTop: 10,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        ...shadowSm(mode),
+                      }}
                     >
-                      <View className="flex-row items-start justify-between mb-2">
-                        <View className="flex-1 pr-3">
-                          <Text className="text-sm font-bold text-primary" numberOfLines={1}>
-                            Annonce: {annonceId.substring(0, 8)}...
-                          </Text>
-                          <Text className="text-xs text-on-surface-variant mt-1">
-                            {participants.length} participant{participants.length > 1 ? 's' : ''}
-                          </Text>
-                        </View>
-                        <View className="bg-primary/10 rounded-full p-2">
-                          <Ionicons name="chatbubble-outline" size={16} color="#1B4332" />
-                        </View>
+                      <Avatar name={name} size={56} />
+                      <View style={{ flex: 1 }}>
+                        <T kind="bodyStrong" numberOfLines={1}>
+                          {name}
+                        </T>
+                        <T kind="small" color={c.muted} numberOfLines={1} style={{ marginTop: 2 }}>
+                          {preview}
+                        </T>
                       </View>
-
-                      {lastMessage.content ? (
-                        <View className="bg-surface rounded-xl p-2 mt-2">
-                          <Text className="text-xs text-on-surface" numberOfLines={2}>
-                            {isFromMe ? 'Vous: ' : ''}{lastMessage.content}
-                          </Text>
-                          <Text className="text-[10px] text-on-surface-variant mt-1">
-                            {formatDate(lastMessage.createdAt)}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      <View className="flex-row items-center justify-end mt-2">
-                        <Ionicons name="chevron-forward" size={16} color="#1B4332" />
+                      <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                        <T kind="caption" color={c.muted}>
+                          {formatTime(lastMessage.createdAt)}
+                        </T>
+                        {unread ? (
+                          <View
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: radius.pill,
+                              backgroundColor: c.primary,
+                            }}
+                          />
+                        ) : (
+                          <Ionicons name="chevron-forward" size={16} color={c.muted} />
+                        )}
                       </View>
-                    </Pressable>
-                  </Animated.View>
+                    </PressableScale>
+                  </Enter>
                 );
               })
             )}
 
-            <Animated.View entering={FadeInUp.delay(300).duration(600)} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mt-2">
-              <View className="flex-row items-center gap-2 mb-2">
-                <Ionicons name="information-circle-outline" size={18} color="#b45309" />
-                <Text className="text-sm font-bold text-amber-800">Astuce messagerie</Text>
-              </View>
-              <Text className="text-xs text-amber-800">
-                Cliquez sur "Discuter" dans les détails d'une annonce ou transaction pour démarrer une conversation.
-              </Text>
-            </Animated.View>
+            <Enter index={3}>
+              <Card style={{ marginTop: 12, backgroundColor: c.goldSoft }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="information-circle-outline" size={20} color={c.onGoldSoft} />
+                  <T kind="bodyStrong" color={c.onGoldSoft}>Astuce messagerie</T>
+                </View>
+                <T kind="small" color={c.onGoldSoft} style={{ marginTop: 6 }}>
+                  Cliquez sur « Discuter » dans les détails d&apos;une annonce ou transaction pour démarrer une conversation.
+                </T>
+              </Card>
+            </Enter>
           </>
         ) : (
           <>
-            <Animated.View entering={FadeInUp.delay(200).duration(600)} className="bg-white rounded-2xl p-4 border border-outline-variant mb-4">
-              <View className="flex-row items-center gap-2 mb-2">
-                <Ionicons name="receipt-outline" size={20} color="#1B4332" />
-                <Text className="text-sm font-extrabold text-primary">Vos réservations</Text>
-              </View>
-              <Text className="text-xs text-on-surface-variant">
-                Gérez vos transactions et communiquez avec les autres membres.
-              </Text>
-            </Animated.View>
-
             {reservations.length === 0 ? (
-              <Animated.View entering={FadeInUp.delay(250).duration(600)} className="bg-white rounded-2xl p-6 border border-outline-variant items-center">
-                <Ionicons name="calendar-outline" size={32} color="#A5A6AA" />
-                <Text className="text-sm text-on-surface-variant text-center mt-3">
-                  Aucune réservation active
-                </Text>
-                <Text className="text-xs text-on-surface-variant text-center mt-1">
-                  Réservez une annonce pour commencer
-                </Text>
-              </Animated.View>
+              <Enter index={2}>
+                <Card style={{ marginTop: 12 }}>
+                  <EmptyState
+                    icon="calendar-outline"
+                    title="Aucune réservation active"
+                    body="Réservez une annonce pour commencer"
+                  />
+                </Card>
+              </Enter>
             ) : (
               reservations.map((reservation, index) => {
                 const isEmprunteur = reservation.emprunteurId === currentUserId;
-                const statusColors: any = {
-                  EN_ATTENTE_RECEPTION: 'bg-amber-100 text-amber-800',
-                  EN_COURS: 'bg-blue-100 text-blue-800',
-                  EN_ATTENTE_RETOUR: 'bg-purple-100 text-purple-800',
-                  TERMINEE: 'bg-green-100 text-green-800',
-                  ANNULEE: 'bg-red-100 text-red-800',
-                };
-                const statusLabels: any = {
-                  EN_ATTENTE_RECEPTION: 'En attente réception',
-                  EN_COURS: 'En cours',
-                  EN_ATTENTE_RETOUR: 'En attente retour',
-                  TERMINEE: 'Terminée',
-                  ANNULEE: 'Annulée',
-                };
+                const tone = STATUS_TONES[reservation.statut] || 'muted';
+                const title = reservation.annonce?.titre || 'Annonce';
 
                 return (
-                  <Animated.View key={`res-${index}`} entering={FadeInUp.delay(250 + index * 50).duration(600)}>
-                    <View className="bg-white border border-outline-variant rounded-2xl p-4 mb-3">
-                      <View className="flex-row items-start justify-between mb-3">
-                        <View className="flex-1 pr-3">
-                          <Text className="text-sm font-bold text-primary" numberOfLines={1}>
-                            {reservation.annonce?.titre || 'Annonce'}
-                          </Text>
-                          <Text className="text-xs text-on-surface-variant mt-1">
-                            {isEmprunteur ? 'Vous empruntez' : 'Vous prêtez'}
-                          </Text>
+                  <Enter key={`res-${index}`} index={Math.min(index, 6)}>
+                    <View
+                      style={{
+                        backgroundColor: c.surface,
+                        borderRadius: radius.lg,
+                        padding: 14,
+                        marginTop: 10,
+                        ...shadowSm(mode),
+                      }}
+                    >
+                      <PressableScale onPress={() => openReservationChat(reservation)}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                          <Avatar name={title} size={56} />
+                          <View style={{ flex: 1 }}>
+                            <T kind="bodyStrong" numberOfLines={1}>
+                              {title}
+                            </T>
+                            <T kind="small" color={c.muted} numberOfLines={1} style={{ marginTop: 2 }}>
+                              {isEmprunteur ? 'Vous empruntez' : 'Vous prêtez'}
+                            </T>
+                          </View>
+                          <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                            <Tag label={STATUS_LABELS[reservation.statut] || reservation.statut} tone={tone} />
+                            <Ionicons name="chevron-forward" size={16} color={c.muted} />
+                          </View>
                         </View>
-                        <View className={`px-3 py-1 rounded-lg ${statusColors[reservation.statut] || 'bg-gray-100'}`}>
-                          <Text className={`text-[10px] font-bold ${statusColors[reservation.statut]?.split(' ')[1] || 'text-gray-800'}`}>
-                            {statusLabels[reservation.statut] || reservation.statut}
-                          </Text>
-                        </View>
-                      </View>
+                      </PressableScale>
 
-                      <View className="bg-surface rounded-xl p-3 mb-3">
-                        <View className="flex-row items-center justify-between mb-2">
-                          <Text className="text-xs text-on-surface-variant">Caution bloquée</Text>
-                          <Text className="text-sm font-bold text-primary">{reservation.montantCautionBloquee} DH</Text>
+                      <View style={{ backgroundColor: c.surface2, borderRadius: radius.md, padding: 12, marginTop: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <T kind="small" color={c.muted}>Caution bloquée</T>
+                          <T kind="bodyStrong" color={c.primary}>{reservation.montantCautionBloquee} DH</T>
                         </View>
-                        <View className="flex-row items-center justify-between">
-                          <Text className="text-xs text-on-surface-variant">Dates</Text>
-                          <Text className="text-xs text-on-surface">
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <T kind="small" color={c.muted}>Dates</T>
+                          <T kind="small">
                             {new Date(reservation.dateDebut).toLocaleDateString('fr-FR')} → {new Date(reservation.dateFin).toLocaleDateString('fr-FR')}
-                          </Text>
+                          </T>
                         </View>
                       </View>
 
-                      <View className="flex-row gap-2">
-                        <Pressable
-                          onPress={() => openReservationChat(reservation)}
-                          className="flex-1 bg-primary rounded-xl py-3 flex-row items-center justify-center gap-2"
-                        >
-                          <Ionicons name="chatbubble-outline" size={16} color="#fff" />
-                          <Text className="text-sm font-bold text-white">Discuter</Text>
-                        </Pressable>
-                        <Pressable
+                      <View style={{ marginTop: 12 }}>
+                        <Button title="Discuter" icon="chatbubble-outline" size="md" onPress={() => openReservationChat(reservation)} />
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                        <PressableScale
                           onPress={() => downloadContract(reservation.id)}
-                          className="bg-primary/10 rounded-xl px-4 py-3 flex-row items-center justify-center"
+                          style={{
+                            flex: 1,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            backgroundColor: c.surface2,
+                            borderRadius: radius.md,
+                            height: 46,
+                          }}
                         >
-                          <Ionicons name="document-text-outline" size={16} color="#1B4332" />
-                        </Pressable>
-                        <Pressable
+                          <Ionicons name="document-text-outline" size={18} color={c.primary} />
+                          <T kind="bodyStrong" color={c.primary}>Contrat</T>
+                        </PressableScale>
+                        <PressableScale
                           onPress={() => router.push(`/(annonces)/${reservation.annonceId}`)}
-                          className="bg-primary/10 rounded-xl px-4 py-3 flex-row items-center justify-center"
+                          style={{
+                            flex: 1,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            backgroundColor: c.surface2,
+                            borderRadius: radius.md,
+                            height: 46,
+                          }}
                         >
-                          <Ionicons name="eye-outline" size={16} color="#1B4332" />
-                        </Pressable>
+                          <Ionicons name="eye-outline" size={18} color={c.primary} />
+                          <T kind="bodyStrong" color={c.primary}>Annonce</T>
+                        </PressableScale>
                       </View>
                     </View>
-                  </Animated.View>
+                  </Enter>
                 );
               })
             )}
 
-            <Animated.View entering={FadeInUp.delay(300).duration(600)} className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mt-2">
-              <View className="flex-row items-center gap-2 mb-2">
-                <Ionicons name="information-circle-outline" size={18} color="#1e40af" />
-                <Text className="text-sm font-bold text-blue-800">Astuce réservations</Text>
-              </View>
-              <Text className="text-xs text-blue-800">
-                Cliquez sur "Discuter" pour communiquer avec l'autre partie. Le contrat PDF est disponible via l'icône document.
-              </Text>
-            </Animated.View>
+            <Enter index={3}>
+              <Card style={{ marginTop: 12, backgroundColor: c.infoSoft }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="information-circle-outline" size={20} color={c.onInfoSoft} />
+                  <T kind="bodyStrong" color={c.onInfoSoft}>Astuce réservations</T>
+                </View>
+                <T kind="small" color={c.onInfoSoft} style={{ marginTop: 6 }}>
+                  Cliquez sur « Discuter » pour communiquer avec l&apos;autre partie. Le contrat PDF est disponible via le bouton contrat.
+                </T>
+              </Card>
+            </Enter>
           </>
         )}
       </ScrollView>
@@ -457,117 +508,243 @@ export default function ChatScreen() {
       <Modal visible={showChatModal} animationType="slide">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1 }}
-          className="bg-surface"
+          style={{ flex: 1, backgroundColor: c.bg }}
         >
-          <View className="flex-1" style={{ paddingTop: insets.top + 10 }}>
-            {/* Header Chat */}
-            <Animated.View entering={FadeInUp.duration(400)} className="bg-white rounded-b-2xl border-b border-outline-variant px-4 pb-4 shadow-sm">
-              <View className="flex-row items-center gap-3 mb-3">
-                <Pressable onPress={() => setShowChatModal(false)} className="w-10 h-10 rounded-xl bg-surface items-center justify-center">
-                  <Ionicons name="arrow-back" size={20} color="#1B4332" />
-                </Pressable>
-                <View className="flex-1">
-                  <Text className="text-sm font-extrabold text-primary" numberOfLines={1}>
-                    Conversation
-                  </Text>
-                  <Text className="text-xs text-on-surface-variant">
-                    {messages.length} message{messages.length > 1 ? 's' : ''}
-                  </Text>
+          <View style={{ flex: 1, paddingTop: insets.top + 10 }}>
+            {/* Mini-profile bar */}
+            <View
+              style={{
+                backgroundColor: c.surface,
+                borderBottomWidth: 1,
+                borderBottomColor: c.line,
+                paddingHorizontal: 16,
+                paddingBottom: 12,
+                borderBottomLeftRadius: radius.lg,
+                borderBottomRightRadius: radius.lg,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Avatar name={threadTitle} size={44} />
+                <View style={{ flex: 1 }}>
+                  <T kind="bodyStrong" numberOfLines={1}>{threadTitle}</T>
+                  <T kind="caption" color={c.muted} numberOfLines={1} style={{ marginTop: 2 }}>
+                    {threadAnnonceId ? `Annonce ${threadAnnonceId.substring(0, 8)} · ` : ''}{messages.length} message{messages.length > 1 ? 's' : ''}
+                  </T>
                 </View>
-                <View className="flex-row gap-2">
-                  {selectedConvo?.reservation && (
-                    <Pressable
-                      onPress={() => downloadContract(selectedConvo.reservation.id)}
-                      className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center"
-                    >
-                      <Ionicons name="document-text-outline" size={18} color="#1B4332" />
-                    </Pressable>
-                  )}
-                  <Pressable onPress={() => {
+                {selectedConvo?.reservation ? (
+                  <PressableScale
+                    onPress={() => downloadContract(selectedConvo.reservation.id)}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: radius.md,
+                      backgroundColor: c.surface2,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="document-text-outline" size={20} color={c.ink} />
+                  </PressableScale>
+                ) : null}
+                <PressableScale
+                  onPress={() => {
                     const annonceId = selectedConvo?._id?.annonceId;
                     if (annonceId) {
                       setShowChatModal(false);
                       router.push(`/(annonces)/${annonceId}`);
                     }
-                  }} className="bg-primary rounded-xl px-3 py-2">
-                    <Text className="text-xs font-bold text-white">Voir annonce</Text>
-                  </Pressable>
-                </View>
+                  }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: radius.md,
+                    backgroundColor: c.surface2,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="eye-outline" size={20} color={c.ink} />
+                </PressableScale>
+                <PressableScale
+                  onPress={() => setShowChatModal(false)}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: radius.md,
+                    backgroundColor: c.surface2,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="close" size={22} color={c.ink} />
+                </PressableScale>
               </View>
-            </Animated.View>
+            </View>
 
             {/* Messages */}
-            <ScrollView className="flex-1 px-4 py-4" contentContainerStyle={{ paddingBottom: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 20 }}>
               {messages.length === 0 ? (
-                <Animated.View entering={FadeInUp.delay(200).duration(500)} className="flex-1 items-center justify-center py-20">
-                  <View className="w-20 h-20 rounded-full bg-primary/10 items-center justify-center mb-4">
-                    <Ionicons name="chatbubbles-outline" size={40} color="#1B4332" />
+                <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 80 }}>
+                  <View
+                    style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: radius.pill,
+                      backgroundColor: c.primarySoft,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 16,
+                    }}
+                  >
+                    <Ionicons name="chatbubbles-outline" size={38} color={c.onPrimarySoft} />
                   </View>
-                  <Text className="text-base font-bold text-primary">Aucun message</Text>
-                  <Text className="text-sm text-on-surface-variant mt-2 text-center px-6">
+                  <T kind="h3" center>Aucun message</T>
+                  <T kind="body" color={c.muted} center style={{ marginTop: 8, paddingHorizontal: 24 }}>
                     Commencez la conversation en envoyant un message
-                  </Text>
-                </Animated.View>
+                  </T>
+                </View>
               ) : (
                 messages.map((msg, index) => {
                   const isFromMe = msg.senderId === currentUserId;
+                  const day = dayLabel(msg.createdAt);
+                  const showDay = Boolean(day) && day !== lastThreadDay;
+                  lastThreadDay = day || lastThreadDay;
                   return (
-                    <Animated.View
-                      key={`msg-${index}`}
-                      entering={FadeInUp.delay(index * 50).duration(400)}
-                      className={`mb-3 ${isFromMe ? 'items-end' : 'items-start'}`}
-                    >
+                    <View key={`msg-${index}`}>
+                      {showDay ? (
+                        <View style={{ alignItems: 'center', marginVertical: 10 }}>
+                          <View
+                            style={{
+                              backgroundColor: c.surface2,
+                              borderRadius: radius.pill,
+                              paddingHorizontal: 14,
+                              paddingVertical: 6,
+                            }}
+                          >
+                            <T kind="caption" color={c.muted} style={{ textTransform: 'capitalize' }}>
+                              {day}
+                            </T>
+                          </View>
+                        </View>
+                      ) : null}
                       <View
-                        className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
-                          isFromMe ? 'bg-primary' : 'bg-white border border-outline-variant'
-                        }`}
+                        style={{ marginBottom: 10, alignItems: isFromMe ? 'flex-end' : 'flex-start' }}
                       >
-                        <Text className={`text-sm leading-5 ${isFromMe ? 'text-white' : 'text-on-surface'}`}>
-                          {msg.content}
-                        </Text>
-                        <Text className={`text-[10px] mt-2 ${isFromMe ? 'text-white/70' : 'text-on-surface-variant'}`}>
-                          {formatDate(msg.createdAt)}
-                        </Text>
+                        <View
+                          style={{
+                            maxWidth: '78%',
+                            borderRadius: radius.lg,
+                            borderTopRightRadius: isFromMe ? 6 : radius.lg,
+                            borderTopLeftRadius: isFromMe ? radius.lg : 6,
+                            paddingHorizontal: 14,
+                            paddingVertical: 10,
+                            backgroundColor: isFromMe ? c.primary : c.surface2,
+                          }}
+                        >
+                          <T kind="body" color={isFromMe ? c.onPrimary : c.ink}>
+                            {msg.content}
+                          </T>
+                          <T
+                            kind="caption"
+                            color={isFromMe ? c.onPrimary : c.muted}
+                            style={{ marginTop: 4, opacity: isFromMe ? 0.85 : 1 }}
+                          >
+                            {formatTime(msg.createdAt)}
+                          </T>
+                        </View>
                       </View>
-                    </Animated.View>
+                    </View>
                   );
                 })
               )}
             </ScrollView>
 
-            {/* Input Message */}
-            <View className="bg-white border-t border-outline-variant px-4 py-3 shadow-lg" style={{ paddingBottom: insets.bottom + 12 }}>
-              <View className="flex-row items-end gap-2">
-                <View className="flex-1 bg-surface border border-outline-variant rounded-2xl px-4 py-3">
-                  <TextInput
-                    value={messageText}
-                    onChangeText={setMessageText}
-                    placeholder="Votre message..."
-                    placeholderTextColor="#A5A6AA"
-                    multiline
-                    className="text-on-surface max-h-24 text-sm"
-                    style={{ minHeight: 20 }}
-                  />
-                </View>
-                <Pressable
+            {/* Sticky input bar */}
+            <View
+              style={{
+                backgroundColor: c.surface,
+                borderTopWidth: 1,
+                borderTopColor: c.line,
+                paddingHorizontal: 16,
+                paddingTop: 12,
+                paddingBottom: insets.bottom + 12,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: c.surface,
+                  borderWidth: 1,
+                  borderColor: c.line,
+                  borderRadius: radius.xl,
+                  paddingHorizontal: 6,
+                  paddingVertical: 6,
+                  minHeight: 60,
+                }}
+              >
+                <PressableScale
+                  onPress={handleAttachPress}
+                  accessibilityLabel="Pièce jointe"
+                  style={{
+                    width: 44,
+                    height: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="add" size={24} color={c.muted} />
+                </PressableScale>
+                <TextInput
+                  value={messageText}
+                  onChangeText={setMessageText}
+                  placeholder="Votre message..."
+                  placeholderTextColor={c.muted}
+                  multiline
+                  style={{ flex: 1, color: c.ink, fontSize: 15, minHeight: 22, maxHeight: 96 }}
+                />
+                <PressableScale
+                  onPress={handleVoicePress}
+                  accessibilityLabel="Message vocal"
+                  style={{
+                    width: 44,
+                    height: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="mic-outline" size={22} color={c.muted} />
+                </PressableScale>
+                <PressableScale
                   onPress={sendMessage}
                   disabled={isSending || !messageText.trim()}
-                  className={`w-12 h-12 rounded-2xl items-center justify-center ${
-                    isSending || !messageText.trim() ? 'bg-primary/40' : 'bg-primary shadow-md'
-                  }`}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: radius.pill,
+                    backgroundColor: c.primary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: isSending || !messageText.trim() ? 0.5 : 1,
+                  }}
                 >
                   {isSending ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    <ActivityIndicator color={c.onPrimary} size="small" />
                   ) : (
-                    <Ionicons name="send" size={20} color="#fff" />
+                    <Ionicons name="send" size={20} color={c.onPrimary} />
                   )}
-                </Pressable>
+                </PressableScale>
+              </View>
+              <View style={{ marginTop: 8 }}>
+                <T kind="caption" color={c.muted} center>
+                  {messages.length} message{messages.length > 1 ? 's' : ''} · Réponses rapides et cordiales recommandées
+                </T>
               </View>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </Screen>
   );
 }
