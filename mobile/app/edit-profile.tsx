@@ -1,13 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ApiService } from '../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ApiService } from '@/services/api';
+import { useTheme } from '@/theme/ThemeContext';
+import { radius, shadowSm } from '@/theme/tokens';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Chip } from '@/components/ui/Chip';
+import { TextField } from '@/components/ui/TextField';
+import { T } from '@/components/ui/T';
+import { Avatar, SectionHeader } from '@/components/ui/Primitives';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { Enter } from '@/components/ui/Enter';
+
+const LANGUES = [
+  { value: 'FRANCAIS', short: 'FR', label: 'Français' },
+  { value: 'ARABE', short: 'AR', label: 'Arabe' },
+  { value: 'AMAZIGH', short: 'AZ', label: 'Amazigh' },
+  { value: 'BILINGUE', short: 'BI', label: 'Bilingue' },
+];
 
 export default function EditProfile() {
   const router = useRouter();
+  const { c, mode } = useTheme();
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
   const [nom, setNom] = useState('');
@@ -16,7 +34,7 @@ export default function EditProfile() {
   const [ville, setVille] = useState('');
   const [dateNaissance, setDateNaissance] = useState('');
   const [langueInterface, setLangueInterface] = useState('FRANCAIS');
-  
+
   // Read-only fields
   const [email, setEmail] = useState('');
   const [telephone, setTelephone] = useState('');
@@ -36,12 +54,12 @@ export default function EditProfile() {
         setAdresseComplete(user.profil?.adresseComplete || '');
         setVille(user.profil?.ville || '');
         setLangueInterface(user.profil?.langueInterface || 'FRANCAIS');
-        
+
         // Read-only fields
         setEmail(user.email || '');
         setTelephone(user.telephone || '');
         setCin(user.profil?.cin || '');
-        
+
         if (user.profil?.dateNaissance) {
           const date = new Date(user.profil.dateNaissance);
           setDateNaissance(date.toISOString().split('T')[0]);
@@ -73,7 +91,7 @@ export default function EditProfile() {
         const user = JSON.parse(userData || '{}');
         user.profil = data.profil;
         await AsyncStorage.setItem('user', JSON.stringify(user));
-        
+
         Alert.alert('Succès', 'Profil mis à jour', [
           { text: 'OK', onPress: () => router.back() }
         ]);
@@ -85,171 +103,248 @@ export default function EditProfile() {
     }
   };
 
+  const fullName = `${prenom || ''} ${nom || ''}`.trim() || 'Utilisateur';
+
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-surface"
-    >
-      <View
-        className="bg-white/90 px-6 pb-3 border-b border-outline-variant/30"
-        style={{ paddingTop: insets.top + 8 }}
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <StatusBar barStyle="light-content" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
       >
-        <View className="flex-row items-center justify-between">
-        <Pressable onPress={() => router.back()} className="w-10 h-10 rounded-xl items-center justify-center bg-surface-container">
-          <Ionicons name="arrow-back" size={24} color="#012d1d" />
-        </Pressable>
-        <Text className="text-base font-extrabold tracking-wide text-primary">MODIFIER PROFIL</Text>
-        <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-          <Ionicons name="create-outline" size={18} color="#1B4332" />
-        </View>
-        </View>
-      </View>
-
-      <ScrollView className="flex-1 px-6 pt-8" showsVerticalScrollIndicator={false}>
-        <View className="bg-primary rounded-2xl p-4 mb-5">
-          <Text className="text-white font-bold text-base">Informations personnelles</Text>
-          <Text className="text-white/80 text-xs mt-1">Les champs sensibles restent protégés et non modifiables.</Text>
-        </View>
-
-        {/* Read-only Information Section */}
-        <View className="bg-white border border-outline-variant/70 rounded-2xl p-4 mb-6">
-          <Text className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 mb-3">
-            Informations non modifiables
-          </Text>
-          
-          {email && (
-            <View className="flex-row items-center mb-2">
-              <Ionicons name="mail-outline" size={16} color="#717973" />
-              <Text className="text-sm text-on-surface ml-2">{email}</Text>
-            </View>
-          )}
-          
-          {telephone && (
-            <View className="flex-row items-center mb-2">
-              <Ionicons name="call-outline" size={16} color="#717973" />
-              <Text className="text-sm text-on-surface ml-2">{telephone}</Text>
-            </View>
-          )}
-          
-          {cin && (
-            <View className="flex-row items-center">
-              <Ionicons name="card-outline" size={16} color="#717973" />
-              <Text className="text-sm text-on-surface ml-2">CIN: {cin}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Editable Fields Section */}
-        <Text className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-4">
-          Informations modifiables
-        </Text>
-        
-        <View className="space-y-5">
-          <View>
-            <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Prénom
-            </Text>
-            <TextInput
-              className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
-              value={prenom}
-              onChangeText={setPrenom}
-              placeholder="Votre prénom"
-              editable={!isLoading}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+          <View
+            style={{
+              backgroundColor: c.primary,
+              minHeight: 170,
+              paddingTop: insets.top + 12,
+              paddingHorizontal: 20,
+              paddingBottom: 60,
+              overflow: 'hidden',
+            }}
+          >
+            <View
+              style={{
+                position: 'absolute',
+                top: -70,
+                right: -60,
+                width: 180,
+                height: 180,
+                borderRadius: radius.pill,
+                backgroundColor: 'rgba(255,255,255,0.10)',
+              }}
             />
-          </View>
-
-          <View>
-            <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Nom
-            </Text>
-            <TextInput
-              className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
-              value={nom}
-              onChangeText={setNom}
-              placeholder="Votre nom"
-              editable={!isLoading}
+            <View
+              style={{
+                position: 'absolute',
+                bottom: -60,
+                left: -40,
+                width: 150,
+                height: 150,
+                borderRadius: radius.pill,
+                backgroundColor: 'rgba(255,255,255,0.10)',
+              }}
             />
-          </View>
-
-          <View>
-            <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Adresse complète
-            </Text>
-            <TextInput
-              className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
-              value={adresseComplete}
-              onChangeText={setAdresseComplete}
-              placeholder="Votre adresse"
-              editable={!isLoading}
-              multiline
-            />
-          </View>
-
-          <View>
-            <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Ville
-            </Text>
-            <TextInput
-              className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
-              value={ville}
-              onChangeText={setVille}
-              placeholder="Votre ville"
-              editable={!isLoading}
-            />
-          </View>
-
-          <View>
-            <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Date de naissance
-            </Text>
-            <TextInput
-              className="w-full bg-surface-container-high rounded-xl px-5 py-4 text-on-surface text-base"
-              value={dateNaissance}
-              onChangeText={setDateNaissance}
-              placeholder="YYYY-MM-DD"
-              editable={!isLoading}
-            />
-          </View>
-
-          <View>
-            <Text className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant/60 ml-1 mb-2">
-              Langue d'interface
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {['FRANCAIS', 'ARABE', 'AMAZIGH', 'BILINGUE'].map((lang) => (
-                <Pressable
-                  key={lang}
-                  onPress={() => setLangueInterface(lang)}
-                  disabled={isLoading}
-                  className={`w-[48%] rounded-xl py-3 px-4 ${
-                    langueInterface === lang ? 'bg-primary-container' : 'bg-surface-container-high'
-                  }`}
+            <Enter index={0}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <PressableScale
+                  onPress={() => router.back()}
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: radius.pill,
+                    backgroundColor: 'rgba(255,255,255,0.20)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
                 >
-                  <Text className={`text-center text-sm font-semibold ${
-                    langueInterface === lang ? 'text-white' : 'text-on-surface'
-                  }`}>
-                    {lang === 'FRANCAIS' ? 'FR' : lang === 'ARABE' ? 'AR' : lang === 'AMAZIGH' ? 'AZ' : 'BI'}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+                  <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+                </PressableScale>
+                <View style={{ flex: 1 }}>
+                  <T kind="overline" color="#FFFFFF" style={{ opacity: 0.7 }}>
+                    Compte
+                  </T>
+                  <T kind="h1" color="#FFFFFF" style={{ marginTop: 4 }}>
+                    Modifier le profil
+                  </T>
+                </View>
+              </View>
+            </Enter>
           </View>
-        </View>
 
-        <Pressable
-          onPress={handleSubmit}
-          disabled={isLoading}
-          className={`w-full bg-primary-container rounded-xl py-5 px-6 flex-row items-center justify-center shadow-lg mt-8 mb-8 ${
-            isLoading ? 'opacity-50' : ''
-          }`}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text className="text-white font-bold text-lg tracking-wide">Enregistrer</Text>
-          )}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View style={{ paddingHorizontal: 20 }}>
+            <Enter index={1}>
+              <View style={{ marginTop: -36, alignItems: 'center' }}>
+                <View
+                  style={{
+                    width: 84,
+                    height: 84,
+                    borderRadius: radius.pill,
+                    backgroundColor: c.surface,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Avatar name={fullName} size={72} />
+                </View>
+                <T kind="h2" center style={{ marginTop: 12 }} numberOfLines={1}>
+                  {fullName}
+                </T>
+                <T kind="small" color={c.muted} center style={{ marginTop: 4 }}>
+                  Les champs sensibles restent protégés et non modifiables.
+                </T>
+              </View>
+            </Enter>
+
+            <Enter index={2}>
+              <View style={{ marginTop: 24 }}>
+                <SectionHeader title="Informations non modifiables" />
+                <Card style={{ marginTop: 12, gap: 12 }}>
+                  {email ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: radius.md,
+                          backgroundColor: c.surface2,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Ionicons name="mail-outline" size={17} color={c.muted} />
+                      </View>
+                      <T kind="body" numberOfLines={1} style={{ flex: 1 }}>{email}</T>
+                    </View>
+                  ) : null}
+                  {telephone ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: radius.md,
+                          backgroundColor: c.surface2,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Ionicons name="call-outline" size={17} color={c.muted} />
+                      </View>
+                      <T kind="body" style={{ flex: 1 }}>{telephone}</T>
+                    </View>
+                  ) : null}
+                  {cin ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: radius.md,
+                          backgroundColor: c.surface2,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Ionicons name="card-outline" size={17} color={c.muted} />
+                      </View>
+                      <T kind="body" style={{ flex: 1 }}>CIN : {cin}</T>
+                    </View>
+                  ) : null}
+                  {!email && !telephone && !cin ? (
+                    <T kind="small" color={c.muted}>Aucune information verrouillée à afficher.</T>
+                  ) : null}
+                </Card>
+              </View>
+            </Enter>
+
+            <Enter index={3}>
+              <View style={{ marginTop: 24 }}>
+                <SectionHeader title="Identité" />
+                <Card style={{ marginTop: 12, gap: 16 }}>
+                  <TextField
+                    label="Prénom"
+                    icon="person-outline"
+                    value={prenom}
+                    onChangeText={setPrenom}
+                    placeholder="Votre prénom"
+                    editable={!isLoading}
+                  />
+                  <TextField
+                    label="Nom"
+                    icon="person-outline"
+                    value={nom}
+                    onChangeText={setNom}
+                    placeholder="Votre nom"
+                    editable={!isLoading}
+                  />
+                </Card>
+              </View>
+            </Enter>
+
+            <Enter index={4}>
+              <View style={{ marginTop: 24 }}>
+                <SectionHeader title="Coordonnées" />
+                <Card style={{ marginTop: 12, gap: 16 }}>
+                  <TextField
+                    label="Adresse complète"
+                    icon="location-outline"
+                    value={adresseComplete}
+                    onChangeText={setAdresseComplete}
+                    placeholder="Votre adresse"
+                    editable={!isLoading}
+                    multiline
+                  />
+                  <TextField
+                    label="Ville"
+                    icon="business-outline"
+                    value={ville}
+                    onChangeText={setVille}
+                    placeholder="Votre ville"
+                    editable={!isLoading}
+                  />
+                  <TextField
+                    label="Date de naissance"
+                    icon="calendar-outline"
+                    value={dateNaissance}
+                    onChangeText={setDateNaissance}
+                    placeholder="YYYY-MM-DD"
+                    editable={!isLoading}
+                  />
+                </Card>
+              </View>
+            </Enter>
+
+            <Enter index={5}>
+              <View style={{ marginTop: 24 }}>
+                <SectionHeader title="Langue" />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+                  {LANGUES.map((lang) => (
+                    <View key={lang.value} style={{ ...shadowSm(mode) }}>
+                      <Chip
+                        label={`${lang.short} ${lang.label}`}
+                        selected={langueInterface === lang.value}
+                        onPress={() => setLangueInterface(lang.value)}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </Enter>
+
+            <Enter index={6}>
+              <View style={{ marginTop: 28 }}>
+                <Button
+                  title="Enregistrer"
+                  icon="checkmark-outline"
+                  loading={isLoading}
+                  onPress={handleSubmit}
+                />
+              </View>
+            </Enter>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
