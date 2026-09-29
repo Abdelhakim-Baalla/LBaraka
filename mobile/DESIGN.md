@@ -1,82 +1,77 @@
-# Design System Specification: Architectural Precision & Tonal Depth
+# LBaraka Design System v2 : "Terracotta & Ink"
 
-## 1. Overview & Creative North Star
-### The Creative North Star: "The Architectural Sanctuary"
-This design system is not a mere collection of components; it is an editorial environment designed to feel like a high-end physical space—a digital sanctuary that balances the weight of tradition with the precision of future-facing technology. 
+Refonte complète (2026). Direction inspirée de trois référentiels :
+- **taste-skill** : audit-first, un seul accent, un seul système de rayons,
+  un seul thème par page, parité claire des modes light/dark.
+- **emilkowalski/improve-animations** : entrées en ease-out < 300ms,
+  feedback presse scale 0.97 à 160ms, stagger 30-80ms, transform/opacity
+  uniquement, respect de reduced-motion.
+- **UI-UX-Pro-Max (React Native)** : patterns mobiles natifs, touch targets
+  44px+, contraste AA.
 
-We break the "template" look by eschewing standard borders and rigid grids in favor of **Tonal Layering**. By using the Deep Baraka Green as our foundational anchor and Crisp White as our canvas, we create a UI that feels "carved" rather than "pasted." Our aesthetic relies on intentional asymmetry, generous whitespace, and a high-contrast scale that commands authority while remaining approachable.
+## 1. Identité
+Terre cuite chaleureuse + encre chaude. Une seule couleur d'accent (l'argile)
+sur toutes les pages. L'or est réservé aux scores, paliers et badges.
+Jamais de noir/blanc purs : fonds cassés chauds dans les deux modes.
 
----
+## 2. Couleurs (`theme/tokens.ts`)
+| Rôle | Light | Dark |
+|---|---|---|
+| bg | #FAF6F0 | #151110 |
+| surface | #FFFFFF | #201A16 |
+| surface2 (puits) | #F2EBDF | #2B231C |
+| ink / ink2 / muted | #221A13 / #4A3F34 / #8A7B6B | #F5EDE1 / #D8C9B6 / #A89885 |
+| primary (argile) | #BC4B1F, texte #FFFFFF | #E4703A, texte #231104 |
+| primarySoft | #F8E2D0 / #8A3411 | #4A2410 / #F2B48C |
+| gold | #B8862E (+ soft #F6E8C8) | #D9A441 (+ soft #4A3A16) |
+| success / danger / info | tons doux + textes AA dans les deux modes | idem |
 
-## 2. Colors & Surface Philosophy
-The palette is built on the interplay between the deep, verdant tones of the earth and the ethereal quality of precious metals.
+## 3. Typographie
+Outfit partout, chargée via `@expo-google-fonts/outfit` (root layout).
+Échelle compacte mobile-first : display 30, h1 23, h2 19, h3 16,
+body 14/21, small 12, caption 11, overline 10 capitales espacées.
+Composant `T` (`components/ui`). Densité : boutons 50/44, champs 52,
+écran pad 16, cartes pad 16.
 
-### The "No-Line" Rule
-**Designers are strictly prohibited from using 1px solid borders for sectioning.** 
-In this system, boundaries are defined by light and shadow, not lines. To separate content:
-- Use background color shifts: Place a `surface-container-low` section against a `surface` background.
-- Use spacing: Let whitespace (using our `16` or `20` spacing tokens) act as the primary structural divider.
+## 4. Formes (un seul système : géométrie douce)
+Cartes 20, champs 14, boutons 16, pills 999 réservées aux chips et tags.
+Pas de bordures 1px opaques : séparations par tons (surface2) et ombres
+teintées (`shadowSm` / `shadowMd`).
 
-### Surface Hierarchy & Nesting
-Treat the UI as a series of stacked physical materials. 
-- **The Base:** Use `surface` (#f8f9fa) for the primary application background.
-- **The Inset:** Use `surface-container-low` to create "wells" for secondary content.
-- **The Lift:** Use `surface-container-lowest` (#ffffff) for primary cards to make them appear to float naturally above the base.
+## 5. Motion (`theme/motion.ts`)
+- Entrée : ease-out 240ms. Modales : 320ms.
+- Presse : scale 0.97, 160ms (`PressableScale`, intégré à `Button`).
+- Listes : `Enter` avec stagger 60ms par index. Jamais de scale(0).
+- `useReducedMotion` : aucun déplacement si activé.
 
-### The "Glass & Gradient" Rule
-To elevate the "technologically advanced" voice, use **Glassmorphism** for floating elements (modals, dropdowns, navigation bars). 
-- **Effect:** 60% opacity of `surface-container-lowest` with a `24px` backdrop blur.
-- **Signature Textures:** Use a subtle linear gradient from `primary` (#012d1d) to `primary_container` (#1b4332) for Hero sections and primary CTAs to add "soul" and depth.
+## 6. Composants (`components/ui/`)
+`Button` (primary/secondary/ghost/danger, md/lg, loading, icônes),
+`Card`, `Chip` + `Tag` (tons primary/gold/success/danger/info/muted),
+`TextField` (label, icône, mot de passe, erreur), `Screen` (safe area,
+fond, scroll), `T`, `Avatar`, `SectionHeader`, `EmptyState`,
+`PressableScale`, `Enter`, `Segmented`.
 
----
+## 7. Thème clair/sombre (`theme/ThemeContext.tsx`)
+Mode persisté (`lbaraka-theme-mode`), défaut = système. Toggle dans Profil.
+Règle d'or : aucune couleur codée en dur dans les écrans, tout passe par
+`useTheme().c`, vérifié en screenshots light + dark.
 
-## 3. Typography: The Editorial Voice
-We use **Outfit** as our primary typographic engine. Its geometric clarity reflects precision engineering, while its open apertures maintain a sense of community warmth.
+## 8. Règles de contribution
+- Logique, routes, noms de champs et copies FR inchangés lors d'un restyle.
+- Pas de nouvelles dépendances sans discussion. Ionicons uniquement, pas
+  d'emoji dans l'UI. Pas de texte "dev" visible (ex : "tester le backend").
+- `npx tsc --noEmit` vert + `npx expo-doctor` 18/18 avant chaque merge.
 
-- **Display (Outfit Bold):** Used for "Hero" moments. Use `display-lg` (3.5rem) with tight letter-spacing (-0.02em) to create an authoritative, editorial impact.
-- **Headlines (Outfit SemiBold):** High-contrast hierarchy. Use `headline-lg` (2rem) for section titles.
-- **Body (Outfit Regular):** Use `body-lg` (1rem) for readability. Ensure a line height of at least 1.6 to maintain the "premium" airy feel.
-- **Labels (Outfit Medium):** Use `label-md` (0.75rem) in all-caps with increased letter-spacing (+0.05em) for small metadata or overlines.
-
----
-
-## 4. Elevation & Depth: Tonal Layering
-We do not use shadows to hide poor layout; we use them to mimic ambient light.
-
-- **The Layering Principle:** Depth is achieved by "stacking." A `primary-container` card should sit atop a `surface-container-low` background to create a sophisticated, low-contrast lift.
-- **Ambient Shadows:** When a float is required (e.g., a high-end modal), use an extra-diffused shadow: `0px 24px 48px rgba(0, 33, 20, 0.08)`. Note the tint: we use a fraction of the `on-primary-fixed` color rather than pure black to keep the shadow "organic."
-- **The "Ghost Border" Fallback:** If a border is required for accessibility, use the `outline-variant` token at **15% opacity**. Never use 100% opaque borders.
-
----
-
-## 5. Components: Precision Engineered
-All components follow the `md` (0.75rem / 12px) corner radius to strike the balance between "sharp professional" and "modern friendly."
-
-### Buttons
-- **Primary:** `primary_container` background with `on_primary` text. No border. Use a subtle `secondary` (Gold) 2px bottom-glow on hover.
-- **Secondary (The Metallic Accent):** `surface_container_highest` background with a `secondary` (Champagne Gold) `label-md` text.
-- **Tertiary:** Pure text with an underline that appears only on hover.
-
-### The Baraka Card
-Forbid divider lines. Separate the header from the body using a `3.5rem` (spacing-10) vertical gap or a subtle shift from `surface-container-lowest` to `surface-container-low` for the card footer.
-
-### Input Fields
-- **Styling:** Use a "minimalist well" approach. Background should be `surface-container-high` with a 12px radius. 
-- **Focus State:** The background shifts to `white` and a 1px "Ghost Border" of `primary` appears at 20% opacity.
-
-### Navigation (The Glass Bar)
-The top navigation must be a glassmorphic layer. Use `surface_container_lowest` at 70% opacity with a `blur-xl` effect. This allows the Deep Baraka Green of hero sections to bleed through as the user scrolls, creating a sense of continuity.
-
----
-
-## 6. Do’s and Don’ts
-
-### Do
-- **Do** use asymmetrical margins. Offsetting a headline to the left while keeping body text centered in a wider column creates a custom, editorial feel.
-- **Do** lean into the Metallic Accents. Use the Gold (`secondary`) sparingly—only for high-value micro-interactions like a successful checkmark or a premium badge.
-- **Do** prioritize "Breathing Room." If a layout feels "busy," increase the spacing token by two levels (e.g., move from `8` to `12`).
-
-### Don’t
-- **Don't** use 100% black (#000000). Use `primary` or `tertiary` for dark tones to keep the palette sophisticated.
-- **Don't** use standard "Drop Shadows." If you can see the edge of the shadow, it is too heavy.
-- **Don't** crowd the edges. The 12px rounded corners require at least `1.4rem` (spacing-4) of internal padding to look balanced.
+## 9. Patterns signatures (v2.1, faits main)
+- **Floating tab bar** (`app/(tabs)/_layout.tsx`) : barre flottante arrondie
+  26, active pill argile, 7 onglets. Les écrans d'onglets réservent
+  `padBottom 108` (prop `Screen`, + FABs remontés).
+- **Home magazine** : feature story edge-to-edge (photo 300 + bandeau
+  overlay, tag catégorie + titre + caution), ligne de stats texte,
+  rangées compactes 68. Plus de carrousel redondant.
+- **Wallet fintech** : carte encre profonde (`#241811` / crème en dark),
+  chiffres gold, chip motif, œil masquage, tuiles d'actions 84.
+- **Onboarding full-bleed** : photo/panneau 340 plein écran + sheet
+  surface radius 32 qui chevauche (-32), dots + CTA dans le sheet.
+- **Detail magazine** : galerie 340 plein cadre, sheet -28, sticky bottom
+  bar [Discuter / Réserver]. Titres display, grille infos 2 col.
