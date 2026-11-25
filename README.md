@@ -1,5 +1,9 @@
 # 🤝 LBaraka - Plateforme Solidaire de Prêt et de Partage
 
+[Présentation interactive](https://baalla-lbaraka-demo.abdelhakimbaalla50.workers.dev/slides) · [Écran de suivi des échanges](https://github.com/Abdelhakim-Baalla/LBaraka/blob/main/presentation/screenshots/08-transactions.png)
+
+Pour reconstruire la démo depuis la racine du dépôt, exécuter `cd presentation && npm ci && npm run build`. Dans le dossier `presentation`, `npx wrangler deploy` publie les fichiers générés.
+
 ## 📖 Description Globale
 **LBaraka** est une application mobile complète développée en **React Native (Expo)**, adossée à une API **NestJS** puissante. Le but du projet est de faciliter l'échange, le prêt (gratuit) et la location à bas coût d'objets ou de matériel entre particuliers. 
 
